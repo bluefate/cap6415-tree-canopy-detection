@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tree Canopy Detection Competition - Entry Form</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Tree Canopy Detection Competition</h1>
+            <p class="subtitle">Submit Your Predictions</p>
+        </header>
+
+        <div class="instructions">
+            <h2>Submission Instructions</h2>
+            <ul>
+                <li>Fill out all required fields marked with an asterisk (*)</li>
+                <li>Upload your prediction file in CSV format</li>
+                <li>Provide a brief description of your model approach</li>
+                <li>Review your submission before clicking Submit</li>
+            </ul>
+        </div>
+
+        <form id="submissionForm" class="entry-form">
+            <section class="form-section">
+                <h3>Participant Information</h3>
+                
+                <div class="form-group">
+                    <label for="participantName">Full Name *</label>
+                    <input type="text" id="participantName" name="participantName" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="affiliation">Affiliation/Organization</label>
+                    <input type="text" id="affiliation" name="affiliation" placeholder="University, Company, etc.">
+                </div>
+            </section>
+
+            <section class="form-section">
+                <h3>Team Information</h3>
+                
+                <div class="form-group">
+                    <label for="teamName">Team Name</label>
+                    <input type="text" id="teamName" name="teamName" placeholder="Leave blank for solo entry">
+                </div>
+
+                <div class="form-group">
+                    <label for="teamMembers">Team Members</label>
+                    <textarea id="teamMembers" name="teamMembers" rows="3" placeholder="List team member names (one per line)"></textarea>
+                </div>
+            </section>
+
+            <section class="form-section">
+                <h3>Submission Details</h3>
+                
+                <div class="form-group">
+                    <label for="submissionFile">Prediction File (CSV) *</label>
+                    <input type="file" id="submissionFile" name="submissionFile" accept=".csv" required>
+                    <small>Please upload your predictions in CSV format</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="modelName">Model Name *</label>
+                    <input type="text" id="modelName" name="modelName" required placeholder="e.g., UNet-ResNet50">
+                </div>
+
+                <div class="form-group">
+                    <label for="modelDescription">Model Description *</label>
+                    <textarea id="modelDescription" name="modelDescription" rows="6" required placeholder="Describe your approach, architecture, and key features..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="framework">Framework Used</label>
+                    <select id="framework" name="framework">
+                        <option value="">Select framework</option>
+                        <option value="pytorch">PyTorch</option>
+                        <option value="tensorflow">TensorFlow</option>
+                        <option value="keras">Keras</option>
+                        <option value="scikit-learn">Scikit-learn</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="trainingTime">Approximate Training Time</label>
+                    <input type="text" id="trainingTime" name="trainingTime" placeholder="e.g., 4 hours on V100 GPU">
+                </div>
+            </section>
+
+            <section class="form-section">
+                <h3>Additional Information</h3>
+                
+                <div class="form-group">
+                    <label for="comments">Additional Comments</label>
+                    <textarea id="comments" name="comments" rows="4" placeholder="Any additional information about your submission..."></textarea>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="termsAccepted" name="termsAccepted" required>
+                        I agree to the competition terms and conditions *
+                    </label>
+                </div>
+
+                <div class="form-group checkbox-group">
+                    <label>
+                        <input type="checkbox" id="codeSharing" name="codeSharing">
+                        I agree to share my code after the competition ends
+                    </label>
+                </div>
+            </section>
+
+            <div class="form-actions">
+                <button type="reset" class="btn btn-secondary">Clear Form</button>
+                <button type="submit" class="btn btn-primary">Submit Entry</button>
+            </div>
+        </form>
+
+        <div id="confirmationMessage" class="confirmation-message" style="display: none;">
+            <h2>✓ Submission Successful!</h2>
+            <p>Thank you for your submission. Your entry has been recorded.</p>
+            <p>You will receive a confirmation email shortly at the address you provided.</p>
+            <button onclick="location.reload()" class="btn btn-primary">Submit Another Entry</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
