@@ -84,6 +84,8 @@ Where:
 - `image_id`: Unique identifier for each image
 - `canopy_coverage`: Predicted canopy coverage value (0.0 to 1.0)
 
+**Note:** A sample submission file (`sample_submission.csv`) is included in this repository as a reference.
+
 ## Validation Rules
 
 The form validates the following:
