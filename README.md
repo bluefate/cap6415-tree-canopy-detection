@@ -12,6 +12,10 @@ Source summary from the competition page:
 - Submissions must be one JSON file that matches the sample format.
 - See the competition overview for details.
 
+## Notes from Discussion Board
+- Must use DockerFile to provide environment used
+- If using NVIDIA’s GPUs, please ensure your environment supports CUDA 11.8 or above.
+
 ## URL
 'https://solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70'
 
