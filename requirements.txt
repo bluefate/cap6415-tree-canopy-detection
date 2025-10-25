@@ -1,0 +1,25 @@
+# Core environment
+
+jupyter # runs interactive notebooks (.ipynb) to develop and test your code.
+tqdm # shows progress bars in loops (useful for training and data loading).
+numpy # base library for numerical operations and arrays.
+pandas # handles structured data, CSVs, and annotations.
+matplotlib # plots charts, histograms, and visualizations.
+seaborn # higher-level visualization interface built on Matplotlib.
+scikit-learn # provides metrics, data splits, and preprocessing tools.
+pillow # image reading, writing, and manipulation library.
+opencv-python # advanced image operations (cropping, resizing, augmenting).
+
+# Deep learning
+
+torch # main PyTorch library for tensor operations and model training.
+torchvision # model architectures (ResNet, UNet, etc.), and transforms.
+torchaudio # audio support; needed for torchvision dependencies reference it.
+timm # PyTorch Image Models library, adds many pretrained networks for transfer learning.
+albumentations # fast and flexible image augmentation library.
+pycocotools # used for COCO-format annotations.
+
+# Utilities
+
+rich # makes terminal logs more readable with colors and tables
+hydra-core # helps manage experiment configurations with clean YAML setups
