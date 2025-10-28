@@ -694,6 +694,6 @@ fabric.properties
 
 
 # OTHER FILES
-*.pth   #models
+*.pth
 
 
