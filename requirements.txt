@@ -9,6 +9,7 @@ seaborn # higher-level visualization interface built on Matplotlib.
 scikit-learn # provides metrics, data splits, and preprocessing tools.
 pillow # image reading, writing, and manipulation library.
 opencv-python # advanced image operations (cropping, resizing, augmenting).
+pyyaml
 
 # Deep learning
 

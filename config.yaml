@@ -1,0 +1,24 @@
+# config.yaml
+
+paths:
+  root: C:/github/Tree-Canopy-Detection
+  data: src/data
+
+  train_images: src/data/train_images
+  train_images_zip: src/data/train_images.zip
+  train_masks : src/data/train_masks
+
+  eval_images: src/data/evaluation_images
+  eval_images_zip: src/data/evaluation_images.zip
+  eval_masks: src/data/eval_masks
+
+  models: models
+  notebooks: notebooks
+
+params:
+  image_size: 512
+  batch_size: 16
+  num_workers: 0
+  seed: 42
+  epochs: 20
+  learning_rate: 1e-4
