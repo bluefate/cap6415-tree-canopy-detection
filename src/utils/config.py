@@ -18,20 +18,20 @@
 #
 
 # +
-from dotenv import load_dotenv
-from pathlib import Path
-from src.utils.helpers import normalize_paths, normalize_type, p
-
 import inspect
 import os
+from pathlib import Path
+
 import yaml
+from dotenv import load_dotenv
+from src.utils.helpers import normalize_paths, normalize_type, p
 
 
 def in_notebook() -> bool:
     """Detect if running inside a Jupyter notebook."""
 
     try:
-        from IPython import get_ipython
+        from IPython.core.getipython import get_ipython
 
         shell = get_ipython().__class__.__name__
         # Jupyter notebook
@@ -50,7 +50,10 @@ def get_root(marker="config.yaml"):
         start = Path.cwd()
     else:
         frame = inspect.currentframe()
+        if frame is None:
+            raise RuntimeError("Could not retrieve the current frame.")
         file_path = Path(inspect.getfile(frame)).resolve()
+
         start = file_path.parent
 
     for parent in [start, *start.parents]:
@@ -79,39 +82,66 @@ def load_config():
 
     p(config)
 
-    return config
+    return ConfigNamespace(config)
 
 
-def inject_config_vars(config: dict, prefix_sep: str = "_", target_globals: dict = None):
-    """
-    Automatically create Python variables from nested config keys.
-    """
-    if target_globals is None:
-        import inspect
+class ConfigNamespace:
+    def __init__(self, config: dict, prefix_sep: str = "_"):
+        self._created_vars = []
 
-        # Inject into the caller's global scope
-        target_globals = inspect.stack()[1].frame.f_globals
-
-    created_vars = []
-
-    for section, entries in config.items():
-        if isinstance(entries, dict):
-            for key, value in entries.items():
-                if key == "root":
-                    var_name = f"{key}"
-                else:
-                    if section != "params":
-                        var_name = f"{section}{prefix_sep}{key}"
+        for section, entries in config.items():
+            if isinstance(entries, dict):
+                for key, value in entries.items():
+                    if key == "root":
+                        var_name = key
                     else:
-                        var_name = f"{key}"
+                        var_name = (
+                            f"{section}{prefix_sep}{key}"
+                            if section != "params"
+                            else key
+                        )
 
-                var_name = var_name.upper()
-                target_globals[var_name] = normalize_type(value)
-                created_vars.append(var_name)
+                    var_name = var_name.upper()
+                    setattr(self, var_name, normalize_type(value))
+                    self._created_vars.append(var_name)
 
-    print("Injected variables:")
-    for name in created_vars:
-        p(f"- {name}", f"{target_globals[name]}, {type(target_globals[name])}")
+    def show(self):
+        print("Injected config variables:")
+        for name in self._created_vars:
+            val = getattr(self, name)
+            p(f"- {name}", f"{val}, {type(val)}")
+        p("")
 
-    p("")
-    # return created_vars
+
+# def inject_config_vars(config: dict, prefix_sep: str = "_", target_globals: dict = None):
+#     """
+#     Automatically create Python variables from nested config keys.
+#     """
+#     # if target_globals is None:
+#     #     import inspect
+#     #     # Inject into the caller's global scope
+#     #     target_globals = inspect.stack()[1].frame.f_globals
+
+#     created_vars = []
+
+#     for section, entries in config.items():
+#         if isinstance(entries, dict):
+#             for key, value in entries.items():
+#                 if key == "root":
+#                     var_name = f"{key}"
+#                 else:
+#                     if section != "params":
+#                         var_name = f"{section}{prefix_sep}{key}"
+#                     else:
+#                         var_name = f"{key}"
+
+#                 var_name = var_name.upper()
+#                 #target_globals[var_name] = normalize_type(value)
+#                 created_vars.append(var_name)
+
+#     print("Injected variables:")
+#     for name in created_vars:
+#         p(f"- {name}", f"{target_globals[name]}, {type(target_globals[name])}")
+
+#     p("")
+#     return created_vars
