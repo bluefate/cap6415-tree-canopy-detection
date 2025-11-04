@@ -20,6 +20,9 @@ from src.utils.helpers import format_number, init_this_notebook, p
 
 cfg = load_config()
 # inject_config_vars(config)
+
+cfg.show()
+
 init_this_notebook(cfg.SEED)
 
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
@@ -142,11 +145,6 @@ val_loader = DataLoader(
 
 
 # %%
-# validate_dataset(train_ds, "train")
-
-# %%
-
-# %%
 # ---------------------------------------------------------------
 # 3. MODEL (U-Net)
 # ---------------------------------------------------------------
@@ -235,6 +233,13 @@ validate_dataset(train_ds, "train")
 # ---------------------------------------------------------------
 # 4. TRAINING
 # ---------------------------------------------------------------
+# This section defines the training and validation loops for the model.
+# - `train_epoch`: Runs one training pass over the dataset, applying gradient updates.
+# - `val_epoch`: Evaluates model performance without updating weights.
+# - Both functions use tqdm for progress visualization and handle device placement.
+# - Inputs are normalized to float32 and scaled to [0, 1] to match model expectations.
+# - The training loop iterates over epochs, logs losses, and saves the final model.
+
 import os
 from pathlib import Path
 
@@ -247,7 +252,10 @@ def train_epoch(loader):
     loss_sum = 0
     for imgs, masks in tqdm(loader, desc="Training", leave=False):
         try:
-            imgs, masks = imgs.to(DEVICE), masks.to(DEVICE)
+            # imgs, masks = imgs.to(DEVICE), masks.to(DEVICE)
+            imgs = imgs.to(DEVICE).float() / 255.0
+            masks = masks.to(DEVICE)
+
             preds = model(imgs)
             loss = criterion(preds, masks)
             optimizer.zero_grad()
@@ -266,31 +274,34 @@ def val_epoch(loader):
     with torch.no_grad():
         for imgs, masks in tqdm(loader, desc="Validation", leave=False):
             try:
-                imgs, masks = imgs.to(DEVICE), masks.to(DEVICE)
+                # imgs, masks = imgs.to(DEVICE), masks.to(DEVICE)
+                imgs = imgs.to(DEVICE).float() / 255.0
+                masks = masks.to(DEVICE)
+
                 preds = model(imgs)
                 loss = criterion(preds, masks)
                 loss_sum += loss.item()
             except Exception as e:
-                print(f"Error during validation batch: {e}")
+                p(f"Error during validation batch", e, "red")
                 break
     return loss_sum / max(1, len(loader))
 
 
 # --- Training loop ---
-for epoch in range(1, EPOCHS + 1):
-    print(f"\nEpoch {epoch}/{EPOCHS}")
+for epoch in range(1, cfg.EPOCHS + 1):
+    p("Epoch", f"{epoch}/{cfg.EPOCHS}")
     try:
         tr_loss = train_epoch(train_loader)
         val_loss = val_epoch(val_loader)
-        print(f"Train Loss: {tr_loss:.4f} | Val Loss: {val_loss:.4f}")
+        p(" - ", f"Train Loss {tr_loss:.4f} | Val Loss: {val_loss:.4f}")
     except Exception as e:
-        print(f"Error in epoch {epoch}: {e}")
+        p(f"Error in epoch {epoch}", e, "red")
         break
 
 # --- Save model ---
 model_path = cfg.PATHS_MODELS / "unet_canopy.pth"
 torch.save(model.state_dict(), model_path)
-print(f"Model saved to {model_path.relative_to(ROOT)}")
+p("Model saved", model_path.relative_to(cfg.ROOT))
 
 # %%
 # ---------------------------------------------------------------

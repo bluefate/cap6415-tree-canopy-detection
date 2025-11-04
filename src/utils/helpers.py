@@ -1,16 +1,17 @@
 # +
 # imports
+import numbers
+import random as r
+import sys
+import warnings
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Optional
 
-import numbers
 import numpy as np
 import pandas as pd
 import plotly.io as pio
-import random as r
-import sys
-import warnings
+import segmentation_models_pytorch as smp
 import yaml
 
 # import tensorflow as tf
@@ -87,13 +88,15 @@ def p(
                 # Convert any remaining Path objects elsewhere to strings
                 for key, val in cfg.items():
                     if isinstance(val, dict):
-                        cfg[key] = {k: str(v) if isinstance(v, Path) else v for k, v in val.items()}
+                        cfg[key] = {
+                            k: str(v) if isinstance(v, Path) else v
+                            for k, v in val.items()
+                        }
 
                 text = yaml.dump(cfg, sort_keys=False)
-                #p(text)
+                # p(text)
                 for i, line in enumerate(text.splitlines(), start=1):
                     p(f"{i:02d}", line)
-
 
             except Exception as e:
                 p(f"Failed to print YAML: {e}")
@@ -109,6 +112,21 @@ def p(
                 p("Array shape", obj.shape)
                 p("Array dtype", obj.dtype)
             p()
+            return
+
+        elif isinstance(obj, smp.Unet):
+            total_params = sum(i.numel() for i in obj.parameters())
+            p("Total parameters", total_params)
+
+            p("Encoder")
+            p("", obj.encoder, color="black")
+
+            p("Decoder")
+            p("", obj.decoder, color="black")
+
+            p("Segmentation Head")
+            p("", obj.segmentation_head, color="black")
+
             return
 
         # TensorFlow Dataset
@@ -158,16 +176,20 @@ def p(
                 if str(obj) == "":
                     print(f"\033[{_color}m{value}\033[0m")
                 else:
-                    print(f"\033[{_color}m{obj}:\033[0m \033[{_color2};1m{formatted}\033[0m")
+                    print(
+                        f"\033[{_color}m{obj}:\033[0m \033[{_color2};1m{formatted}\033[0m"
+                    )
 
             else:
                 if str(obj) == "":
                     print(f"\033[{_color}m{value}\033[0m")
                 else:
-                    print(f"\033[{_color};1m{obj}:\033[0m \033[{_color2}m{value}\033[0m")
+                    print(
+                        f"\033[{_color};1m{obj}:\033[0m \033[{_color2}m{value}\033[0m"
+                    )
 
         elif obj:
-            print(f"\033[{_color}m\033[1m\n--- {obj} ---\033[0m")
+            print(f"\033[{_color}m\033[1m\n=== {obj} ===\033[0m")
         else:
             print()
 
@@ -293,7 +315,6 @@ def normalize_type(obj: Any) -> Any:
     return obj
 
 
-
 def format_number(n):
     if n == 0:
         return "0"
@@ -408,3 +429,20 @@ def normalize_type(obj: Any) -> Any:
 
     # Everything else stays as-is
     return obj
+
+
+# +
+import torch
+import cv2
+
+def data_loader(data, batch_size):
+    for i in range(0, len(data), batch_size):
+        batch = data[i:i + batch_size]
+        images = torch.stack([img for img, _ in batch])
+        masks = torch.stack([mask for _, mask in batch])
+        yield images, masks
+
+
+# -
+
+

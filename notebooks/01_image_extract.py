@@ -23,18 +23,20 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import yaml
 from PIL import Image
-from src.utils.config import inject_config_vars, load_config
+from src.utils.config import load_config
 from src.utils.helpers import format_number, init_this_notebook, p
 
 # %% [markdown]
 # ### Import configuration loader
 
 # %%
-config = load_config()
-inject_config_vars(config)
 
-# %%
-init_this_notebook(SEED)
+cfg = load_config()
+# inject_config_vars(config)
+
+#cfg.show()
+
+init_this_notebook(cfg.SEED)
 
 # %% [markdown]
 # ### Extract images and remove __MACOSX folders
@@ -42,8 +44,8 @@ init_this_notebook(SEED)
 # %%
 # Mapping of zip files to their extraction targets
 paths = {
-    PATHS_TRAIN_IMAGES_ZIP: PATHS_TRAIN_IMAGES,
-    PATHS_EVAL_IMAGES_ZIP: PATHS_EVAL_IMAGES,
+    cfg.PATHS_TRAIN_IMAGES_ZIP: cfg.PATHS_TRAIN_IMAGES,
+    cfg.PATHS_EVAL_IMAGES_ZIP: cfg.PATHS_EVAL_IMAGES,
 }
 
 # --- Extract zip archives ---
@@ -56,13 +58,13 @@ for zip_file, extract_to in paths.items():
 
     with zipfile.ZipFile(zip_file, "r") as zf:
         zf.extractall(extract_to)
-    p("Extracted", f"{zip_file.relative_to(ROOT)} -> {extract_to.relative_to(ROOT)}")
+    p("Extracted", f"{zip_file.relative_to(cfg.ROOT)} -> {extract_to.relative_to(cfg.ROOT)}")
 
     # Remove __MACOSX folders if present
     for macosx_dir in extract_to.rglob("__MACOSX"):
         if macosx_dir.is_dir():
             shutil.rmtree(macosx_dir)
-            p("Removed: ", macosx_dir.relative_to(ROOT))
+            p("Removed: ", macosx_dir.relative_to(cfg.ROOT))
 
     print("")
 
@@ -73,7 +75,7 @@ for zip_file, extract_to in paths.items():
 # preview
 for folder in paths.values():
     if not folder.exists():
-        print(f"Folder not found: {folder}")
+        p("Folder not found", folder)
         continue
 
     images = [
@@ -82,10 +84,10 @@ for folder in paths.values():
         if f.suffix.lower() in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]
     ]
     if not images:
-        p("", f"No images found in {folder.relative_to(ROOT)}")
+        p("", f"No images found in {folder.relative_to(cfg.ROOT)}")
         continue
 
-    p(folder.relative_to(ROOT))
+    p(folder.relative_to(cfg.ROOT))
 
     # img_path = random.choice(images)
     # with Image.open(img_path) as img:
@@ -159,15 +161,15 @@ def create_masks_from_custom_json(json_path, images_dir, output_dir):
 
 
 create_masks_from_custom_json(
-    PATHS_DATA / "train_annotations.json",
-    PATHS_TRAIN_IMAGES,
-    PATHS_TRAIN_MASKS,
+    cfg.PATHS_DATA / "train_annotations.json",
+    cfg.PATHS_TRAIN_IMAGES,
+    cfg.PATHS_TRAIN_MASKS,
 )
 
 # %%
 images = [
     f
-    for f in PATHS_TRAIN_MASKS.glob("*.*")
+    for f in cfg.PATHS_TRAIN_MASKS.glob("*.*")
     if f.suffix.lower() in [".jpg", ".jpeg", ".png", ".tif", ".tiff"]
 ]
 
@@ -217,9 +219,9 @@ plt.tight_layout()
 plt.show()
 
 # %%
-p("images", len(os.listdir(PATHS_TRAIN_IMAGES)))
-p("masks", len(os.listdir(PATHS_TRAIN_MASKS)))
-p("eval images", len(os.listdir(PATHS_EVAL_IMAGES)))
+p("images", len(os.listdir(cfg.PATHS_TRAIN_IMAGES)))
+p("masks", len(os.listdir(cfg.PATHS_TRAIN_MASKS)))
+p("eval images", len(os.listdir(cfg.PATHS_EVAL_IMAGES)))
 
 
 # %%
@@ -246,7 +248,7 @@ def show_image_with_mask(image_path, mask_path, alpha=0.4):
 
     overlay = cv2.addWeighted(image, 1 - alpha, mask_rgb, alpha, 0)
 
-    plt.figure(figsize=(6, 3), dpi=100)
+    plt.figure(figsize=(10, 5), dpi=200)
     plt.subplot(1, 2, 1)
     plt.imshow(image)
     plt.title("Image", fontsize=8)
@@ -260,10 +262,11 @@ def show_image_with_mask(image_path, mask_path, alpha=0.4):
     plt.show()
 
 
-nums = random.sample(range(1, 151), 20)
+nums = random.sample(range(1, 151), 5)
 for n in nums:
-    sample_img = sorted(list(PATHS_TRAIN_IMAGES.glob("*")))[n]
-    sample_mask = PATHS_TRAIN_MASKS / sample_img.name
+    sample_img = sorted(list(cfg.PATHS_TRAIN_IMAGES.glob("*")))[n]
+    p(sample_img)
+    sample_mask = cfg.PATHS_TRAIN_MASKS / sample_img.name
     show_image_with_mask(sample_img, sample_mask)
 
 # %%
