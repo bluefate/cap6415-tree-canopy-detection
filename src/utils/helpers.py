@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import plotly.io as pio
 import segmentation_models_pytorch as smp
+import torch
 import yaml
 
 # import tensorflow as tf
@@ -45,7 +46,7 @@ def p(
 
     try:
         if isinstance(obj, list):
-            p(f"List (first {show} items):", color=color2)
+            p(f"List (first {show} items):", color = color2)
             for i, item in enumerate(obj[:show]):
                 p(f"{i}", item)
             if schema:
@@ -93,9 +94,9 @@ def p(
                             for k, v in val.items()
                         }
 
-                text = yaml.dump(cfg, sort_keys=False)
+                text = yaml.dump(cfg, sort_keys = False)
                 # p(text)
-                for i, line in enumerate(text.splitlines(), start=1):
+                for i, line in enumerate(text.splitlines(), start = 1):
                     p(f"{i:02d}", line)
 
             except Exception as e:
@@ -106,7 +107,7 @@ def p(
 
         # NumPy arrays
         elif isinstance(obj, np.ndarray):
-            p(f"NumPy array shape: {obj.shape}", color=color2)
+            p(f"NumPy array shape: {obj.shape}", color = color2)
             p("Preview", obj[:show])
             if schema:
                 p("Array shape", obj.shape)
@@ -119,13 +120,13 @@ def p(
             p("Total parameters", total_params)
 
             p("Encoder")
-            p("", obj.encoder, color="black")
+            p("", obj.encoder, color = "black")
 
             p("Decoder")
-            p("", obj.decoder, color="black")
+            p("", obj.decoder, color = "black")
 
             p("Segmentation Head")
-            p("", obj.segmentation_head, color="black")
+            p("", obj.segmentation_head, color = "black")
 
             return
 
@@ -151,7 +152,7 @@ def p(
 
         # Pandas DataFrame
         elif isinstance(obj, pd.DataFrame):
-            p("DataFrame Preview", color=color2)
+            p("DataFrame Preview", color = color2)
             print(obj.head(show))  # can't replace this with p() due to formatting
             if schema:
                 p("Number of columns", len(obj.columns))
@@ -213,18 +214,19 @@ def format_number(n):
         return f"{n}"
 
 
-def init_this_notebook(SEED=42):
+def init_this_notebook(SEED = 42):
     p("Python", sys.version)
     # p("Tensorflow", tf.__version__)
     p("Numpy", np.__version__)
     p("Panda", pd.__version__)
+    p("Torch", torch.__version__)
 
     # ignore warnings
-    warnings.filterwarnings("ignore", category=UserWarning)
-    warnings.filterwarnings("ignore", category=FutureWarning)
+    warnings.filterwarnings("ignore", category = UserWarning)
+    warnings.filterwarnings("ignore", category = FutureWarning)
 
     # tf.get_logger().setLevel("ERROR")
-    warnings.filterwarnings("ignore", category=UserWarning, module="tensorflow")
+    warnings.filterwarnings("ignore", category = UserWarning, module = "tensorflow")
 
     # set default plot renderer to png
     pio.renderers.default = "png"
@@ -309,7 +311,7 @@ def normalize_type(obj: Any) -> Any:
         return obj
 
     if isinstance(obj, bytes):
-        return obj.decode("utf-8", errors="ignore")
+        return obj.decode("utf-8", errors = "ignore")
 
     # Everything else stays as-is
     return obj
@@ -329,18 +331,18 @@ def format_number(n):
         return f"{n}"
 
 
-def init_this_notebook(SEED=42):
+def init_this_notebook(SEED = 42):
     p("Python", sys.version)
     # p("Tensorflow", tf.__version__)
     p("Numpy", np.__version__)
     p("Panda", pd.__version__)
 
     # ignore warnings
-    warnings.filterwarnings("ignore", category=UserWarning)
-    warnings.filterwarnings("ignore", category=FutureWarning)
+    warnings.filterwarnings("ignore", category = UserWarning)
+    warnings.filterwarnings("ignore", category = FutureWarning)
 
     # tf.get_logger().setLevel("ERROR")
-    warnings.filterwarnings("ignore", category=UserWarning, module="tensorflow")
+    warnings.filterwarnings("ignore", category = UserWarning, module = "tensorflow")
 
     # set default plot renderer to png
     pio.renderers.default = "png"
@@ -425,24 +427,17 @@ def normalize_type(obj: Any) -> Any:
         return obj
 
     if isinstance(obj, bytes):
-        return obj.decode("utf-8", errors="ignore")
+        return obj.decode("utf-8", errors = "ignore")
 
     # Everything else stays as-is
     return obj
 
 
-# +
-import torch
-import cv2
-
 def data_loader(data, batch_size):
     for i in range(0, len(data), batch_size):
-        batch = data[i:i + batch_size]
+        batch = data[i: i + batch_size]
         images = torch.stack([img for img, _ in batch])
         masks = torch.stack([mask for _, mask in batch])
         yield images, masks
 
-
 # -
-
-

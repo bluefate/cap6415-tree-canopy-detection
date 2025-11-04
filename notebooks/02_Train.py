@@ -106,29 +106,98 @@ def load_images_and_masks(image_path, mask_path, transform=None):
     p(f"Total (with {"No" if transform is None else ""} transformer)", len(images))
     return data
 
-
 # %%
-import hashlib
 
-#hash function for tensors or numpy arrays
-def hash_image(img):
-    if isinstance(img, torch.Tensor):
-        arr = img.cpu().numpy()
-    else:
-        arr = img
-    return hashlib.md5(arr.tobytes()).hexdigest()
 
+# #hash function for tensors or numpy arrays
+# def hash_image(img):
+#     if isinstance(img, torch.Tensor):
+#         arr = img.cpu().numpy()
+#     else:
+#         arr = img
+#     return hashlib.md5(arr.tobytes()).hexdigest()
 
 
 # %%
+class FlexibleSegmentationDataset(torch.utils.data.Dataset):
+    def __init__(self, data, to_numpy=False, normalize=True, grayscale=False):
+        self.data = data
+        self.to_numpy = to_numpy
+        self.normalize = normalize
+        self.grayscale = grayscale
+
+    def __len__(self):
+        return len(self.data)
+
+    # HWC = Height × Width × Channels (NumPy and OpenCV)
+    # CHW = Channels × Height × Width (required by PyTorch models)
+    def __getitem__(self, idx):
+        image, mask = self.data[idx]
+
+        # Normalize image to [0, 1] if needed
+        if self.normalize:
+            image = image.astype("float32") / 255.0
+            mask = mask.astype("float32") / 255.0
+
+        # Convert grayscale if needed
+        if self.grayscale and image.ndim == 2:
+            image = np.expand_dims(image, axis=-1)  # H x W → H x W x 1
+
+        # Return NumPy arrays or PyTorch tensors
+        if self.to_numpy:
+            # Return as NumPy arrays (e.g., for visualization)
+            if isinstance(image, torch.Tensor):
+                image = image.permute(1, 2, 0).cpu().numpy()
+            if isinstance(mask, torch.Tensor):
+                mask = mask.cpu().numpy()
+            return image, mask
+        else:
+            # Convert to PyTorch tensors
+            image = torch.tensor(image).permute(2, 0, 1).float()  # HWC → CHW
+            mask = torch.tensor(mask).float().unsqueeze(0)  # H → 1 x H x W
+            return image, mask
+
+    def get_numpy_item(self, idx):
+        """Always return NumPy arrays regardless of to_numpy setting."""
+        img, mask = self[idx]
+        if isinstance(img, torch.Tensor):
+            img = img.permute(1, 2, 0).cpu().numpy()
+        if isinstance(mask, torch.Tensor):
+            mask = mask.squeeze().cpu().numpy()
+        return img, mask
+        
+    @staticmethod
+    def hash_image(img):
+        import hashlib
+        """Return MD5 hash for a NumPy array or PyTorch tensor."""
+        if isinstance(img, torch.Tensor):
+            arr = img.detach().cpu().numpy()
+        else:
+            arr = np.array(img)
+        return hashlib.md5(arr.tobytes()).hexdigest()
+
+
+# train_dataset = NumpySegmentationDataset(train_data)
+# train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=8, shuffle=True)
+
+
+# for images, masks in train_loader:
+#     images = images.to(device)
+#     masks = masks.to(device)
+
+#     preds = model(images)
+#     loss = criterion(preds, masks)
+
+#     optimizer.zero_grad()
+#     loss.backward()
+#     optimizer.step()
 
 # %%
 # ---------------------------------------------------------------
 # load images and masks
 # ---------------------------------------------------------------
-# train_data = load_images_and_masks(
-#     cfg.PATHS_TRAIN_IMAGES, cfg.PATHS_TRAIN_MASKS, transform=transformer
-# )
+
+# --- Load originals ---
 original_data = load_images_and_masks(
     cfg.PATHS_TRAIN_IMAGES, cfg.PATHS_TRAIN_MASKS, transform=None
 )
@@ -142,26 +211,21 @@ for img, mask in original_data:
     train_data.append((img, mask))
     seen_hashes.add(img_hash)
 
+# --- Generate augmented data ---
 for k in range(3):
     augmented_data = load_images_and_masks(
         cfg.PATHS_TRAIN_IMAGES, cfg.PATHS_TRAIN_MASKS, transform=transformer
     )
 
-    # Add augmented images only if they're different
     for img, mask in augmented_data:
         img_hash = hash_image(img)
         if img_hash not in seen_hashes:
             train_data.append((img, mask))
             seen_hashes.add(img_hash)
 
-
+# --- Wrap in dataset class ---
+train_dataset = FlexibleSegmentationDataset(data=train_data)
 p("Total train_data records", len(train_data))
-
-# for i, data in enumerate(train_data, 1):
-#     if i == 2:
-#         p(i)
-#         p("image", f"\n{data[0]}")
-#         p("mask", f"\n{data[1]}")
 
 # %%
 import random

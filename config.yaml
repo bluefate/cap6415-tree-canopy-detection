@@ -6,7 +6,7 @@ paths:
 
   train_images: src/data/train_images
   train_images_zip: src/data/train_images.zip
-  train_masks : src/data/train_masks
+  train_masks: src/data/train_masks
 
   eval_images: src/data/evaluation_images
   eval_images_zip: src/data/evaluation_images.zip
@@ -15,10 +15,30 @@ paths:
   models: models
   notebooks: notebooks
 
+  checkpoint: "checkpoints/unet_resnet34_best.pth"
+  best_model: "checkpoints/checkpoint_best.pth"
+
+
 params:
   image_size: 512
-  batch_size: 16
   num_workers: 0
   seed: 42
+
+  # model params
+  encoder_name: resnet34
+  encoder_weights: imagenet
+  in_channels: 3
+  classes: 1
+
+  # training params
+  batch_size: 8
   epochs: 2
   learning_rate: 1e-4
+  best_val_loss: 1.0e9
+  early_stop_patience: 5
+
+  # scheduler
+  scheduler_factor: 0.5
+  scheduler_patience: 3
+  scheduler_verbose: True
+
