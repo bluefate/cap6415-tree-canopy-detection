@@ -20,7 +20,7 @@ paths:
 
 
 params:
-  image_size: 512
+  image_size: 1024
   num_workers: 0
   seed: 42
 
