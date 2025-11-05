@@ -4,7 +4,10 @@
 
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
-src/data/*
+src/data*
+
+checkpoints/
+
 
 # IPython
 profile_default/
@@ -701,14 +704,3 @@ fabric.properties
 
 .idea
 
-mklink / D C:\github\Tree - Canopy - Detection\src\data2\train_images C:\Users\johnh\Downloads\zenodo\images\dataset\holdout\images
-mklink / D
-C:\Users\johnh\Downloads\zenodo\masks\dataset\holdout\masks
-
-
-
-# jupyter server list
-#mklink /D C:\github\Tree-Canopy-Detection\src\data2\train_images C:\Users\johnh\Downloads\zenodo\images\dataset\holdout\images
-#mklink /D C:\github\Tree-Canopy-Detection\src\data2\train_masks C:\Users\johnh\Downloads\zenodo\masks\dataset\holdout\masks
-#mklink /D C:\github\Tree-Canopy-Detection\src\data2\test C:\Users\johnh\Downloads\zenodo\masks\dataset\holdout\test
-#mklink /D C:\github\Tree-Canopy-Detection\src\data2\train C:\Users\johnh\Downloads\zenodo\masks\dataset\holdout\train
