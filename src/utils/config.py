@@ -17,14 +17,88 @@
 # ```
 #
 
-# +
+import hashlib
 import inspect
+import json
 import os
+from datetime import datetime
 from pathlib import Path
 
 import yaml
 from dotenv import load_dotenv
+
 from src.utils.helpers import normalize_paths, normalize_type, p
+
+
+def check_for_version(cfg, versions_dir="versions"):
+    """
+    Checks the current cfg against existing version snapshots.
+    Creates a new version file if config changes are detected.
+    Returns (version_name, version_path).
+    """
+
+    def make_json_safe(obj):
+        """Convert Path and unsupported types to JSON-safe representations."""
+        if isinstance(obj, Path):
+            return str(obj)
+        elif isinstance(obj, (list, tuple)):
+            return [make_json_safe(x) for x in obj]
+        elif isinstance(obj, dict):
+            return {k: make_json_safe(v) for k, v in obj.items()}
+        else:
+            try:
+                json.dumps(obj)
+                return obj
+            except TypeError:
+                return str(obj)
+
+    os.makedirs(versions_dir, exist_ok=True)
+
+    # Extract config as a clean dictionary
+    cfg_dict = cfg.__dict__ if hasattr(cfg, "__dict__") else dict(cfg)
+    safe_cfg = make_json_safe(cfg_dict)
+
+    # Generate hash and JSON
+    cfg_json = json.dumps(safe_cfg, sort_keys=True, indent=2)
+    cfg_hash = hashlib.md5(cfg_json.encode("utf-8")).hexdigest()
+
+    # Find existing versions
+    version_files = sorted(Path(versions_dir).glob("version_*.json"))
+    latest_version = None
+    latest_hash = None
+
+    if version_files:
+        latest_version = version_files[-1]
+        with open(latest_version, "r") as f:
+            saved = json.load(f)
+            latest_hash = saved.get("hash")
+
+    # Determine whether to create or reuse version
+    if not version_files:
+        version_name = "v001"
+    elif latest_hash != cfg_hash:
+        version_num = int(latest_version.stem.split("_")[1][1:]) + 1
+        version_name = f"v{version_num:03d}"
+    else:
+        version_name = latest_version.stem.split("_")[1]
+        p(f"Config matches {version_name}", "Continuing with this version.")
+        return version_name, latest_version
+
+    # Write new version file
+    version_path = Path(versions_dir) / f"version_{version_name}.json"
+    with open(version_path, "w") as f:
+        json.dump(
+            {
+                "config": safe_cfg,
+                "hash": cfg_hash,
+                "created": datetime.now().isoformat(),
+            },
+            f,
+            indent=2,
+        )
+
+    p("Created new version", version_name)
+    return version_name, version_path
 
 
 def in_notebook() -> bool:
