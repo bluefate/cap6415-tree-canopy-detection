@@ -1,0 +1,9 @@
+website:
+  sidebar:
+    contents:
+      - index.ipynb
+      - 00_core.ipynb
+      - 00_info.ipynb
+      - 01_image_extract.ipynb
+      - 01_starter_sample.ipynb
+      - 02_Train.ipynb
