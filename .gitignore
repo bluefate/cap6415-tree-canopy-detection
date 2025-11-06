@@ -701,5 +701,8 @@ fabric.properties
 
 
 
+# nbdev temp build directory
+_proc/
+
 .idea
 
