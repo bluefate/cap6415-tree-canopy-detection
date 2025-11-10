@@ -16,9 +16,16 @@ paths:
   notebooks: notebooks
 
   checkpoint: "checkpoints/unet_resnet34_best.pth"
-  best_model: "checkpoints/checkpoint_best.pth"
+  best_model: "checkpoints/best.pth"
+
+  label_encoder: "checkpoints/le.pickle"
+  plots: "checkpoints/plots"
 
 
+weights:
+  labels: 1.0
+  bbox: 1.0
+  
 params:
   image_size: 512
   num_workers: 0

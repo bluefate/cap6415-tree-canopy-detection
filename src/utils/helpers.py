@@ -1,8 +1,10 @@
 # +
 # imports
+import ast
 import json
 import numbers
 import random as r
+import re
 import sys
 import warnings
 from copy import deepcopy
@@ -15,6 +17,22 @@ import plotly.io as pio
 import segmentation_models_pytorch as smp
 import torch
 import yaml
+
+
+def make_json_safe( obj ):
+    """Convert Path and unsupported types to JSON-safe representations."""
+    if isinstance(obj, Path):
+        return str(obj)
+    elif isinstance(obj, (list, tuple)):
+        return [make_json_safe(x) for x in obj]
+    elif isinstance(obj, dict):
+        return { k: make_json_safe(v) for k, v in obj.items() }
+    else:
+        try:
+            json.dumps(obj)
+            return obj
+        except TypeError:
+            return str(obj)
 
 
 # Helper functions (keep outside the class)
@@ -161,10 +179,11 @@ class p:
             obj: Any = "",
             value: Optional[Any] = None,
             precision: int = 3,
-            show: int = 3,
+            show: int = 5,
             schema: bool = False,
             color: str = "green",
             color2: str = "black",
+            max_lines: int = 15,
     ):
         self.obj = obj
         self.value = value
@@ -173,6 +192,7 @@ class p:
         self.schema = schema
         self.color = self.color_codes.get(color.lower(), color)
         self.color2 = self.color_codes.get(color2.lower(), color2)
+        self.max_lines = max_lines
 
         self._print()
 
@@ -204,42 +224,47 @@ class p:
         try:
             # List handling
             if isinstance(self.obj, list):
-                p(f"List (first {self.show} items):", color = self.color2)
-                for i, item in enumerate(self.obj[:self.show]):
-                    p(f"{i}", item)
                 if self.schema:
                     p("List length", len(self.obj))
                     p("Contained types", set(type(x) for x in self.obj))
+                    print()
+
+                p(f"List (showing top {self.show} items):", color = "blue")
+                for i, item in enumerate(self.obj[:self.show]):
+                    p(f"{i + 1}", item)
+                    # p("", item)
+                    # p(item)
+
                 print()
                 return
 
-            # JSON string
-            elif self._is_json(self.obj) and self._is_yaml(self.obj):
-                try:
-                    p("JSON")
-                    parsed_data = json.loads(self.obj)
-                    pretty_json = json.dumps(parsed_data, indent = 4, sort_keys = True)
-                    print(pretty_json)
-                    return
-                except Exception as e:
-                    p(f"Failed to print JSON: {e}")
-                print()
-                return
+            # # JSON string
+            # elif self._is_json(self.obj) and self._is_yaml(self.obj):
+            #     try:
+            #         p("JSON")
+            #         parsed_data = json.loads(self.obj)
+            #         pretty_json = json.dumps(parsed_data, indent = 4, sort_keys = True)
+            #         print(pretty_json)
+            #         return
+            #      except Exception as e:
+            #         self.print_exception(e, self.obj, self.value)
+            #     print()
+            #     return
 
             # YAML config or dict-like
             elif isinstance(self.obj, (dict, type(yaml.safe_load("a: 1")))):
                 try:
-                    cfg = deepcopy(self.obj)
+                    obj_copy = deepcopy(self.obj)
 
-                    paths = cfg.get("paths", { })
+                    paths = obj_copy.get("paths", { })
                     root = Path(paths.get("root", ".")).resolve()
 
                     p("YAML / DICT")
 
                     # Convert Path objects to readable strings for YAML output
-                    if "paths" in cfg:
+                    if "paths" in obj_copy:
                         filtered_paths = { }
-                        for key, val in cfg["paths"].items():
+                        for key, val in obj_copy["paths"].items():
                             val_str = str(val)
                             root_str = str(root)
                             val_str_norm = val_str.replace("\\", "/")
@@ -252,20 +277,20 @@ class p:
                                 if relative.startswith("/") or relative.startswith("\\"):
                                     relative = relative[1:]
                                 filtered_paths[key] = relative or "."
-                        cfg["paths"] = filtered_paths
+                        obj_copy["paths"] = filtered_paths
 
                     # Convert any remaining Path objects elsewhere to strings
-                    for key, val in cfg.items():
+                    for key, val in obj_copy.items():
                         if isinstance(val, dict):
-                            cfg[key] = {
+                            obj_copy[key] = {
                                 k: str(v) if isinstance(v, Path) else v
                                 for k, v in val.items()
                             }
 
-                    text = yaml.dump(cfg, indent = 4, sort_keys = False)
+                    text = yaml.dump(obj_copy, indent = 4, sort_keys = False)
                     print(text)
                 except Exception as e:
-                    p(f"Failed to print YAML: {e}")
+                    self.print_exception(e, self.obj, self.value)
 
                 print()
                 return
@@ -322,11 +347,37 @@ class p:
                             f"\033[{self.color}m{self.obj}:\033[0m \033[{self.color2};1m{formatted}\033[0m",
                         )
                 else:
+                    val = self.value
+
+                    try:
+                        output_val = str(val)
+
+                        if output_val.startswith("{"):
+                            output_val = re.sub(r'\w+Path\s*\(', '', output_val)
+                            output_val = re.sub(r'\)', '', output_val)
+                            data_structure = ast.literal_eval(output_val)
+                            safe_data = make_json_safe(data_structure)
+                            # val = json.dumps(safe_data, indent = 4, sort_keys = True)
+                            val = json.dumps(safe_data, indent = 0, sort_keys = True)
+                            lines = val.splitlines()
+                            if self.max_lines is not None and 0 < self.max_lines < len(lines):
+                                truncated_lines = lines[:self.max_lines]
+                                # val = "\n".join(truncated_lines)
+                                # val = "\n" + val + f"\n... [truncated at {self.max_lines} lines]\n"
+                                val = "".join(truncated_lines)
+                                val = val + f"... [truncated at {self.max_lines} lines]"
+
+
+
+                    except Exception as e:
+                        self.print_exception(e, self.obj, self.value)
+                        pass
+
                     if str(self.obj) == "":
-                        print(f"\033[{self.color}m{self.value}\033[0m")
+                        print(f"\033[{self.color}m{val}\033[0m")
                     else:
                         print(
-                            f"\033[{self.color};1m{self.obj}:\033[0m \033[{self.color2}m{self.value}\033[0m",
+                            f"\033[{self.color};1m{self.obj}:\033[0m \033[{self.color2}m{val}\033[0m",
                         )
 
             elif self.obj:
@@ -335,9 +386,15 @@ class p:
                 print()
 
         except Exception as e:
-            print("Exception occurred", str(e))
-            print("Type of object passed", type(self.obj))
+            self.print_exception(e, self.obj, self.value)
             raise
+
+    def print_exception( self, e: Exception, obj = None, val = None ):
+        p("Exception occurred", str(e), color = "red", color2 = "black")
+        if obj != None:
+            p("Type of object passed", type(obj), color = "salmon", color2 = "black")
+        if val != None:
+            p("Type of object passed", type(val), color = "salmon", color2 = "black")
 
 # Backward compatibility - allows p() function calls
 # p = P

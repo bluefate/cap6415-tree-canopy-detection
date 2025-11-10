@@ -8,7 +8,7 @@ from pathlib import Path
 import yaml
 from dotenv import load_dotenv
 
-from src.utils.helpers import normalize_paths, normalize_type, p
+from src.utils.helpers import make_json_safe, normalize_paths, normalize_type, p
 
 
 def check_for_version( cfg, versions_dir = "versions" ):
@@ -17,21 +17,6 @@ def check_for_version( cfg, versions_dir = "versions" ):
     Creates a new version file if config changes are detected.
     Returns (version_name, version_path).
     """
-
-    def make_json_safe( obj ):
-        """Convert Path and unsupported types to JSON-safe representations."""
-        if isinstance(obj, Path):
-            return str(obj)
-        elif isinstance(obj, (list, tuple)):
-            return [make_json_safe(x) for x in obj]
-        elif isinstance(obj, dict):
-            return { k: make_json_safe(v) for k, v in obj.items() }
-        else:
-            try:
-                json.dumps(obj)
-                return obj
-            except TypeError:
-                return str(obj)
 
     os.makedirs(versions_dir, exist_ok = True)
 
