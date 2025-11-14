@@ -4,7 +4,8 @@
 
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
-src/data*
+src/data/data1
+src/data/data2
 
 checkpoints/
 
