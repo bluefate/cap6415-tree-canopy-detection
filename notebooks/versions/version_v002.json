@@ -12,6 +12,10 @@
             "PATHS_NOTEBOOKS",
             "PATHS_CHECKPOINT",
             "PATHS_BEST_MODEL",
+            "PATHS_LABEL_ENCODER",
+            "PATHS_PLOTS",
+            "WEIGHTS_LABELS",
+            "WEIGHTS_BBOX",
             "IMAGE_SIZE",
             "NUM_WORKERS",
             "SEED",
@@ -38,7 +42,11 @@
         "PATHS_MODELS" : "C:\\github\\Tree-Canopy-Detection\\models",
         "PATHS_NOTEBOOKS" : "C:\\github\\Tree-Canopy-Detection\\notebooks",
         "PATHS_CHECKPOINT" : "C:\\github\\Tree-Canopy-Detection\\checkpoints\\unet_resnet34_best.pth",
-        "PATHS_BEST_MODEL" : "C:\\github\\Tree-Canopy-Detection\\checkpoints\\checkpoint_best.pth",
+        "PATHS_BEST_MODEL" : "C:\\github\\Tree-Canopy-Detection\\checkpoints\\best.pth",
+        "PATHS_LABEL_ENCODER" : "C:\\github\\Tree-Canopy-Detection\\checkpoints\\le.pickle",
+        "PATHS_PLOTS" : "C:\\github\\Tree-Canopy-Detection\\checkpoints\\plots",
+        "WEIGHTS_LABELS" : 1.0,
+        "WEIGHTS_BBOX" : 1.0,
         "IMAGE_SIZE" : 512,
         "NUM_WORKERS" : 0,
         "SEED" : 42,
@@ -55,6 +63,6 @@
         "SCHEDULER_PATIENCE" : 3,
         "SCHEDULER_VERBOSE" : true
     },
-    "hash" : "5975c7d2861a2b88ad003985fb1bbb24",
-    "created" : "2025-11-06T15:11:27.616339"
+    "hash" : "a8e6e16f19c64c265942b9f92fa15721",
+    "created" : "2025-11-12T23:02:40.781139"
 }

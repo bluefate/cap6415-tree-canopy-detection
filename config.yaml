@@ -2,50 +2,44 @@
 
 paths:
   root: C:/github/Tree-Canopy-Detection
-  data: src/data
-
-  train_images: src/data/train_images
-  train_images_zip: src/data/train_images.zip
-  train_masks: src/data/train_masks
-
-  eval_images: src/data/evaluation_images
-  eval_images_zip: src/data/evaluation_images.zip
-  eval_masks: src/data/eval_masks
-
-  models: models
-  notebooks: notebooks
-
-  checkpoint: "checkpoints/unet_resnet34_best.pth"
-  best_model: "checkpoints/best.pth"
-
-  label_encoder: "checkpoints/le.pickle"
-  plots: "checkpoints/plots"
+  #root: "./"
+  dataset_selector: "data1"
 
 
-weights:
-  labels: 1.0
-  bbox: 1.0
-  
-params:
+  train_images: "src/data/data1/train_images"
+  train_masks: "src/data/data1/train_masks"
+  train_images_zip: "src/data/data1/train_images.zip"
+
+  eval_images: "src/data/data1/evaluation_images"
+  eval_masks: "src/data/data1/evaluation_masks"
+
+  models: "checkpoints"
+  notebooks: "notebooks"
+
+  annotations: "src/data/data1/train_annotations.json"
+
+  data: "data"
+
+  plots: "plots"
+
+
+train:
   image_size: 512
   num_workers: 0
   seed: 42
-
-  # model params
-  encoder_name: resnet34
-  encoder_weights: imagenet
-  in_channels: 3
-  classes: 1
 
   # training params
   batch_size: 8
   epochs: 10
   learning_rate: 1e-4
-  best_val_loss: 1.0e9
-  early_stop_patience: 5
+  # best_val_loss: 1.0e9
+  early_stop_patience: 8
 
   # scheduler
   scheduler_factor: 0.5
   scheduler_patience: 3
-  scheduler_verbose: True
 
+
+extra:
+  log_predictions: true
+  use_amp: true

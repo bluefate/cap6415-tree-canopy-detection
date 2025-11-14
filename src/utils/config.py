@@ -1,70 +1,51 @@
-import hashlib
-import inspect
-import json
 import os
-from datetime import datetime
 from pathlib import Path
+from typing import Any, Dict, Optional
 
 import yaml
 from dotenv import load_dotenv
+from pydantic import BaseModel, Field, validator
 
-from src.utils.helpers import make_json_safe, normalize_paths, normalize_type, p
+from .helpers import p, t
 
 
-def check_for_version( cfg, versions_dir = "versions" ):
-    """
-    Checks the current cfg against existing version snapshots.
-    Creates a new version file if config changes are detected.
-    Returns (version_name, version_path).
-    """
+class PathsConfig(BaseModel):
+    root: Path
+    train_images_zip: Optional[Path] = None
+    train_images: Optional[Path] = None
+    train_masks: Optional[Path] = None
+    eval_images: Optional[Path] = None
+    eval_masks: Optional[Path] = None
+    data: Optional[Path] = None
+    plots: Optional[Path] = None
+    annotations: Optional[Path] = None
+    notebooks: Optional[Path] = None
+    models: Optional[Path] = None
+    checkpoint: Optional[Path] = None
+    best_model: Optional[Path] = None
 
-    os.makedirs(versions_dir, exist_ok = True)
+    @validator("*", pre = True)
+    def expand_paths( cls, value, values ):
+        if value is None:
+            return None
+        root = values.get("root", None)
+        value = Path(value)
+        if not value.is_absolute() and root is not None:
+            return (root / value).resolve()
+        return value.resolve()
 
-    # Extract config as a clean dictionary
-    cfg_dict = cfg.__dict__ if hasattr(cfg, "__dict__") else dict(cfg)
-    safe_cfg = make_json_safe(cfg_dict)
 
-    # Generate hash and JSON
-    cfg_json = json.dumps(safe_cfg, sort_keys = True, indent = 2)
-    cfg_hash = hashlib.md5(cfg_json.encode("utf-8")).hexdigest()
-
-    # Find existing versions
-    version_files = sorted(Path(versions_dir).glob("version_*.json"))
-    latest_version = None
-    latest_hash = None
-
-    if version_files:
-        latest_version = version_files[-1]
-        with open(latest_version, "r") as f:
-            saved = json.load(f)
-            latest_hash = saved.get("hash")
-
-    # Determine whether to create or reuse version
-    if not version_files:
-        version_name = "v001"
-    elif latest_hash != cfg_hash:
-        version_num = int(latest_version.stem.split("_")[1][1:]) + 1
-        version_name = f"v{version_num:03d}"
-    else:
-        version_name = latest_version.stem.split("_")[1]
-        p(f"Config matches {version_name}", "Continuing with this version.")
-        return version_name, latest_version
-
-    # Write new version file
-    version_path = Path(versions_dir) / f"version_{version_name}.json"
-    with open(version_path, "w") as f:
-        json.dump(
-            {
-                "config": safe_cfg,
-                "hash": cfg_hash,
-                "created": datetime.now().isoformat(),
-            },
-            f,
-            indent = 2,
-        )
-
-    p("Created new version", version_name)
-    return version_name, version_path
+class TrainConfig(BaseModel):
+    image_size: int = Field(default = 256)
+    batch_size: int = Field(default = 8)
+    num_workers: int = Field(default = 0)
+    epochs: int = Field(default = 20)
+    learning_rate: float = Field(default = 1e-4)
+    early_stop_patience: int = Field(default = 10)
+    scheduler_factor: float = Field(default = 0.5)
+    scheduler_patience: int = Field(default = 3)
+    seed: int = Field(default = 42)
+    best_val_loss: float = Field(default = 1e9)
 
 
 def in_notebook() -> bool:
@@ -78,91 +59,59 @@ def in_notebook() -> bool:
         return False
 
 
-class Config:
-    """Singleton configuration loader."""
-    _instance = None
-    _created_vars = []
+class Config(BaseModel):
+    """
+    Loads configuration settings from config.yaml into a typed object.
+    Numeric and path values are normalized. All paths become absolute.
+    """
+    paths: PathsConfig
+    train: TrainConfig
+    extra: Dict[str, Any] = Field(default_factory = dict)
 
-    def __new__( cls ):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance._load_config()
-        return cls._instance
 
-    @staticmethod
-    def _get_root( marker = "config.yaml" ):
-        """Find project root automatically."""
-        if "PROJECT_ROOT" in os.environ:
-            return Path(os.environ["PROJECT_ROOT"]).resolve()
+    @classmethod
+    def load( cls, yaml_path: Path = None ) -> "Config":
 
-        if in_notebook():
-            start = Path.cwd()
-        else:
-            frame = inspect.currentframe()
-            if frame is None:
-                raise RuntimeError("Could not retrieve the current frame.")
-            file_path = Path(inspect.getfile(frame)).resolve()
-            start = file_path.parent
+        if yaml_path is None:
+            load_dotenv()
+            project_root: Path = Path(os.getenv("PROJECT_ROOT", Path.cwd())).resolve()
+            yaml_path = project_root / "config.yaml"
 
-        for parent in [start, *start.parents]:
-            if (parent / marker).exists():
-                return parent.resolve()
+        yaml_path = Path(yaml_path).resolve()
+        if not yaml_path.exists():
+            raise FileNotFoundError(f"Missing config file {yaml_path}")
 
-        return start.resolve()
+        with open(yaml_path, "r") as f:
+            raw = yaml.safe_load(f)
 
-    def _load_config( self ):
-        """Load YAML configuration from project root."""
-        load_dotenv()
-        ROOT = self._get_root()
-        config_path = ROOT / "config.yaml"
+        raw_paths = raw.get("paths", { })
+        raw_train = raw.get("train", { })
+        extra = { k: v for k, v in raw.items() if k not in ["paths", "train"] }
 
-        if not config_path.exists():
-            raise FileNotFoundError(f"Config file not found at {config_path}")
+        paths_cfg = PathsConfig(**raw_paths)
+        train_cfg = TrainConfig(**raw_train)
 
-        with open(config_path, "r") as f:
-            config = yaml.safe_load(f)
-
-        # Convert to Path objects
-        config = normalize_paths(config)
-
-        # Process config into attributes
-        self._process_config(config)
-
-    def _process_config( self, config: dict, prefix_sep: str = "_" ):
-        """Process config dictionary into class attributes."""
-        self._created_vars = []
-
-        for section, entries in config.items():
-            if isinstance(entries, dict):
-                for key, value in entries.items():
-                    if key == "root":
-                        var_name = key
-                    else:
-                        var_name = (
-                            f"{section}{prefix_sep}{key}"
-                            if section != "params"
-                            else key
-                        )
-                    var_name = var_name.upper()
-                    setattr(self, var_name, normalize_type(value))
-                    self._created_vars.append(var_name)
+        return cls(paths = paths_cfg, train = train_cfg, extra = extra)
 
     def show( self ):
-        """Display all config variables."""
-        p("Injected config variables:")
-        for name in self._created_vars:
-            val = getattr(self, name)
-            p(f"- {name}", f"{val}, {type(val)}")
-        p("")
+        """
+        Print all configuration fields in a readable form.
+        """
+        t("Config settings")
 
-    def __str__( self ):
-        """Return string representation of config."""
-        lines = ["Config:"]
-        for name in self._created_vars:
-            val = getattr(self, name)
-            lines.append(f"  {name}: {val}")
-        return "\n".join(lines)
+        project_root = str(Path(os.getenv("PROJECT_ROOT", Path.cwd())).resolve())
 
-    def __repr__( self ):
-        """Return detailed representation."""
-        return f"Config(loaded with {len(self._created_vars)} attributes)"
+        p("", f"(removed {project_root} from paths)")
+
+        p("Paths")
+        for k, v in self.paths.dict().items():
+            p("", f"  {k}: {str(v).replace(project_root, "")}")
+
+        p("Train parameters")
+        for k, v in self.train.dict().items():
+            p("", f"  {k}: {str(v).replace(project_root, "")}")
+
+        if self.extra:
+            p("Extra")
+            for k, v in self.extra.items():
+                p("", f"  {k}: {str(v).replace(project_root, "")}")

@@ -1,9 +1,0 @@
-project:
-  output-dir: _docs
-
-website:
-  title: "SRC"
-  site-url: "https://bluefate.github.io/CAP6415_F25_project-Tree-Canopy-Detection"
-  description: "CAP6415 Term Projecct"
-  repo-branch: main
-  repo-url: "https://github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection"
