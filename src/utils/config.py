@@ -6,7 +6,7 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, validator
 
-from .helpers import p, t
+from src.utils.helpers import p, t
 
 
 class PathsConfig(BaseModel):

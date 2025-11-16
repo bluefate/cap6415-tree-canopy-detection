@@ -416,7 +416,7 @@ t = p()._title
 #                     p("Number of rows", len(self.obj))
 #                     p("Summary Stats")
 #                     print(self.obj.describe())
-#                     p("Schema (dtypes):", "")
+#                     p("Schema (dtypes)", "")
 #                     print(self.obj.dtypes)
 #                 print()
 #                 return

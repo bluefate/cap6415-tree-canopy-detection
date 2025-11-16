@@ -1,6 +1,6 @@
 import numpy as np
 
-from .helpers import c, p
+from src.utils.helpers import c, p
 
 
 class Tester:
