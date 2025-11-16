@@ -1,12 +1,146 @@
+from typing import Optional, Tuple
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
 
 
-def show_image( image: np.ndarray, title: str = "" ) -> None:
+def show_side_by_side(
+        *images: np.ndarray,
+        titles: Optional[Tuple[str, ...]] = None,
+        cmaps: Optional[Tuple[str, ...]] = None,
+        maxcolumns: Optional[int] = None,
+        preserve_values: bool = False,
+        vmax = None,
+        kernel = None,
+        kernel_title = None,
+        kernel_cmap = "seismic",
+) -> None:
+    """Show multiple images side by side."""
+
+    count = len(images)
+
+    # Default titles
+    if titles is None:
+        # default = ["Image", "Mask", "Overlay"]
+        # titles = default[:count]
+        titles = tuple(f"Image {i + 1}" for i in range(count))
+
+    if cmaps is None:
+        cmaps = tuple([None] * count)
+
+    # ---- grid layout ----
+    if maxcolumns is None or maxcolumns >= count:
+        ncols = count
+        nrows = 1
+    else:
+        ncols = maxcolumns
+        nrows = int(np.ceil(count / maxcolumns))
+
+    add_kernel = kernel is not None
+    if add_kernel:
+        ncols = ncols + 2  # reserve 2 columns for 2D + 3D kernel plots
+
+    fig, axes = plt.subplots(nrows, ncols, figsize = (4 * ncols, 4 * nrows))
+    fig.patch.set_facecolor("white")
+
+    # Flatten axes for easy iteration
+    if isinstance(axes, np.ndarray):
+        axes = axes.flatten()
+    else:
+        axes = [axes]
+
+    # Iterate over images
+    for ax, img, title, cmap in zip(axes[:count], images, titles, cmaps):
+        if isinstance(img, np.ndarray):
+            # Handle raw image arrays
+            if not preserve_values:
+                # Default: clip to 0–255 and cast to uint8
+                img = np.clip(img, 0, 255).astype(np.uint8)
+            # else: keep raw values (signed floats/ints)
+
+        elif hasattr(img, "canvas"):
+            # render the source figure into an image
+            img.canvas.draw()
+
+            # get RGBA buffer from source figure
+            buf = np.asarray(img.canvas.buffer_rgba())
+
+            # convert RGBA to RGB by dropping alpha
+            img = buf[:, :, :3]
+
+        else:
+            raise TypeError(
+                    f"Unsupported type {type(img)} passed to show_side_by_side. "
+                    "Expected numpy.ndarray or matplotlib Figure.",
+            )
+
+        # Visualization
+        if title == "Mask":
+            ax.imshow(img, "gray")
+        elif cmap is not None:
+            # If preserve_values is True, we need symmetric vmin/vmax
+            if preserve_values and np.issubdtype(img.dtype, np.number):
+                # convert before passing
+                # lap_img = apply_kernel(img_gray, lk).astype(np.float32)                if vmax is None:
+                if vmax is None:
+                    vmax = float(np.max(np.abs(img)))
+
+                ax.imshow(img, cmap = cmap, vmin = -vmax, vmax = vmax)
+            else:
+                ax.imshow(img, cmap = cmap)
+        else:
+            ax.imshow(img)
+
+        ax.set_facecolor("white")
+        ax.set_title(title)
+        ax.axis("off")
+
+    # ---- kernel visualization ----
+    if add_kernel:
+        # Select the reserved subplot slots
+        ax2d = axes[count]
+        ax3d = axes[count + 1]
+
+        if kernel_cmap is None:
+            kernel_cmap = "seismic" if np.any(kernel < 0) else "gray"
+
+        # 2D heatmap
+        ax2d.imshow(kernel, cmap = kernel_cmap)
+        ax2d.set_title("2D heatmap")
+        ax2d.axis("off")
+
+        # Convert ax3d into 3D
+        ax3d.remove()
+        ax3d = fig.add_subplot(nrows, ncols, count + 2, projection = "3d")
+
+        x = np.arange(kernel.shape[1])
+        y = np.arange(kernel.shape[0])
+        X, Y = np.meshgrid(x, y)
+        ax3d.plot_surface(X, Y, kernel, cmap = kernel_cmap, edgecolor = "k")
+        ax3d.set_title("3D surface")
+
+    # Hide unused axes if any
+    max_image_slots = count if not add_kernel else count
+    for ax in axes[max_image_slots:]:
+        if ax.has_data():
+            continue
+        ax.axis("off")
+
+    # if add_kernel:
+    #     for spine in ax2d.spines.values():
+    #         spine.set_visible(True)
+    #         spine.set_edgecolor("black")
+    #         spine.set_linewidth(2)
+
+    plt.tight_layout()
+    plt.show()
+
+
+def show_image( image: np.ndarray, title: str = "", return_img: bool = False, cmap = "gray" ):
     """
     Show an image using matplotlib.
-    Handles RGB and Greyscale automatically.
     """
     # Convert float images safely
     if image.dtype != np.uint8:
@@ -14,30 +148,54 @@ def show_image( image: np.ndarray, title: str = "" ) -> None:
     else:
         img = image
 
-    plt.figure(figsize = (5, 5))
-    if image.ndim == 2:
-        plt.imshow(image, cmap = "Greys")
+    if return_img:
+        return img
     else:
-        plt.imshow(image)
-    if title:
-        plt.title(title)
-    plt.axis("off")
-    plt.show()
+
+        plt.figure(figsize = (5, 5))
+        if img.ndim == 2:
+            plt.imshow(img, cmap = cmap)
+        else:
+            plt.imshow(img)
+        if title:
+            plt.title(title)
+        plt.axis("off")
+        plt.show()
 
 
-def show_mask( mask: np.ndarray, title: str = "" ) -> None:
+# using from PIL import Image to be able to show pure white and black
+def show_mask( mask: np.ndarray, title: str = "", return_img: bool = False, cmap = "gray" ):
     """
-    Show a binary mask.
+    Show a binary mask as pure black and white.
+    Uses PIL to avoid Matplotlib auto scaling side effects.
     """
+
+    # normalize mask to 0 and 255
+    if mask.dtype != np.uint8:
+        # convert float or int mask to binary (0 or 255)
+        mask_img = (mask > 0.5).astype(np.uint8) * 255
+    else:
+        if mask.max() <= 1:
+            mask_img = mask * 255
+        else:
+            # if mask is uint8 but noisy, re-binarize
+            mask_img = (mask > 127).astype(np.uint8) * 255
+
+    if return_img:
+        return mask_img
+
+    # use PIL for exact grayscale
+    img = Image.fromarray(mask_img, mode = "L")
+
     plt.figure(figsize = (5, 5))
-    plt.imshow(mask, cmap = "Greys")
+    plt.imshow(img, cmap = cmap, vmin = 0, vmax = 255, interpolation = "nearest")
     if title:
         plt.title(title)
     plt.axis("off")
     plt.show()
 
 
-def show_overlay( image: np.ndarray, mask: np.ndarray, alpha: float = 0.4, title: str = "" ) -> None:
+def show_overlay( image: np.ndarray, mask: np.ndarray, alpha: float = 0.4, title: str = "", return_img: bool = False ):
     """
     Show an image with a red mask overlay.
     """
@@ -52,58 +210,54 @@ def show_overlay( image: np.ndarray, mask: np.ndarray, alpha: float = 0.4, title
 
     overlay = cv2.addWeighted(img_u8, 1 - alpha, mask_rgb, alpha, 0)
 
-    plt.figure(figsize = (5, 5))
-    plt.imshow(overlay)
-    if title:
-        plt.title(title)
-    plt.axis("off")
-    plt.show()
+    if return_img:
+        return overlay
+    else:
+        if image.max() <= 1.0:
+            img_u8 = (image * 255).astype(np.uint8)
+        else:
+            img_u8 = image.astype(np.uint8)
+
+        mask_u8 = (mask * 255).astype(np.uint8)
+        mask_rgb = np.zeros_like(img_u8)
+        mask_rgb[:, :, 0] = mask_u8
+
+        overlay = cv2.addWeighted(img_u8, 1 - alpha, mask_rgb, alpha, 0)
+
+        plt.figure(figsize = (5, 5))
+        plt.imshow(overlay)
+        if title:
+            plt.title(title)
+        plt.axis("off")
+        plt.show()
 
 
-def show_stages( stages: dict ) -> None:
+def show_stages( stages: dict, cmaps = None, maxcolumns = 5 ) -> None:
     """
     Display multiple enhancement or filtering stages.
     Keys must be stage names. Values are images.
     """
-    n = len(stages)
-    cols = min(4, n)
-    rows = int(np.ceil(n / cols))
+    images = list(stages.values())
+    titles = list(stages.keys())
+    if cmaps is None:
+        cmaps = ["gray"] * len(images)
 
-    plt.figure(figsize = (4 * cols, 4 * rows))
+    show_side_by_side(*images, titles = titles, cmaps = cmaps)
 
-    for i, (name, img) in enumerate(stages.items(), 1):
-        plt.subplot(rows, cols, i)
-        if img.ndim == 2:
-            plt.imshow(img, cmap = "Greys")
-        else:
-            plt.imshow(img)
-        plt.title(name)
-        plt.axis("off")
-
-    plt.tight_layout()
-    plt.show()
-
-
-def compare_images( a: np.ndarray, b: np.ndarray, titles = ("A", "B") ) -> None:
-    """
-    Display two images side by side for comparison.
-    """
-    plt.figure(figsize = (10, 5))
-
-    plt.subplot(1, 2, 1)
-    if a.ndim == 2:
-        plt.imshow(a, cmap = "Greys")
-    else:
-        plt.imshow(a)
-    plt.title(titles[0])
-    plt.axis("off")
-
-    plt.subplot(1, 2, 2)
-    if b.ndim == 2:
-        plt.imshow(b, cmap = "Greys")
-    else:
-        plt.imshow(b)
-    plt.title(titles[1])
-    plt.axis("off")
-
-    plt.show()
+    # n = len(stages)
+    # cols = min(4, n)
+    # rows = int(np.ceil(n / cols))
+    #
+    # plt.figure(figsize = (4 * cols, 4 * rows))
+    #
+    # for i, (name, img) in enumerate(stages.items(), 1):
+    #     plt.subplot(rows, cols, i)
+    #     if img.ndim == 2:
+    #         plt.imshow(img, cmap = cmap)
+    #     else:
+    #         plt.imshow(img)
+    #     plt.title(name)
+    #     plt.axis("off")
+    #
+    # plt.tight_layout()
+    # plt.show()

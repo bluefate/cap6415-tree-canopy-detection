@@ -1,6 +1,6 @@
 #%% md
 # # Notebook: 01 Starter Sample
-# # Purpose: load data, inspect shapes, verify dataset logic, preview masks, confirm training setup.
+# ## Purpose: load data, inspect shapes, verify dataset logic, preview masks, confirm training setup.
 #%%
 from src.utils.config import Config
 from src.utils.helpers import init_notebook
