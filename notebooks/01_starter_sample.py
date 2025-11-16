@@ -42,8 +42,9 @@ p("Dataset size", len(dataset))
 # #### Sample inspection
 #%%
 for _ in range(1):
-    t(f"Image {idx}")
     idx = random.randint(0, len(dataset) - 1)
+    t(f"Image {idx}")
+
     img_t, mask_t = dataset[idx]
 
     img = img_t.permute(1, 2, 0).numpy()
@@ -57,8 +58,9 @@ for _ in range(1):
 
 #%%
 for _ in range(3):
-    t(f"Image {idx}")
     idx = random.randint(0, len(dataset) - 1)
+    t(f"Image {idx}")
+
     img_t, mask_t = dataset[idx]
 
     img = img_t.permute(1, 2, 0).numpy()
@@ -82,17 +84,37 @@ for _ in range(3):
 
 #%% md
 # #### Testing forward pass with a small model
+#%% md
+# - sample_img is a tensor shaped [3, H, W]
+# - sample_mask is a tensor shaped [1, H, W]
 #%%
-from src.models.simple_cnn import SimpleCNN
-
-
-model = SimpleCNN(in_channels = 3, out_channels = 1)
-model.eval()
-
 sample_img, sample_mask = dataset[0]
+#%% md
+# - adding a batch dimension
+#%%
 sample_img = sample_img.unsqueeze(0)
+#%% md
+# - now the image is shaped [1, 3, H, W]
+# - batch size is 1
+#%%
+from src.models.sample_model_provided import SampleModelProvided
+
+
+model = SampleModelProvided(in_channels = 3, out_channels = 1)
+model.eval()
 
 with torch.no_grad():
     out = model(sample_img)
 
 p("Forward pass result shape", out.shape)
+
+#%%
+model = SampleModelProvided(in_channels = 3, out_channels = 3)
+model.eval()
+
+with torch.no_grad():
+    out = model(sample_img)
+
+p("Forward pass result shape", out.shape)
+
+#%%
