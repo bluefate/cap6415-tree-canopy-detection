@@ -6,19 +6,17 @@
 # %%
 
 from src.utils.config import Config
-from src.utils.helpers import c, init_notebook, t, p
+from src.utils.helpers import init_notebook, p
 
 
 config = Config.load()
 
 init_notebook(config.train.seed)
 
-t("test")
-p("test")
 
 # %%
 import random
-
+from models.zoo import MODEL_BUILDERS
 import torch
 
 from src.data.annotations import load_json_annotations
@@ -73,6 +71,18 @@ p("Train samples", len(train_ds))
 p("Val samples", len(val_ds))
 
 # %% [markdown]
+# #### Available Models
+
+# %%
+p("Models", MODEL_BUILDERS)
+#config.show()
+p("Batch", config.train.batch_size)
+p("Epochs", config.train.epochs)
+p("Learning Rate", config.train.learning_rate, precision = 9)
+p("Image Size", config.train.image_size)
+
+
+# %% [markdown]
 # #### Run Training
 
 # %%
@@ -82,5 +92,7 @@ trainer = run_training(
         train_loader = train_loader,
         val_loader = val_loader,
         version_root = version_root,
-        model_name = "unet",
+        model_name = "simple_cnn",
 )
+
+# %%

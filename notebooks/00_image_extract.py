@@ -5,14 +5,6 @@
 # %%
 from src.utils.config import Config
 from src.utils.helpers import init_notebook
-
-
-config = Config.load()
-
-init_notebook(config.train.seed)
-
-
-# %%
 import random
 import shutil
 import zipfile
@@ -25,6 +17,11 @@ from PIL import Image
 from src.data.annotations import load_json_annotations
 from src.data.masks import save_mask
 from src.utils.helpers import p, t
+
+
+config = Config.load()
+
+init_notebook(config.train.seed)
 
 
 root = Path(config.paths.root)

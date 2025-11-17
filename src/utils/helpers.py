@@ -74,6 +74,7 @@ def init_notebook( seed: int = 42 ) -> None:
     t("init_notebook")
     warnings.filterwarnings("ignore", category = UserWarning)
     warnings.filterwarnings("ignore", category = FutureWarning)
+    warnings.filterwarnings("ignore", category=UserWarning, module="google.protobuf.runtime_version")
 
     pio.renderers.default = "png"
 

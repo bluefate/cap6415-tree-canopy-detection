@@ -23,9 +23,9 @@ from src.data.annotations import load_json_annotations
 from src.data.augmentations import get_val_augmentations
 from src.data.loaders import ImageMaskDataset
 from src.exploration.visualize import show_image, show_mask, show_overlay
-from src.models.zoo import build_model, MODEL_REGISTRY
+from src.models.zoo import build_model, MODEL_BUILDERS
 from src.training.metrics import compute_metrics
-from models.zoo import MODEL_REGISTRY
+from models.zoo import MODEL_BUILDERS
 
 train_dir = config.paths.train_images
 mask_dir = config.paths.train_masks
@@ -33,7 +33,7 @@ annotations_path = config.paths.annotations
 entries = load_json_annotations(annotations_path)
 
 # %%
-p("Models", MODEL_REGISTRY)
+p("Models", MODEL_BUILDERS)
 #config.show()
 p("Batch", config.train.batch_size)
 p("Epochs", config.train.epochs)
@@ -132,6 +132,12 @@ for _ in range(5):
 
     pred_bin = (pred > 0.5).astype(np.uint8)
 
+    # show_image(img, f"Image {idx}")
+    # show_mask(mask, "Ground Truth")
+    # show_mask(pred_bin, "Prediction")
+    # show_overlay(img, pred_bin, 0.4, "Overlay")
+
+
     titles = [f"Image {idx}", "Ground Truth", "Prediction", "Overlay"]
 
     if img.max() <= 1.0:
@@ -155,21 +161,5 @@ for _ in range(5):
                       cmaps = [None, "gray", "gray", None]
                       )
 
-
-# %%
-for i in range(5):
-    idx = np.random.randint(0, len(dataset))
-    img_t, mask_t = dataset[idx]
-    img_np = img_t.permute(1, 2, 0).numpy()
-    mask_np = mask_t.squeeze().numpy()
-
-    with torch.no_grad():
-        pred = model(img_t.unsqueeze(0)).cpu().squeeze().numpy()
-    pred_bin = (pred > 0.5).astype(np.uint8)
-
-    show_image(img_np, f"Image {idx}")
-    show_mask(mask_np, "Ground Truth")
-    show_mask(pred_bin, "Prediction")
-    show_overlay(img_np, pred_bin, 0.4, "Overlay")
 
 # %%

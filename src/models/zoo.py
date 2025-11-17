@@ -1,5 +1,3 @@
-from typing import Any, Dict
-
 from src.models.simple_cnn import SimpleCNN
 from src.models.unet import UNet
 
@@ -126,7 +124,8 @@ def create_timm_upernet( encoder_name = "swin_base_patch4_window7_224", out_chan
     raise NotImplementedError("UPerNet using timm backbone available if needed. Ask to enable.")
 
 
-MODEL_REGISTRY: Dict[str, Any] = {
+# Registry for building models (used by build_model)
+MODEL_BUILDERS = {
     "simple_cnn": create_simple_cnn,
     "unet": create_unet,
     "smp_unet": create_smp_unet,
@@ -137,9 +136,21 @@ MODEL_REGISTRY: Dict[str, Any] = {
     "segformer": create_segformer,
 }
 
+# Registry for benchmarking (model kwargs)
+MODEL_BENCHMARKS = {
+    "simple_cnn": { },
+    "unet": { },
+    "smp_unet": { "encoder_name": "resnet34" },
+    "smp_fpn": { "encoder_name": "resnet34" },
+    "smp_linknet": { "encoder_name": "resnet34" },
+    "smp_deeplabv3": { "encoder_name": "resnet34" },
+    "smp_deeplabv3plus": { "encoder_name": "resnet34" },
+    "segformer": { "model_name": "nvidia/segformer-b0-finetuned-ade-512-512" },
+}
+
 
 def build_model( name: str, **kwargs ):
     name = name.lower()
-    if name not in MODEL_REGISTRY:
+    if name not in MODEL_BUILDERS:
         raise ValueError(f"Unknown model {name}")
-    return MODEL_REGISTRY[name](**kwargs)
+    return MODEL_BUILDERS[name](**kwargs)

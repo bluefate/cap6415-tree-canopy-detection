@@ -4,37 +4,25 @@
 # ## Purpose: explore frequency space, filters, kernels, enhancement pipelines, and visualize transformations.
 
 # %%
+import random
+from pathlib import Path
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+
+from src.exploration.enhancement import enhance_image_for_segmentation
+from src.exploration.filters import cv2_apply_gaussian, cv2_apply_laplacian, cv2_apply_sobel
+from src.exploration.kernels import (apply_custom_kernel, apply_kernel_using_convolution, get_kernels, laplacian_kernel,
+                                     make_directional_edge_kernel, make_gaussian_kernel, make_motion_kernel, )
+from src.exploration.visualize import show_image, show_side_by_side, show_stages
 from src.utils.config import Config
-from src.utils.helpers import c, init_notebook
+from src.utils.helpers import c, init_notebook, p, t
 
 
 config = Config.load()
 
-init_notebook(config.train.seed)#%% md
-
-# %%
-
-from src.exploration.enhancement import enhance_image_for_segmentation
-from pathlib import Path
-import matplotlib.pyplot as plt
-
-from src.exploration.filters import cv2_apply_gaussian, cv2_apply_laplacian, cv2_apply_sobel
-
-from src.exploration.kernels import (apply_custom_kernel,
-                                     apply_kernel_using_convolution,
-                                     laplacian_kernel,
-                                     make_motion_kernel,
-                                     make_gaussian_kernel,
-                                     make_directional_edge_kernel,
-                                     get_kernels
-                                     )
-from src.exploration.visualize import show_side_by_side, show_stages
-import random
-import numpy as np
-from src.exploration.visualize import show_image
-from src.utils.helpers import p, t
-import cv2
-
+init_notebook(config.train.seed)
 
 train_dir = config.paths.train_images
 files = sorted([f for f in Path(train_dir).glob("*.*")])

@@ -18,9 +18,10 @@ t("teset")
 # %%
 from src.data.augmentations import get_val_augmentations
 from src.prediction.pipeline import Predictor
-#from src.prediction.submission import export_submisson
+# from src.prediction.submission import export_submisson
 from models.zoo import MODEL_REGISTRY
 from utils.versioning import VersionManager
+
 
 # %% [markdown]
 # #### Select model version
@@ -28,9 +29,8 @@ from utils.versioning import VersionManager
 # %%
 
 
-
 p("Models", MODEL_REGISTRY)
-#config.show()
+# config.show()
 p("Batch", config.train.batch_size)
 p("Epochs", config.train.epochs)
 p("Learning Rate", config.train.learning_rate, precision = 9)
@@ -51,7 +51,6 @@ predictor = Predictor(
         image_size = config.train.image_size,
 )
 
-
 # %% [markdown]
 # #### Run on evaluation folder
 
@@ -62,7 +61,6 @@ p("eval_dir", eval_dir)
 transform = get_val_augmentations(config.train.image_size)
 
 results = predictor.run_on_folder(eval_dir, transform = transform, num_samples = 10)
-
 
 # %% [markdown]
 # #### Visualizations Samples
@@ -84,8 +82,6 @@ for r in results:
                       titles = [r["name"], "Predicted mask", "Overlay"],
                       cmaps = [None, "gray", None],
                       )
-
-
 
 # %% [markdown]
 # ### Export submission file

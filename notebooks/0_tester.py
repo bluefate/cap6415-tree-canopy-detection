@@ -1,24 +1,25 @@
-#%% md
+# %% [markdown]
 # # Notebook: 0 Tester Notebook
-#%%
+
+# %%
+from src.utils.config import Config
+from src.utils.helpers import init_notebook
 from src.utils.tester import test_print
 
 
 test_print()
-#%%
-from src.utils.config import Config
 
-
+# %%
 config = Config.load()
 config.show()
 
-#%%
-from src.utils.helpers import init_notebook
 
+# %%
 
 init_notebook(config.train.seed)
 
-#%%
+
+# %%
 def print_versions():
     from src.utils.helpers import p
     import sys
@@ -34,5 +35,5 @@ def print_versions():
     p("Torch", torch.__version__)
 
 
-#%%
+# %%
 print_versions()
