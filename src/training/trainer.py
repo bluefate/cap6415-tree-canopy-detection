@@ -31,6 +31,7 @@ class Trainer:
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.cfg = config
+
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.model = self.model.to(self.device)
 
@@ -40,6 +41,8 @@ class Trainer:
 
         self.logger = Logger(self.paths["log"])
         self.logger.header("Training started")
+
+        self.logger.header(self.model)
 
         self.scaler = torch.cuda.amp.GradScaler(enabled = (self.device.type == "cuda"))
         self.best_val_loss = float("inf")
@@ -151,7 +154,7 @@ class Trainer:
         no_improve = 0
 
         for epoch in range(self.start_epoch, epochs):
-            self.logger.header(f"Epoch {epoch + 1}")
+            self.logger.warn(f"Epoch {epoch + 1}")
 
             train_loss = self.train_epoch()
             val = self.validate_epoch()
@@ -176,4 +179,4 @@ class Trainer:
                 self.logger.info("Early stop triggered")
                 break
 
-        self.logger.header("Training complete")
+        self.logger.warn("Training complete")

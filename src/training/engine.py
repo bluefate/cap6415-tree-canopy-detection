@@ -29,7 +29,6 @@ def run_training(
         model_name: str = "unet",
 ):
     """
-    High level training utility.
     Builds model, optimizer, criterion, and Trainer. Then runs training.
     """
     image_size = config.train.image_size

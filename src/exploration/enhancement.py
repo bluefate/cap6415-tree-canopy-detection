@@ -56,7 +56,7 @@ def normalize( gray: np.ndarray ) -> np.ndarray:
 
 def enhance_image_for_segmentation( image: np.ndarray ) -> tuple:
     """
-    Full enhancement pipeline used in your notebooks.
+    Full enhancement pipeline used in notebooks.
     Returns enhanced image and intermediate stages.
 
     Steps:

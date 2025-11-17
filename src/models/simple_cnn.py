@@ -5,7 +5,7 @@ import torch.nn as nn
 class SimpleCNN(nn.Module):
     """
     Small convolutional model for binary segmentation.
-    Used in your original exploration and group or individual tree detection.
+    Good baseline before using UNet or larger encoder models.
     """
 
     def __init__(
@@ -29,12 +29,15 @@ class SimpleCNN(nn.Module):
                 layers.append(nn.Dropout2d(dropout))
             return nn.Sequential(*layers)
 
+        # lightweight feature extractor
         self.encoder = nn.Sequential(
                 block(in_channels, features),
                 block(features, features * 2),
                 block(features * 2, features),
         )
 
+        # segmentation head
+        self.head = nn.Conv2d(features, out_channels, kernel_size = 1)
 
     def forward( self, x: torch.Tensor ) -> torch.Tensor:
         x = self.encoder(x)
