@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 import cv2
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 
@@ -71,10 +72,18 @@ class ImageMaskDataset(Dataset):
         # mask_t = torch.tensor(mask).unsqueeze(0).float()
         # same
         # Convert image
+        ## if isinstance(mask, torch.Tensor):
+        ##     mask_t = mask.float()
+        ## else:
+        ##     mask_t = torch.from_numpy(mask).unsqueeze(0).float()
         if isinstance(mask, torch.Tensor):
             mask_t = mask.float()
+            if mask_t.ndim == 2:
+                mask_t = mask_t.unsqueeze(0)
         else:
-            mask_t = torch.from_numpy(mask).unsqueeze(0).float()
+            if mask.ndim == 2:
+                mask = np.expand_dims(mask, 0)
+            mask_t = torch.from_numpy(mask).float()
 
         return img_t, mask_t
 

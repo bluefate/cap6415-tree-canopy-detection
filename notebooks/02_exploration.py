@@ -1,23 +1,18 @@
-#!/usr/bin/env python
-# coding: utf-8
-
+# %% [markdown]
+#
 # # Notebook: 02 Exploration
 # ## Purpose: explore frequency space, filters, kernels, enhancement pipelines, and visualize transformations.
 
-# In[11]:
-
-
+# %%
 from src.utils.config import Config
 from src.utils.helpers import c, init_notebook
 
 
 config = Config.load()
 
-init_notebook(config.train.seed)
+init_notebook(config.train.seed)#%% md
 
-
-# In[12]:
-
+# %%
 
 from src.exploration.enhancement import enhance_image_for_segmentation
 from pathlib import Path
@@ -45,30 +40,27 @@ train_dir = config.paths.train_images
 files = sorted([f for f in Path(train_dir).glob("*.*")])
 sample_path = random.choice(files)
 
-
+# %% [markdown]
 # #### load sample image
 
-# In[13]:
-
-
+# %%
 t(sample_path.name)
 img = cv2.imread(str(sample_path))
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 show_image(img)
 
 
+# %% [markdown]
 # #### Frequency analysis
-# 
+#
 # Magnitude map samples to help:
-# 
+#
 # - bright center = strong low frequency content
 # - bright edges = strong high frequency noise or fine texture
 # - patterns or lines = directional structure
 # - rings = scale-specific periodic textures
 
-# In[14]:
-
-
+# %%
 gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
 fft = np.fft.fftshift(np.fft.fft2(gray))
 mag = np.log1p(np.abs(fft))
@@ -108,22 +100,22 @@ plt.tight_layout()
 plt.show()
 
 
+# %% [markdown]
 # Bright center with dimmed edges.
-# 
+#
 # - strong concentration of low-frequency energy
 # - image is dominated by broad, smooth shapes
-# 
+#
 # No strong diagonal streaks.
 # - when present diagonal streaks would suggest strong directional texture, such as repeating patterns or ridges
-# 
+#
 
+# %% [markdown]
 # # Kernels
-# 
+#
 # **Hint** Adding kernel outputs as new chennels can improve the segmentation seen as modesl benefit from texture and edge cues that aren't obvious in raw RGB
 
-# In[15]:
-
-
+# %%
 gk = get_kernels("Gaussian_7x7_sigma2")
 p("Gaussian kernel", gk)
 
@@ -137,19 +129,18 @@ sy = get_kernels("Sobel_Y")
 p("Sobel kernels shapes (Sobel, Sx, Sy)", (sb.shape, sx.shape, sy.shape))
 
 
+# %% [markdown]
 # #### Apply kernels using exploration utilities
-# 
+#
 # - Laplacian output often contains negative and positive values (because it’s a derivative).
-# 
+#
 # CMAPS to use:
 # - General Laplacian visualization "gray" Neutral, shows edges clearly
 # - Very dark/light images	"seismic" or "bwr"	Diverging colormaps: negative values in one color, positive in another
 # - Want high contrast edges	"hot" or "inferno"	Bright edges stand out against dark background
 # - Teaching / presentation	"coolwarm"	Easy to interpret positive vs negative transitions
 
-# In[16]:
-
-
+# %%
 # img_red = img[:, :, 0]
 # img_green = img[:, :, 1]
 # img_blue = img[:, :, 2]
@@ -188,9 +179,11 @@ show_side_by_side(
 
 
 
+# %% [markdown]
 # #### Built in filters
 
-# In[17]:
+# %%
+
 
 
 ga = cv2_apply_gaussian(img, 5, 1.2)
@@ -205,11 +198,10 @@ show_side_by_side(
 
 
 
+# %% [markdown]
 # # Enhancement pipeline
 
-# In[18]:
-
-
+# %%
 enhanced, stages = enhance_image_for_segmentation(img)
 show_stages(stages)
 
@@ -219,9 +211,11 @@ p("enhanced.ndim", enhanced.ndim)
 
 
 
+# %% [markdown]
 # #### Kernel samples
 
-# In[19]:
+# %%
+
 
 
 def demo_parameterized_kernels( image: np.ndarray ) -> None:
@@ -270,9 +264,7 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
 demo_parameterized_kernels(img)
 
 
-# In[20]:
-
-
+# %%
 def demo_kernels( image, names = ("Sobel_X", "Sobel_Y", "Laplacian_3x3") ):
     """
     Apply selected kernels from get_kernels() and show results with kernel visualization.
@@ -308,4 +300,3 @@ def demo_kernels( image, names = ("Sobel_X", "Sobel_Y", "Laplacian_3x3") ):
 all_k = list(get_kernels().keys())
 #demo_kernels(img, names=all_k[:6])
 demo_kernels(img, names = all_k)
-
