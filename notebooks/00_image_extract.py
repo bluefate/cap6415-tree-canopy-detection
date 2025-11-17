@@ -1,7 +1,8 @@
-#%% md
+# %% [markdown]
 # # Notebook: 00 Image Extract
 # ## Purpose: extract image archives, clean folders, preview images, and build masks from annotations.
-#%%
+
+# %%
 from src.utils.config import Config
 from src.utils.helpers import init_notebook
 
@@ -10,7 +11,8 @@ config = Config.load()
 
 init_notebook(config.train.seed)
 
-#%%
+
+# %%
 import random
 import shutil
 import zipfile
@@ -32,9 +34,11 @@ train_dir = config.paths.train_images
 eval_dir = config.paths.eval_images
 mask_dir = config.paths.train_masks
 
-#%% md
+
+# %% [markdown]
 # #### Extract images and remove __MACOSX folders
-#%%
+
+# %%
 # Mapping of zip files to their extraction targets
 for zip_path, extract_to in [(train_zip, train_dir)]:
     if zip_path and Path(zip_path).exists():
@@ -58,9 +62,11 @@ for zip_path, extract_to in [(train_zip, train_dir)]:
 
     elif zip_path:
         p("Zip path not found", str(zip_path))
-#%% md
+
+# %% [markdown]
 # #### Preview images
-#%%
+
+# %%
 sample_train_set = None
 for folder in [train_dir, eval_dir]:
     t(f"Path {folder}")
@@ -79,9 +85,11 @@ for folder in [train_dir, eval_dir]:
 
     if folder == train_dir:
         sample_train_set = sample
-#%% md
+
+# %% [markdown]
 # #### Build masks from annotation json
-#%%
+
+# %%
 annotations_path = config.paths.annotations
 entries = load_json_annotations(annotations_path)
 mask_dir.mkdir(parents = True, exist_ok = True)
@@ -94,9 +102,11 @@ for entry in entries:
     mask = entry.to_mask()
     save_path = mask_dir / entry.image_path.name
     save_mask(mask, save_path)
-#%% md
+
+# %% [markdown]
 # #### Preview masks with overlays
-#%%
+
+# %%
 t(f"Path {mask_dir}")
 
 sample_train_filenames = { Path(p).stem for p in sample_train_set }
@@ -114,4 +124,5 @@ for i, path in enumerate(sample, 1):
 plt.tight_layout()
 plt.show()
 
-#%%
+
+# %%
