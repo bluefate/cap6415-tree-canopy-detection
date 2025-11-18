@@ -13,6 +13,8 @@ test_print()
 config = Config.load()
 config.show()
 
+init_notebook(config.train.seed)
+
 
 # %%
 
