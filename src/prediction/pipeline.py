@@ -53,7 +53,7 @@ class Predictor:
         Resizing and conversion done here.
         """
         img = cv2.resize(image, (self.image_size, self.image_size))
-        img_t = torch.tensor(img.transpose(2, 0, 1)).float() / 255.0
+        img_t = torch.tensor(img.transpose(2,0,1)).float() / 255.0
         return self.predict_tensor(img_t)
 
     def run_on_folder( self, image_dir: Path, transform = None, num_samples: int = None ):
@@ -71,11 +71,11 @@ class Predictor:
 
             # Convert HWC -> CHW safely for both numpy and torch
             if isinstance(img_t, torch.Tensor):
-                # img_chw = img_t.permute(2, 0, 1).unsqueeze(0).float()
+                # img_chw = img_t.permute(2,0,1).unsqueeze(0).float()
                 img_chw = img_t.unsqueeze(0).float()
-                base = img_t.permute(1, 2, 0).cpu().numpy()
+                base = img_t.permute(1,2,0).cpu().numpy()
             else:
-                img_chw = torch.from_numpy(img_t.transpose(2, 0, 1)).unsqueeze(0).float()
+                img_chw = torch.from_numpy(img_t.transpose(2,0,1)).unsqueeze(0).float()
                 base = img_t
 
             with torch.no_grad():

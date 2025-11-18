@@ -33,21 +33,21 @@ class ImageMaskDataset(Dataset):
     """
 
     def __init__(
-            self,
-            entries: List[AnnotationEntry],
-            image_dir: Path,
-            classes: Optional[List[str]] = None,
-            transform = None,
+        self,
+        entries: List[AnnotationEntry],
+        image_dir: Path,
+        classes: Optional[List[str]] = None,
+        transform=None,
     ):
         self.entries = entries
         self.image_dir = Path(image_dir)
         self.classes = classes
         self.transform = transform
 
-    def __len__( self ) -> int:
+    def __len__(self) -> int:
         return len(self.entries)
 
-    def __getitem__( self, idx: int ) -> Tuple[torch.Tensor, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         entry = self.entries[idx]
         img_path = self.image_dir / entry.image_path.name
 
@@ -62,19 +62,17 @@ class ImageMaskDataset(Dataset):
             polys = [item.segmentation for item in entry.items]
         else:
             polys = [
-                item.segmentation
-                for item in entry.items
-                if item.cls in self.classes
+                item.segmentation for item in entry.items if item.cls in self.classes
             ]
 
         mask = build_multi_mask(polys, W, H)
 
         if self.transform:
-            augmented = self.transform(image = image, mask = mask)
+            augmented = self.transform(image=image, mask=mask)
             image = augmented["image"]
             mask = augmented["mask"]
 
-        # img_t = torch.tensor(image.transpose(2, 0, 1)).float() / 255.0
+        # img_t = torch.tensor(image.transpose(2,0,1)).float() / 255.0
         # produces an error
         # augmented["image"] is sometimes a NumPy array and sometimes a PyTorch tensor, depending on your augmentation pipeline
         # Convert image
@@ -94,14 +92,25 @@ class ImageMaskDataset(Dataset):
         ##     mask_t = mask.float()
         ## else:
         ##     mask_t = torch.from_numpy(mask).unsqueeze(0).float()
+
+        ##---------------------------------------
+        # if isinstance(mask, torch.Tensor):
+        #     mask_t = mask.float()
+        #     if mask_t.ndim == 2:
+        #         mask_t = mask_t.unsqueeze(0)
+        # else:
+        #     if mask.ndim == 2:
+        #         mask = np.expand_dims(mask, 0)
+        #     mask_t = torch.from_numpy(mask).float()
+        ##---------------------------------------
+        # eliminates all shape variance
         if isinstance(mask, torch.Tensor):
             mask_t = mask.float()
-            if mask_t.ndim == 2:
-                mask_t = mask_t.unsqueeze(0)
         else:
+            mask = mask.astype("float32")
             if mask.ndim == 2:
-                mask = np.expand_dims(mask, 0)
-            mask_t = torch.from_numpy(mask).float()
+                mask = mask[None, ...]
+            mask_t = torch.from_numpy(mask)
 
         return img_t, mask_t
 
@@ -126,24 +135,28 @@ class ImageOnlyDataset(Dataset):
     Used only for inference
     """
 
-    def __init__( self, image_dir: Path, transform = None ):
+    def __init__(self, image_dir: Path, transform=None):
         self.image_dir = Path(image_dir)
         self.transform = transform
         self.files = sorted(
-                [f for f in self.image_dir.glob("*.*") if f.suffix.lower() in [".tif", ".jpg", ".png"]],
+            [
+                f
+                for f in self.image_dir.glob("*.*")
+                if f.suffix.lower() in [".tif", ".jpg", ".png"]
+            ],
         )
 
-    def __len__( self ) -> int:
+    def __len__(self) -> int:
         return len(self.files)
 
-    def __getitem__( self, idx: int ) -> Tuple[str, torch.Tensor]:
+    def __getitem__(self, idx: int) -> Tuple[str, torch.Tensor]:
 
         path = self.files[idx]
 
         image = self._load_image(path)
 
         if self.transform:
-            processed = self.transform(image = image)
+            processed = self.transform(image=image)
             image = processed["image"]
 
         if isinstance(image, torch.Tensor):
@@ -155,11 +168,13 @@ class ImageOnlyDataset(Dataset):
 
         return path.name, img_t
 
-    def _load_image( self, source: Union[str, Path, np.ndarray, torch.Tensor, Image.Image] ) -> np.ndarray:
+    def _load_image(
+        self, source: Union[str, Path, np.ndarray, torch.Tensor, Image.Image]
+    ) -> np.ndarray:
         if isinstance(source, np.ndarray):
             img = source
             if img.ndim == 2:
-                img = np.stack([img, img, img], axis = 2)
+                img = np.stack([img, img, img], axis=2)
             return img
 
         if isinstance(source, torch.Tensor):

@@ -11,6 +11,22 @@ import plotly.io as pio
 import torch
 
 
+# def to_chw(arr):
+#     if isinstance(arr, np.ndarray):
+#         return arr.transpose(2,0,1)
+#     if isinstance(arr, torch.Tensor):
+#         return arr.permute(2,0,1)
+#     raise ValueError("Unsupported type")
+
+# def to_hwc(arr):
+#     if isinstance(arr, np.ndarray):
+#         return arr.transpose(1,2,0)
+#     if isinstance(arr, torch.Tensor):
+#         return arr.permute(1,2,0)
+#     raise ValueError("Unsupported type")
+
+
+
 def make_json_safe( obj: Any ) -> Any:
     """
     Convert an object into a JSON safe structure.

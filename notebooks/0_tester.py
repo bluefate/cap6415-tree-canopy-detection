@@ -17,11 +17,6 @@ init_notebook(config.train.seed)
 
 
 # %%
-
-init_notebook(config.train.seed)
-
-
-# %%
 def print_versions():
     from src.utils.helpers import p
     import sys

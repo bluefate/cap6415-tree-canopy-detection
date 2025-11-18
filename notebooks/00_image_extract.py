@@ -3,8 +3,6 @@
 # ## Purpose: extract image archives, clean folders, preview images, and build masks from annotations.
 
 # %%
-from src.utils.config import Config
-from src.utils.helpers import init_notebook
 import random
 import shutil
 import zipfile
@@ -16,13 +14,13 @@ from PIL import Image
 
 from src.data.annotations import load_json_annotations
 from src.data.masks import save_mask
-from src.utils.helpers import p, t
+from src.utils.config import Config
+from src.utils.helpers import init_notebook, p, t
 
 
 config = Config.load()
 
 init_notebook(config.train.seed)
-
 
 root = Path(config.paths.root)
 train_zip = config.paths.train_images_zip
@@ -120,6 +118,3 @@ for i, path in enumerate(sample, 1):
     plt.axis("off")
 plt.tight_layout()
 plt.show()
-
-
-# %%

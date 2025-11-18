@@ -100,18 +100,35 @@ class Config(BaseModel):
         t("Config settings")
 
         project_root = str(Path(os.getenv("PROJECT_ROOT", Path.cwd())).resolve())
-
         p("", f"(removed {project_root} from paths)")
+
+
+        def clean_value(v):
+            # None stays None
+            if v is None:
+                return "None"
+
+            s = str(v)
+
+            # remove project root prefix
+            if project_root in s:
+                s = s.replace(project_root, "").lstrip("/\\")
+
+            # avoid empty result
+            if s == "":
+                s = "(root)"
+
+            return s
 
         p("Paths")
         for k, v in self.paths.dict().items():
-            p("", f"  {k}: {str(v).replace(project_root, "")}")
+            p("", f"  {k}: {clean_value(v)}")
 
         p("Train parameters")
         for k, v in self.train.dict().items():
-            p("", f"  {k}: {str(v).replace(project_root, "")}")
+            p("", f"  {k}: {clean_value(v)}")
 
         if self.extra:
             p("Extra")
             for k, v in self.extra.items():
-                p("", f"  {k}: {str(v).replace(project_root, "")}")
+                p("", f"  {k}: {clean_value(v)}")

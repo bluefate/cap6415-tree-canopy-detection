@@ -5,29 +5,31 @@
 
 # %%
 
+import random
+
+import cv2
+import numpy as np
+import torch
+
+from src.data.annotations import load_json_annotations
+from src.data.augmentations import get_val_augmentations
+from src.data.loaders import ImageMaskDataset
+from src.exploration.visualize import show_side_by_side
+from src.models.zoo import MODEL_BUILDERS
+from src.training.metrics import compute_metrics
 from src.utils.config import Config
 from src.utils.helpers import init_notebook, p, t
-
 
 
 config = Config.load()
 
 init_notebook(config.train.seed)
 
-
-# %%
-import numpy as np
-import torch
-from src.data.annotations import load_json_annotations
-from src.data.augmentations import get_val_augmentations
-from src.data.loaders import ImageMaskDataset
-from src.training.metrics import compute_metrics
-from models.zoo import MODEL_BUILDERS
-
 train_dir = config.paths.train_images
 mask_dir = config.paths.train_masks
 annotations_path = config.paths.annotations
 entries = load_json_annotations(annotations_path)
+
 
 # %%
 p("Models", MODEL_BUILDERS)
@@ -50,7 +52,7 @@ dataset = ImageMaskDataset(entries, train_dir, transform = val_tf)
 # #### Loading Model
 
 # %%
-def load_best_model(model_name: str, config):
+def load_best_model( model_name: str, config ):
     t(model_name)
     from src.models.zoo import build_model
     from src.utils.versioning import VersionManager
@@ -60,8 +62,8 @@ def load_best_model(model_name: str, config):
     best_path = version_dir / "best_model.pth"
     p("Using model version", version_dir.name)
 
-    model = build_model(model_name, in_channels=3, out_channels=1)
-    state = torch.load(best_path, map_location="cpu")
+    model = build_model(model_name, in_channels = 3, out_channels = 1)
+    state = torch.load(best_path, map_location = "cpu")
     if "model" in state:
         model.load_state_dict(state["model"])
     else:
@@ -69,6 +71,7 @@ def load_best_model(model_name: str, config):
 
     #return model.eval()
     return model
+
 
 model = load_best_model("simple_cnn", config)
 model.eval()
@@ -109,11 +112,6 @@ p("Mean Accuracy", np.mean(acc_vals))
 # #### Visualizations Samples
 
 # %%
-from exploration.visualize import show_side_by_side
-import random
-import cv2
-import numpy as np
-import torch
 
 for _ in range(5):
     idx = random.randint(0, len(dataset) - 1)
@@ -154,9 +152,6 @@ for _ in range(5):
     overlay = cv2.addWeighted(base, 0.6, pred_rgb, 0.4, 0)
 
     show_side_by_side(base, mask_u8, pred_u8, overlay,
-                      titles=titles,
+                      titles = titles,
                       cmaps = [None, "gray", "gray", None]
                       )
-
-
-# %%

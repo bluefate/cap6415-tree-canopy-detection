@@ -8,24 +8,24 @@ class SampleModelProvided(nn.Module):
     """
 
     def __init__(
-            self,
-            in_channels = 3,
-            out_channels = 1,
-            base_features = 64,
-            use_batchnorm = True,
-            dropout = 0.0,
+        self,
+        in_channels=3,
+        out_channels=1,
+        base_features=64,
+        use_batchnorm=True,
+        dropout=0.0,
     ):
         super().__init__()
 
-        def block( in_ch, out_ch ):
+        def block(in_ch, out_ch):
             layers = [
-                nn.Conv2d(in_ch, out_ch, 3, padding = 1),
-                nn.ReLU(inplace = True),
+                nn.Conv2d(in_ch, out_ch, 3, padding=1),
+                nn.ReLU(inplace=True),
             ]
             if use_batchnorm:
                 layers.append(nn.BatchNorm2d(out_ch))
-            layers.append(nn.Conv2d(out_ch, out_ch, 3, padding = 1))
-            layers.append(nn.ReLU(inplace = True))
+            layers.append(nn.Conv2d(out_ch, out_ch, 3, padding=1))
+            layers.append(nn.ReLU(inplace=True))
             if use_batchnorm:
                 layers.append(nn.BatchNorm2d(out_ch))
             if dropout > 0:
@@ -61,7 +61,7 @@ class SampleModelProvided(nn.Module):
 
         self.head = nn.Conv2d(f1, out_channels, 1)
 
-    def forward( self, x ):
+    def forward(self, x):
         c1 = self.enc1(x)
         c2 = self.enc2(self.pool(c1))
         c3 = self.enc3(self.pool(c2))
@@ -70,20 +70,21 @@ class SampleModelProvided(nn.Module):
         b = self.bottleneck(self.pool(c4))
 
         u4 = self.up4(b)
-        u4 = torch.cat([u4, c4], dim = 1)
+        u4 = torch.cat([u4, c4], dim=1)
         d4 = self.dec4(u4)
 
         u3 = self.up3(d4)
-        u3 = torch.cat([u3, c3], dim = 1)
+        u3 = torch.cat([u3, c3], dim=1)
         d3 = self.dec3(u3)
 
         u2 = self.up2(d3)
-        u2 = torch.cat([u2, c2], dim = 1)
+        u2 = torch.cat([u2, c2], dim=1)
         d2 = self.dec2(u2)
 
         u1 = self.up1(d2)
-        u1 = torch.cat([u1, c1], dim = 1)
+        u1 = torch.cat([u1, c1], dim=1)
         d1 = self.dec1(u1)
 
         logits = self.head(d1)
-        return torch.sigmoid(logits)
+        # return torch.sigmoid(logits)
+        return logits
