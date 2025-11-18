@@ -707,3 +707,7 @@ _proc/
 
 .idea
 
+
+
+# Ignore root inside .codebackup
+.codebackup/root/*
