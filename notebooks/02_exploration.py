@@ -1,7 +1,7 @@
 # %% [markdown]
 #
 # # Notebook: 02 Exploration
-# ## Purpose: explore frequency space, filters, kernels, enhancement pipelines, and visualize transformations.
+# ### Purpose: explore frequency space, filters, kernels, enhancement pipelines, and visualize transformations.
 
 # %%
 import random

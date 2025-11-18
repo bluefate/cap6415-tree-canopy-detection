@@ -1,6 +1,6 @@
 # %% [markdown]
 # # Notebook: 06 Benchmark Models
-# ## Purpose: benchmark segmentation models on a shared dataset and compare quality and speed.
+# ### Purpose: benchmark segmentation models on a shared dataset and compare quality and speed.
 
 # %%
 import time

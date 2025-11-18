@@ -1,6 +1,6 @@
 # %% [markdown]
 # # Notebook: 05 Prediction
-# ## Purpose: load a trained model, run inference, preview overlays, and optionally export a submission JSON.
+# ### Purpose: load a trained model, run inference, preview overlays, and optionally export a submission JSON.
 
 # %%
 from src.data.augmentations import get_val_augmentations

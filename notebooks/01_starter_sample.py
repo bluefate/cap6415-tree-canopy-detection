@@ -1,6 +1,6 @@
 # %% [markdown]
 # # Notebook: 01 Starter Sample
-# ## Purpose: load data, inspect shapes, verify dataset logic, preview masks, confirm training setup.
+# ### Purpose: load data, inspect shapes, verify dataset logic, preview masks, confirm training setup.
 
 # %%
 import random

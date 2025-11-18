@@ -1,6 +1,6 @@
 # %% [markdown]
 # # Notebook: 04 Evaluation
-# ## Purpose: load predictions, compute metrics, visualize overlays, and summarize performance.
+# ### Purpose: load predictions, compute metrics, visualize overlays, and summarize performance.
 #
 
 # %%

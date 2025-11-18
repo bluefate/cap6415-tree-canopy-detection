@@ -1,6 +1,6 @@
 # %% [markdown]
 # # Notebook: 03 Training
-# ## Purpose: create train and validation datasets, build augmentations, run Trainer, save versioned checkpoints.
+# ### Purpose: create train and validation datasets, build augmentations, run Trainer, save versioned checkpoints.
 #
 
 # %%

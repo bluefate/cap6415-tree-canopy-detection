@@ -132,3 +132,15 @@ class Config(BaseModel):
             p("Extra")
             for k, v in self.extra.items():
                 p("", f"  {k}: {clean_value(v)}")
+
+
+    @property
+    def MASK_COLORS(self):
+        default_colors = {
+            "individual_tree": [0, 255, 0],
+            "group_of_trees": [255, 0, 0]
+        }
+        user_colors = self.extra.get("MASK_COLORS", {})
+        merged = default_colors.copy()
+        merged.update(user_colors)
+        return merged

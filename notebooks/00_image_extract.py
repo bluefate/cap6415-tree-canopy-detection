@@ -1,6 +1,6 @@
 # %% [markdown]
 # # Notebook: 00 Image Extract
-# ## Purpose: extract image archives, clean folders, preview images, and build masks from annotations.
+# ### Purpose: extract image archives, clean folders, preview images, and build masks from annotations.
 
 # %%
 import random
