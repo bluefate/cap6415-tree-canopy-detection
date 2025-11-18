@@ -2,14 +2,16 @@ import cv2
 import numpy as np
 
 
-def cv2_apply_gaussian( image: np.ndarray, ksize: int = 5, sigma: float = 1.0 ) -> np.ndarray:
+def cv2_apply_gaussian(
+    image: np.ndarray, ksize: int = 5, sigma: float = 1.0
+) -> np.ndarray:
     """
     Apply Gaussian blur to an RGB image.
     """
     return cv2.GaussianBlur(image, (ksize, ksize), sigma)
 
 
-def cv2_apply_sobel( image: np.ndarray ) -> np.ndarray:
+def cv2_apply_sobel(image: np.ndarray) -> np.ndarray:
     """
     Apply Sobel edge detection to a grayscale or RGB image.
     If RGB, converts to grayscale internally.
@@ -26,7 +28,7 @@ def cv2_apply_sobel( image: np.ndarray ) -> np.ndarray:
     return mag
 
 
-def cv2_apply_laplacian( image: np.ndarray ) -> np.ndarray:
+def cv2_apply_laplacian(image: np.ndarray) -> np.ndarray:
     """
     Apply Laplacian edge detection.
     Converts to grayscale if needed.
@@ -41,7 +43,7 @@ def cv2_apply_laplacian( image: np.ndarray ) -> np.ndarray:
     return out
 
 
-def normalize_image( image: np.ndarray ) -> np.ndarray:
+def normalize_image(image: np.ndarray) -> np.ndarray:
     """
     Normalize to range zero to one.
     """

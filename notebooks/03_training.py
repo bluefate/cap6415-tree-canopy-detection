@@ -16,7 +16,7 @@ init_notebook(config.train.seed)
 
 # %%
 import random
-from models.zoo import MODEL_BUILDERS
+from src.models.zoo import MODEL_BUILDERS
 import torch
 
 from src.data.annotations import load_json_annotations
@@ -49,22 +49,22 @@ train_tf = get_train_augmentations(config.train.image_size)
 val_tf = get_val_augmentations(config.train.image_size)
 
 # Build dataset objects that load image-mask pairs and apply transforms
-train_ds = ImageMaskDataset(train_entries, train_dir, transform = train_tf)
-val_ds = ImageMaskDataset(val_entries, train_dir, transform = val_tf)
+train_ds = ImageMaskDataset(train_entries, train_dir, transform=train_tf)
+val_ds = ImageMaskDataset(val_entries, train_dir, transform=val_tf)
 
 # Build dataloaders
 train_loader = torch.utils.data.DataLoader(
-        train_ds,
-        batch_size = config.train.batch_size,
-        shuffle = True,
-        num_workers = config.train.num_workers,
+    train_ds,
+    batch_size=config.train.batch_size,
+    shuffle=True,
+    num_workers=config.train.num_workers,
 )
 
 val_loader = torch.utils.data.DataLoader(
-        val_ds,
-        batch_size = config.train.batch_size,
-        shuffle = False,
-        num_workers = config.train.num_workers,
+    val_ds,
+    batch_size=config.train.batch_size,
+    shuffle=False,
+    num_workers=config.train.num_workers,
 )
 
 p("Train samples", len(train_ds))
@@ -75,10 +75,10 @@ p("Val samples", len(val_ds))
 
 # %%
 p("Models", MODEL_BUILDERS)
-#config.show()
+# config.show()
 p("Batch", config.train.batch_size)
 p("Epochs", config.train.epochs)
-p("Learning Rate", config.train.learning_rate, precision = 9)
+p("Learning Rate", config.train.learning_rate, precision=9)
 p("Image Size", config.train.image_size)
 
 
@@ -88,11 +88,11 @@ p("Image Size", config.train.image_size)
 # %%
 version_root = config.paths.models
 trainer = run_training(
-        config = config,
-        train_loader = train_loader,
-        val_loader = val_loader,
-        version_root = version_root,
-        model_name = "simple_cnn",
+    config=config,
+    train_loader=train_loader,
+    val_loader=val_loader,
+    version_root=version_root,
+    model_name="simple_cnn",
 )
 
 # %%

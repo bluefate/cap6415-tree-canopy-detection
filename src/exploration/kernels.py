@@ -10,16 +10,16 @@ def laplacian_kernel() -> np.ndarray:
     Standard 3x3 Laplacian kernel.
     """
     return np.array(
-            [
-                [0, 1, 0],
-                [1, -4, 1],
-                [0, 1, 0],
-            ],
-            dtype = np.float32,
+        [
+            [0, 1, 0],
+            [1, -4, 1],
+            [0, 1, 0],
+        ],
+        dtype=np.float32,
     )
 
 
-def visualize_kernel( kernel, title = "Kernel", cmap = None ):
+def visualize_kernel(kernel, title="Kernel", cmap=None):
     """
     Visualize a 2D convolution kernel as an image and 3D surface.
     """
@@ -31,27 +31,27 @@ def visualize_kernel( kernel, title = "Kernel", cmap = None ):
         else:
             cmap = "gray"  # sequential: good for blur kernels
 
-    fig = plt.figure(figsize = plt.figaspect(0.5))
+    fig = plt.figure(figsize=plt.figaspect(0.5))
     fig.patch.set_facecolor("white")
 
     # 2D heatmap
     ax2d = fig.add_subplot(1, 2, 1)
-    ax2d.imshow(kernel, cmap = cmap)
-    ax2d.set_title(f"{title.replace('_', ' ')} (2D heatmap)", fontsize = 8)
+    ax2d.imshow(kernel, cmap=cmap)
+    ax2d.set_title(f"{title.replace('_', ' ')} (2D heatmap)", fontsize=8)
     ax2d.axis("off")
 
     # 3D surface
-    ax3d = fig.add_subplot(1, 2, 2, projection = "3d")
+    ax3d = fig.add_subplot(1, 2, 2, projection="3d")
     x = np.arange(kernel.shape[1])
     y = np.arange(kernel.shape[0])
     X, Y = np.meshgrid(x, y)
-    ax3d.plot_surface(X, Y, kernel, cmap = cmap, edgecolor = "k")
-    ax3d.set_title(f"{title.replace('_', ' ')} (3D surface)", fontsize = 8)
+    ax3d.plot_surface(X, Y, kernel, cmap=cmap, edgecolor="k")
+    ax3d.set_title(f"{title.replace('_', ' ')} (3D surface)", fontsize=8)
 
     plt.show()
 
 
-def apply_kernel_using_convolution( image: np.ndarray, kernel: np.ndarray ) -> np.ndarray:
+def apply_kernel_using_convolution(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     """
     Apply a kernel to a grayscale image using convolution.
     """
@@ -60,12 +60,12 @@ def apply_kernel_using_convolution( image: np.ndarray, kernel: np.ndarray ) -> n
     if image.ndim == 3:
         raise ValueError("apply_kernel expects a single channel image")
 
-    out = convolve2d(image, kernel, mode = "same", boundary = "symm")
+    out = convolve2d(image, kernel, mode="same", boundary="symm")
     out = np.clip(out, 0, 255).astype(np.uint8)
     return out
 
 
-def apply_custom_kernel( image, kernel, show_image = False ):
+def apply_custom_kernel(image, kernel, show_image=False):
     """
     Apply a custom kernel to an image and visualize the response.
     """
@@ -73,146 +73,186 @@ def apply_custom_kernel( image, kernel, show_image = False ):
     filtered = cv2.filter2D(gray, -1, kernel)
 
     if show_image:
-        show_side_by_side(gray, filtered, titles = ["Original", "Kernel Response"], cmaps = ["gray", "gray"])
+        show_side_by_side(
+            gray,
+            filtered,
+            titles=["Original", "Kernel Response"],
+            cmaps=["gray", "gray"],
+        )
 
     return filtered
 
 
-def get_kernels( name: str = "all" ):
+def get_kernels(name: str = "all"):
     """
     Return a dictionary of named standard kernels for exploration.
     """
     kernels = {
-        "Identity": np.array([
-            [0, 0, 0],
-            [0, 1, 0],
-            [0, 0, 0],
-        ], dtype = np.float32),
-
-        "Sobel_X": np.array([
-            [-1, 0, 1],
-            [-2, 0, 2],
-            [-1, 0, 1],
-        ], dtype = np.float32),
-
-        "Sobel_Y": np.array([
-            [-1, -2, -1],
-            [0, 0, 0],
-            [1, 2, 1],
-        ], dtype = np.float32),
-
-        "Prewitt_X": np.array([
-            [-1, 0, 1],
-            [-1, 0, 1],
-            [-1, 0, 1],
-        ], dtype = np.float32),
-
-        "Prewitt_Y": np.array([
-            [-1, -1, -1],
-            [0, 0, 0],
-            [1, 1, 1],
-        ], dtype = np.float32),
-
-        "Scharr_X": np.array([
-            [-3, 0, 3],
-            [-10, 0, 10],
-            [-3, 0, 3],
-        ], dtype = np.float32),
-
-        "Scharr_Y": np.array([
-            [-3, -10, -3],
-            [0, 0, 0],
-            [3, 10, 3],
-        ], dtype = np.float32),
-
-        "Roberts_X": np.array([
-            [1, 0],
-            [0, -1],
-        ], dtype = np.float32),
-
-        "Roberts_Y": np.array([
-            [0, 1],
-            [-1, 0],
-        ], dtype = np.float32),
-
-        "Laplacian_3x3": np.array([
-            [0, 1, 0],
-            [1, -4, 1],
-            [0, 1, 0],
-        ], dtype = np.float32),
-
-        "Laplacian_5x5": np.array([
-            [0, 0, -1, 0, 0],
-            [0, -1, -2, -1, 0],
-            [-1, -2, 16, -2, -1],
-            [0, -1, -2, -1, 0],
-            [0, 0, -1, 0, 0],
-        ], dtype = np.float32),
-
-        "Box_Blur_3x3": np.ones((3, 3), dtype = np.float32) / 9,
-        "Box_Blur_5x5": np.ones((5, 5), dtype = np.float32) / 25,
-
+        "Identity": np.array(
+            [
+                [0, 0, 0],
+                [0, 1, 0],
+                [0, 0, 0],
+            ],
+            dtype=np.float32,
+        ),
+        "Sobel_X": np.array(
+            [
+                [-1, 0, 1],
+                [-2, 0, 2],
+                [-1, 0, 1],
+            ],
+            dtype=np.float32,
+        ),
+        "Sobel_Y": np.array(
+            [
+                [-1, -2, -1],
+                [0, 0, 0],
+                [1, 2, 1],
+            ],
+            dtype=np.float32,
+        ),
+        "Prewitt_X": np.array(
+            [
+                [-1, 0, 1],
+                [-1, 0, 1],
+                [-1, 0, 1],
+            ],
+            dtype=np.float32,
+        ),
+        "Prewitt_Y": np.array(
+            [
+                [-1, -1, -1],
+                [0, 0, 0],
+                [1, 1, 1],
+            ],
+            dtype=np.float32,
+        ),
+        "Scharr_X": np.array(
+            [
+                [-3, 0, 3],
+                [-10, 0, 10],
+                [-3, 0, 3],
+            ],
+            dtype=np.float32,
+        ),
+        "Scharr_Y": np.array(
+            [
+                [-3, -10, -3],
+                [0, 0, 0],
+                [3, 10, 3],
+            ],
+            dtype=np.float32,
+        ),
+        "Roberts_X": np.array(
+            [
+                [1, 0],
+                [0, -1],
+            ],
+            dtype=np.float32,
+        ),
+        "Roberts_Y": np.array(
+            [
+                [0, 1],
+                [-1, 0],
+            ],
+            dtype=np.float32,
+        ),
+        "Laplacian_3x3": np.array(
+            [
+                [0, 1, 0],
+                [1, -4, 1],
+                [0, 1, 0],
+            ],
+            dtype=np.float32,
+        ),
+        "Laplacian_5x5": np.array(
+            [
+                [0, 0, -1, 0, 0],
+                [0, -1, -2, -1, 0],
+                [-1, -2, 16, -2, -1],
+                [0, -1, -2, -1, 0],
+                [0, 0, -1, 0, 0],
+            ],
+            dtype=np.float32,
+        ),
+        "Box_Blur_3x3": np.ones((3, 3), dtype=np.float32) / 9,
+        "Box_Blur_5x5": np.ones((5, 5), dtype=np.float32) / 25,
         "cv2_Gaussian_3x3": cv2.getGaussianKernel(3, 1) @ cv2.getGaussianKernel(3, 1).T,
         "cv2_Gaussian_5x5": cv2.getGaussianKernel(5, 1) @ cv2.getGaussianKernel(5, 1).T,
-
-
-        "Sharpen_Basic": np.array([
-            [0, -1, 0],
-            [-1, 5, -1],
-            [0, -1, 0],
-        ], dtype = np.float32),
-
-        "High_Boost": np.array([
-            [-1, -1, -1],
-            [-1, 9, -1],
-            [-1, -1, -1],
-        ], dtype = np.float32),
-
-        "Emboss_1": np.array([
-            [-2, -1, 0],
-            [-1, 1, 1],
-            [0, 1, 2],
-        ], dtype = np.float32),
-
-        "Emboss_2": np.array([
-            [-1, -1, 0],
-            [-1, 0, 1],
-            [0, 1, 1],
-        ], dtype = np.float32),
-
-        "Edge_Enhance": np.array([
-            [0, 0, 0],
-            [-1, 1, 0],
-            [0, 0, 0],
-        ], dtype = np.float32),
-
-        "Edge_Enhance_Strong": np.array([
-            [-1, -1, -1],
-            [-1, 9, -1],
-            [-1, -1, -1],
-        ], dtype = np.float32),
-
-        "Motion_Blur_5x5": np.eye(5, dtype = np.float32) / 5,
-        "Motion_Blur_9x9": np.eye(9, dtype = np.float32) / 9,
-
-        "Gradient_Magnitude": np.array([
-            [1, 1, 1],
-            [1, -8, 1],
-            [1, 1, 1],
-        ], dtype = np.float32),
-
-        "High_Pass_3x3": np.array([
-            [-1, -1, -1],
-            [-1, 8, -1],
-            [-1, -1, -1],
-        ], dtype = np.float32),
+        "Sharpen_Basic": np.array(
+            [
+                [0, -1, 0],
+                [-1, 5, -1],
+                [0, -1, 0],
+            ],
+            dtype=np.float32,
+        ),
+        "High_Boost": np.array(
+            [
+                [-1, -1, -1],
+                [-1, 9, -1],
+                [-1, -1, -1],
+            ],
+            dtype=np.float32,
+        ),
+        "Emboss_1": np.array(
+            [
+                [-2, -1, 0],
+                [-1, 1, 1],
+                [0, 1, 2],
+            ],
+            dtype=np.float32,
+        ),
+        "Emboss_2": np.array(
+            [
+                [-1, -1, 0],
+                [-1, 0, 1],
+                [0, 1, 1],
+            ],
+            dtype=np.float32,
+        ),
+        "Edge_Enhance": np.array(
+            [
+                [0, 0, 0],
+                [-1, 1, 0],
+                [0, 0, 0],
+            ],
+            dtype=np.float32,
+        ),
+        "Edge_Enhance_Strong": np.array(
+            [
+                [-1, -1, -1],
+                [-1, 9, -1],
+                [-1, -1, -1],
+            ],
+            dtype=np.float32,
+        ),
+        "Motion_Blur_5x5": np.eye(5, dtype=np.float32) / 5,
+        "Motion_Blur_9x9": np.eye(9, dtype=np.float32) / 9,
+        "Gradient_Magnitude": np.array(
+            [
+                [1, 1, 1],
+                [1, -8, 1],
+                [1, 1, 1],
+            ],
+            dtype=np.float32,
+        ),
+        "High_Pass_3x3": np.array(
+            [
+                [-1, -1, -1],
+                [-1, 8, -1],
+                [-1, -1, -1],
+            ],
+            dtype=np.float32,
+        ),
     }
 
     sobel_x = kernels["Sobel_X"]
     sobel_y = kernels["Sobel_Y"]
-    kernels["Sobel"] = np.sqrt(sobel_x ** 2 + sobel_y ** 2)
+    kernels["Sobel"] = np.sqrt(sobel_x**2 + sobel_y**2)
 
-    def gaussian_kernel( size: int = 5, sigma: float = 1.0 ) -> np.ndarray:
+    def gaussian_kernel(size: int = 5, sigma: float = 1.0) -> np.ndarray:
         """
         Generate a 2D Gaussian kernel.
         """
@@ -225,11 +265,11 @@ def get_kernels( name: str = "all" ):
         return kernel.astype(np.float32)
 
     for i in range(1, 3):
-        kernels[f"Gaussian_2x2_sigma{i}"] = gaussian_kernel(size = 2, sigma = i)
-        kernels[f"Gaussian_3x3_sigma{i}"] = gaussian_kernel(size = 3, sigma = i)
-        kernels[f"Gaussian_5x5_sigma{i}"] = gaussian_kernel(size = 5, sigma = i)
-        kernels[f"Gaussian_7x7_sigma{i}"] = gaussian_kernel(size = 7, sigma = i)
-        kernels[f"Gaussian_9x9_sigma{i}"] = gaussian_kernel(size = 9, sigma = i)
+        kernels[f"Gaussian_2x2_sigma{i}"] = gaussian_kernel(size=2, sigma=i)
+        kernels[f"Gaussian_3x3_sigma{i}"] = gaussian_kernel(size=3, sigma=i)
+        kernels[f"Gaussian_5x5_sigma{i}"] = gaussian_kernel(size=5, sigma=i)
+        kernels[f"Gaussian_7x7_sigma{i}"] = gaussian_kernel(size=7, sigma=i)
+        kernels[f"Gaussian_9x9_sigma{i}"] = gaussian_kernel(size=9, sigma=i)
 
     if name == "keys":
         return kernels.keys()
@@ -244,7 +284,7 @@ def get_kernels( name: str = "all" ):
     raise ValueError(f"Unknown kernel '{name}'")
 
 
-def display_standard_kernels( cmap = "Greens_r" ):
+def display_standard_kernels(cmap="Greens_r"):
     """
     Display all standard kernels from get_standard_kernels as heatmaps.
     """
@@ -254,14 +294,14 @@ def display_standard_kernels( cmap = "Greens_r" ):
     cols = 3
     rows = int(np.ceil(n / cols))
 
-    fig, axes = plt.subplots(rows, cols, figsize = (2 * cols, 2 * rows), dpi = config.DPI)
+    fig, axes = plt.subplots(rows, cols, figsize=(2 * cols, 2 * rows))
     axes = axes.flatten()
 
     for ax, (name, kernel) in zip(axes, kernels.items()):
         vmax = np.max(np.abs(kernel))
-        im = ax.imshow(kernel, cmap = cmap, vmin = -vmax, vmax = vmax)
+        im = ax.imshow(kernel, cmap=cmap, vmin=-vmax, vmax=vmax)
         cmap_obj = plt.get_cmap(cmap)
-        norm = plt.Normalize(vmin = -vmax, vmax = vmax)
+        norm = plt.Normalize(vmin=-vmax, vmax=vmax)
 
         all_ints = np.allclose(kernel, np.round(kernel))
         if not all_ints:
@@ -290,29 +330,31 @@ def display_standard_kernels( cmap = "Greens_r" ):
             else:
                 text_str = fmt.format(val)
 
-            ax.text(j, i, text_str, ha = "center", va = "center", fontsize = 6, color = text_color)
+            ax.text(
+                j, i, text_str, ha="center", va="center", fontsize=6, color=text_color
+            )
 
-        ax.set_title(name.replace("_", " "), fontsize = 6)
+        ax.set_title(name.replace("_", " "), fontsize=6)
         ax.axis("off")
-        fig.colorbar(im, ax = ax, fraction = 0.046, pad = 0.04)
+        fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
-    for ax in axes[len(kernels):]:
+    for ax in axes[len(kernels) :]:
         ax.axis("off")
 
-    plt.suptitle("Standard Kernels (Values and Structure)", fontsize = 8, y = 1.02)
+    plt.suptitle("Standard Kernels (Values and Structure)", fontsize=8, y=1.02)
     plt.tight_layout()
     plt.show()
 
 
-def make_motion_kernel( size: int = 9, angle: float = 0.0 ) -> np.ndarray:
+def make_motion_kernel(size: int = 9, angle: float = 0.0) -> np.ndarray:
     """
     Create a motion blur kernel of a given size and angle.
     """
     if size % 2 == 0:
         size += 1
 
-    kernel = np.zeros((size, size), dtype = np.float32)
-    cv2.line(kernel, (size // 2, 0), (size // 2, size - 1), color = 1.0, thickness = 1)
+    kernel = np.zeros((size, size), dtype=np.float32)
+    cv2.line(kernel, (size // 2, 0), (size // 2, size - 1), color=1.0, thickness=1)
 
     # Rotate the vertical line to desired angle
     center = (size // 2, size // 2)
@@ -326,7 +368,7 @@ def make_motion_kernel( size: int = 9, angle: float = 0.0 ) -> np.ndarray:
     return kernel
 
 
-def make_gaussian_kernel( size: int = 5, sigma: float = 1.0 ) -> np.ndarray:
+def make_gaussian_kernel(size: int = 5, sigma: float = 1.0) -> np.ndarray:
     """
     Create a 2D Gaussian blur kernel.
     """
@@ -339,7 +381,9 @@ def make_gaussian_kernel( size: int = 5, sigma: float = 1.0 ) -> np.ndarray:
     return kernel
 
 
-def make_directional_edge_kernel( size: int = 3, direction: str = "horizontal" ) -> np.ndarray:
+def make_directional_edge_kernel(
+    size: int = 3, direction: str = "horizontal"
+) -> np.ndarray:
     """
     Create a simple directional edge detection kernel.
 
@@ -347,7 +391,7 @@ def make_directional_edge_kernel( size: int = 3, direction: str = "horizontal" )
     if size < 3:
         raise ValueError("size must be at least 3")
 
-    base = np.zeros((size, size), dtype = float)
+    base = np.zeros((size, size), dtype=float)
 
     if direction == "horizontal":
         base[size // 2, :] = np.linspace(-1, 1, size)
@@ -358,7 +402,9 @@ def make_directional_edge_kernel( size: int = 3, direction: str = "horizontal" )
     elif direction == "diag_neg":
         np.fill_diagonal(base, np.linspace(-1, 1, size))
     else:
-        raise ValueError("direction must be one of: horizontal, vertical, diag_pos, diag_neg")
+        raise ValueError(
+            "direction must be one of: horizontal, vertical, diag_pos, diag_neg"
+        )
 
     denom = np.sum(np.abs(base))
     if denom != 0:

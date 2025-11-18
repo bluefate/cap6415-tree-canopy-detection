@@ -18,12 +18,9 @@ init_notebook(config.train.seed)
 # %%
 import numpy as np
 import torch
-from src.utils.versioning import VersionManager
 from src.data.annotations import load_json_annotations
 from src.data.augmentations import get_val_augmentations
 from src.data.loaders import ImageMaskDataset
-from src.exploration.visualize import show_image, show_mask, show_overlay
-from src.models.zoo import build_model, MODEL_BUILDERS
 from src.training.metrics import compute_metrics
 from models.zoo import MODEL_BUILDERS
 

@@ -304,8 +304,7 @@ class p:
     # -----------------------
     # Exception printer
     # -----------------------
-    @staticmethod
-    def print_exception( self, e: Exception, obj = None, val = None ):
+    def print_exception( e: Exception, obj = None, val = None ):
         import traceback
         from dotenv import load_dotenv
         import os
