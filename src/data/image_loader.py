@@ -60,7 +60,8 @@ def validate_image_directory(image_dir: Path) -> dict:
 
     # Find all image files
     image_files = []
-    for ext in ['*.png', '*.jpg', '*.jpeg', '*.tif', '*.tiff']:
+    for ext in ['*.tif']:
+    # for ext in ['*.png', '*.jpg', '*.jpeg', '*.tif', '*.tiff']:
         image_files.extend(image_dir.glob(ext))
 
     results = {

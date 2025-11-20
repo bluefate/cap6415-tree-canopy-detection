@@ -3,6 +3,13 @@
 # ### Purpose: benchmark segmentation models on a shared dataset and compare quality and speed.
 
 # %%
+import os
+import sys
+
+
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../src"))
+
 import time
 
 import matplotlib.pyplot as plt

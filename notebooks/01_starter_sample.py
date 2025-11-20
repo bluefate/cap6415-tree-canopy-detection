@@ -3,6 +3,13 @@
 # ### Purpose: load data, inspect shapes, verify dataset logic, preview masks, confirm training setup.
 
 # %%
+import os
+import sys
+
+
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../src"))
+
 import random
 
 import cv2

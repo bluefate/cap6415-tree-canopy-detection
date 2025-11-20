@@ -3,6 +3,12 @@
 # ### Purpose: load a trained model, run inference, preview overlays, and optionally export a submission JSON.
 
 # %%
+import os
+import sys
+
+
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../src"))
 from src.data.augmentations import get_val_augmentations
 from src.exploration.visualize import show_side_by_side
 from src.models.zoo import MODEL_BUILDERS

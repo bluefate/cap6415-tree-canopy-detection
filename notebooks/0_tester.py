@@ -2,6 +2,13 @@
 # # Notebook: 0 Tester Notebook
 
 # %%
+import os
+import sys
+
+
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../src"))
+
 from src.utils.config import Config
 from src.utils.helpers import init_notebook
 from src.utils.tester import p_test
