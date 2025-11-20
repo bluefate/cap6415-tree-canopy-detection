@@ -4,10 +4,10 @@
 # %%
 from src.utils.config import Config
 from src.utils.helpers import init_notebook
-from src.utils.tester import test_print
+from src.utils.tester import p_test
 
 
-test_print()
+p_test()
 
 # %%
 config = Config.load()

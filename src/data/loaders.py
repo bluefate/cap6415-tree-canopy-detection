@@ -142,7 +142,7 @@ class ImageOnlyDataset(Dataset):
             [
                 f
                 for f in self.image_dir.glob("*.*")
-                if f.suffix.lower() in [".tif", ".jpg", ".png"]
+                if f.suffix.lower() in [".png"]
             ],
         )
 

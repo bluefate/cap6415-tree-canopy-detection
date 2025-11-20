@@ -11,6 +11,7 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
+from src.data.image_loader import load_image
 from src.exploration.enhancement import enhance_image_for_segmentation
 from src.exploration.filters import cv2_apply_gaussian, cv2_apply_laplacian, cv2_apply_sobel
 from src.exploration.kernels import (apply_custom_kernel, apply_kernel_using_convolution, get_kernels, laplacian_kernel,
@@ -33,8 +34,10 @@ sample_path = random.choice(files)
 
 # %%
 t(sample_path.name)
-img = cv2.imread(str(sample_path))
-img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+# img = cv2.imread(str(sample_path))
+# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+img = load_image(sample_path)
+
 show_image(img)
 
 

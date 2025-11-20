@@ -65,7 +65,7 @@ for zip_path, extract_to in [(train_zip, train_dir)]:
 sample_train_set = None
 for folder in [train_dir, eval_dir]:
     t(f"Path {folder}")
-    files = [f for f in folder.glob("*.*") if f.suffix.lower() in [".tif"]]
+    files = [f for f in folder.glob("*.*") if f.suffix.lower() in [".png"]] #[".tif"]]
     sample = random.sample(files, min(10, len(files)))
     sample = sorted(sample, key = lambda f: f.stem)
     plt.figure(figsize = (12, 6))

@@ -21,6 +21,13 @@ def show_side_by_side(
     """Show multiple images side by side."""
 
     count = len(images)
+    # auto adjust long grids
+    if maxcolumns is not None and maxcolumns > 10:
+        titles = tuple(str(i) for i in range(count))
+        scale = max(1.0, maxcolumns / 10)
+        title_fontsize = min(22, 20 * scale)
+    else:
+        title_fontsize = 10
 
     # Default titles
     if titles is None:
@@ -131,7 +138,10 @@ def show_side_by_side(
             ax.imshow(img)
 
         ax.set_facecolor("white")
-        ax.set_title(title)
+        if maxcolumns is not None and maxcolumns > 10:
+            ax.set_title(title, fontsize=title_fontsize)
+        else:
+            ax.set_title(title)
         ax.axis("off")
 
     # if add_kernel:
@@ -139,6 +149,10 @@ def show_side_by_side(
     #         spine.set_visible(True)
     #         spine.set_edgecolor("black")
     #         spine.set_linewidth(2)
+
+    # remove empty axes
+    for ax in axes[count:]:
+        ax.remove()
 
     plt.tight_layout()
     plt.show()

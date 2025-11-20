@@ -4,10 +4,12 @@ import cv2
 import numpy as np
 
 from src.data.annotations import AnnotationEntry
+from src.data.image_loader import load_image as robust_load_image
 from src.exploration.visualize import (
     show_side_by_side,
 )
 from src.utils.config import Config
+from src.utils.helpers import p
 
 
 # -----------------------------------------------------------
@@ -18,12 +20,15 @@ config = Config.load()
 CLASS_NAMES = ["individual_tree", "group_of_trees"]
 
 
+# def load_image(image_dir: Path, entry: AnnotationEntry):
+#     path = image_dir / entry.image_path.name
+#     img = cv2.imread(str(path))
+#     if img is None:
+#         raise RuntimeError("Failed to read image " + str(path))
+#     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 def load_image(image_dir: Path, entry: AnnotationEntry):
     path = image_dir / entry.image_path.name
-    img = cv2.imread(str(path))
-    if img is None:
-        raise RuntimeError("Failed to read image " + str(path))
-    return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    return robust_load_image(path)
 
 
 def mask_for_class(entry: AnnotationEntry, cls: str):
@@ -105,7 +110,7 @@ def draw_bboxes(img, entry: AnnotationEntry):
         else:
             color = (0, 128, 255)
 
-        cv2.rectangle(out, (x1, y1), (x2, y2), color, 1)
+        cv2.rectangle(out, (x1, y1), (x2, y2), color, 3)
         label = item.cls
         cv2.putText(
             out, label, (x1, max(10, y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1
@@ -131,9 +136,9 @@ def draw_bboxes_for_class(img, entry: AnnotationEntry, cls: str):
         else:
             color = (255, 0, 0)
 
-        cv2.rectangle(out, (x1, y1), (x2, y2), color, 1)
+        cv2.rectangle(out, (x1, y1), (x2, y2), color, 3)
         cv2.putText(
-            out, cls, (x1, max(10, y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1
+            out, cls, (x1, max(10, y1 - 4)), cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 3
         )
 
     return out
@@ -323,15 +328,15 @@ def class_distribution(entries):
 
 def dataset_report(entries, image_dir: Path, sample_count=3):
     dist = class_distribution(entries)
-    print("Class counts:", dist)
+    p("Class counts:", dist)
 
     both = find_images_with_both(entries)
-    print("Images containing both classes:", len(both))
+    p("Images containing both classes:", len(both))
 
     samples = entries[:sample_count]
 
     for e in samples:
-        print("Image:", e.image_path.name)
+        p("Image:", e.image_path.name)
         explore_color_overlay(e, image_dir)
         explore_bboxes(e, image_dir)
         explore_image(e, image_dir)

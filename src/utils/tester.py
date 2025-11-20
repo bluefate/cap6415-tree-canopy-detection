@@ -26,7 +26,7 @@ class Tester:
           )
 
 
-def test_print():
+def p_test():
     print("\n--- Testing Number ---")
     Tester("num", 42)._print()
     Tester("float", 3.14159)._print()
