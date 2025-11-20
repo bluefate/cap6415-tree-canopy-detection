@@ -4,12 +4,19 @@
 #
 
 # %%
+import os
+import sys
+
+
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../src"))
+
 from pathlib import Path
 
 from src.data.image_loader import validate_image_directory
 from src.utils.config import Config
 from src.utils.helpers import init_notebook, p, t
-from src.utils.image_converter import ImageConverter, batch_convert_tiff_to_png
+from src.utils.image_converter import ImageConverter
 
 
 config = Config.load()
@@ -44,11 +51,11 @@ if config.paths.eval_images and config.paths.eval_images.exists():
 t("Converting train images")
 
 converter = ImageConverter(
-        source_dir=config.paths.train_images,
-        target_dir=config.paths.train_images
+        source_dir = config.paths.train_images,
+        target_dir = config.paths.train_images
 )
 
-stats = converter.convert_batch(overwrite=False)
+stats = converter.convert_batch(overwrite = False)
 
 
 # %% [markdown]
@@ -66,8 +73,8 @@ if config.paths.annotations and Path(config.paths.annotations).exists():
     #       annotations.json.backup (latest)
 
     converter.update_annotations(
-            annotations_path=config.paths.annotations,
-            create_backup=True
+            annotations_path = config.paths.annotations,
+            create_backup = True
     )
 
 
@@ -103,11 +110,11 @@ if config.paths.eval_images and config.paths.eval_images.exists():
     t("Converting eval images")
 
     eval_converter = ImageConverter(
-            source_dir=config.paths.eval_images,
-            target_dir=config.paths.eval_images
+            source_dir = config.paths.eval_images,
+            target_dir = config.paths.eval_images
     )
 
-    eval_stats = eval_converter.convert_batch(overwrite=False)
+    eval_stats = eval_converter.convert_batch(overwrite = False)
 
 
 # %% [markdown]

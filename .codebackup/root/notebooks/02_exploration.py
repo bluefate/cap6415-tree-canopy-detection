@@ -4,6 +4,13 @@
 # ### Purpose: explore frequency space, filters, kernels, enhancement pipelines, and visualize transformations.
 
 # %%
+import os
+import sys
+
+
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../src"))
+
 import random
 from pathlib import Path
 
@@ -11,11 +18,11 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
-from src.data.image_loader import load_image
 from src.exploration.enhancement import enhance_image_for_segmentation
 from src.exploration.filters import cv2_apply_gaussian, cv2_apply_laplacian, cv2_apply_sobel
 from src.exploration.kernels import (apply_custom_kernel, apply_kernel_using_convolution, get_kernels, laplacian_kernel,
-                                     make_directional_edge_kernel, make_gaussian_kernel, make_motion_kernel, )
+                                     make_directional_edge_kernel, make_gaussian_kernel, make_motion_kernel,
+                                     )
 from src.exploration.visualize import show_image, show_side_by_side, show_stages
 from src.utils.config import Config
 from src.utils.helpers import c, init_notebook, p, t
@@ -34,9 +41,9 @@ sample_path = random.choice(files)
 
 # %%
 t(sample_path.name)
-# img = cv2.imread(str(sample_path))
-# img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-img = load_image(sample_path)
+img = cv2.imread(str(sample_path))
+img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+##img = load_image(sample_path)
 
 show_image(img)
 
@@ -221,11 +228,12 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
         #gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         # visualize_kernel(kernel, title = f"Motion Blur {angle}°")
         result = apply_custom_kernel(image, kernel)
-        show_side_by_side(gray, result,
-                          titles = ["Gray", f"Motion Blur {angle}°"],
-                          cmaps = ["gray", "seismic"],
-                          kernel = kernel
-                          )
+        show_side_by_side(
+                gray, result,
+                titles = ["Gray", f"Motion Blur {angle}°"],
+                cmaps = ["gray", "seismic"],
+                kernel = kernel
+        )
     p("\n")
     t("=== === === === === === === === ===  Gaussian blur tests === === === === === === === === ===")
     for sigma in [0.5, 1.5, 3]:
@@ -233,11 +241,12 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
         p("Gaussian Kernel", f"sigma={sigma}", color1 = c.BLUE, color2 = c.BLACK)
         # visualize_kernel(kernel, title = f"Gaussian σ={sigma}", )
         result = apply_custom_kernel(image, kernel)
-        show_side_by_side(image, result,
-                          titles = ["Orignal", f"Gaussian σ={sigma}"],
-                          cmaps = [None, "seismic"],
-                          kernel = kernel
-                          )
+        show_side_by_side(
+                image, result,
+                titles = ["Orignal", f"Gaussian σ={sigma}"],
+                cmaps = [None, "seismic"],
+                kernel = kernel
+        )
     p("\n")
     t("=== === === === === === === === === Directional edge tests === === === === === === === === ===")
     for direction in ["horizontal", "vertical", "diag_pos", "diag_neg"]:
@@ -245,11 +254,12 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
         p("Directional Edge", direction, color1 = c.BLUE, color2 = c.BLACK)
         # visualize_kernel(kernel, title = f"Edge {direction}", )
         result = apply_custom_kernel(image, kernel)
-        show_side_by_side(image, result,
-                          titles = ["Orignal", f"Edge {direction}"],
-                          cmaps = [None, "seismic"],
-                          kernel = kernel
-                          )
+        show_side_by_side(
+                image, result,
+                titles = ["Orignal", f"Edge {direction}"],
+                cmaps = [None, "seismic"],
+                kernel = kernel
+        )
 
 
 demo_parameterized_kernels(img)

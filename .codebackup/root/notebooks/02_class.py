@@ -6,6 +6,13 @@
 # #### Config and Setup
 
 # %%
+import os
+import sys
+
+
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../src"))
+
 from src.data.annotations import get_unique_classes, load_json_annotations
 from src.exploration.class_explorer import *
 from src.utils.config import Config

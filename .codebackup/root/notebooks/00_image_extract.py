@@ -3,6 +3,13 @@
 # ### Purpose: extract image archives, clean folders, preview images, and build masks from annotations.
 
 # %%
+import os
+import sys
+
+
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../src"))
+
 import random
 import shutil
 import zipfile
@@ -65,7 +72,7 @@ for zip_path, extract_to in [(train_zip, train_dir)]:
 sample_train_set = None
 for folder in [train_dir, eval_dir]:
     t(f"Path {folder}")
-    files = [f for f in folder.glob("*.*") if f.suffix.lower() in [".png"]] #[".tif"]]
+    files = [f for f in folder.glob("*.tif")]
     sample = random.sample(files, min(10, len(files)))
     sample = sorted(sample, key = lambda f: f.stem)
     plt.figure(figsize = (12, 6))
@@ -103,18 +110,25 @@ for entry in entries:
 
 # %%
 t(f"Path {mask_dir}")
-
+p(len(sample_train_set))
 sample_train_filenames = { Path(p).stem for p in sample_train_set }
 
-sample = sorted([f for f in mask_dir.glob("*.*") if f.stem in sample_train_filenames])
+sample = sorted([f for f in mask_dir.glob("*.tif") if f.stem in sample_train_filenames])
 sample = sorted(sample, key = lambda f: f.stem)
 
-plt.figure(figsize = (12, 6))
+# Dynamic grid calculation
+n_samples = len(sample)
+n_cols = 5
+n_rows = (n_samples + n_cols - 1) // n_cols  # Ceiling division
+
+plt.figure(figsize = (12, 2.4 * n_rows))
 for i, path in enumerate(sample, 1):
     mask = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
-    plt.subplot(2, 5, i)
+    plt.subplot(n_rows, n_cols, i)
     plt.imshow(mask, cmap = "Grays")
     plt.title(path.name)
     plt.axis("off")
 plt.tight_layout()
 plt.show()
+
+# %%
