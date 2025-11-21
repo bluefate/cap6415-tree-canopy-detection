@@ -1,19 +1,18 @@
-# %% [markdown]
+#%% md
 # # Notebook: 07 Pipeline Orchestration
 # ### Imports and setup
-
-# %% [markdown]
+#%% md
 # #### Imports and setup
-
-# %%
-import sys
+#%%
 import os
+import sys
+
+
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
-
+from collections import defaultdict
 import cv2
 import numpy as np
-import torch
 from torch.utils.data import DataLoader
 
 from exploration.class_explorer import explore_bboxes
@@ -26,46 +25,47 @@ from src.exploration.visualize import show_side_by_side
 from src.prediction.pipeline import Predictor
 from src.training.engine import run_training
 from src.utils.config import Config
-from src.utils.helpers import init_notebook, p
+from src.utils.helpers import init_notebook, p, t
 from src.utils.versioning import VersionManager
-
-# %%
+#%%
 config = Config.load()
 init_notebook(config.train.seed)
 
 entries = load_json_annotations(config.paths.annotations)
 image_dir = config.paths.train_images
 
-
-# %%
+#%%
 explore_bboxes(entries[42], image_dir)
-
-# %% [markdown]
+#%% md
 # #### Step 1: Identify single class and group images
-
-# %%
+#%%
+# individual_tree images
 single_individual = [
     e for e in entries
     if any(item.cls == "individual_tree" for item in e.items)
 ]
 
-single_group = [
-    e for e in entries
-    if any(item.cls == "group_of_trees" for item in e.items)
-]
+# Images with at least one group_of_trees
+single_group = []
+for entry in entries:
+    cls_set = { item.cls for item in entry.items }
+    if "group_of_trees" in cls_set:
+        single_group.append(entry)
+
+# single_group = [
+#     e for e in entries
+#     if any(item.cls == "group_of_trees" for item in e.items)
+# ]
 
 p("single_individual", len(single_individual))
 p("single_group", len(single_group))
 
-
-# %% [markdown]
+#%% md
 # #### Step 2: Extract each bbox from each single image and inspect
-
-# %%
+#%%
 sample_entry = single_individual[0]
 
-
-# %%
+#%%
 # def crop_bbox( entry, item ):
 #     img = cv2.imread(str(image_dir / entry.image_path.name))
 #     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -73,35 +73,31 @@ sample_entry = single_individual[0]
 #     return img[y1:y2, x1:x2]
 
 
-def crop_bbox(entry, item):
+def crop_bbox( entry, item ):
     img_path = image_dir / entry.image_path.name
     if not img_path.exists():
         raise FileNotFoundError(f"Image not found: {img_path}")
-    
+
     img = cv2.imread(str(img_path))
     if img is None:
         raise ValueError(f"Failed to load image: {img_path}")
-    
+
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     x1, y1, x2, y2 = item.bbox
     return img[y1:y2, x1:x2]
 
 
-
-# %% [markdown]
-# ##### Collect all crops first and record their shapes
-
-# %%
-def crop_mask(entry, item):
-    mask = np.zeros((entry.height, entry.width), dtype=np.uint8)
+def crop_mask( entry, item ):
+    mask = np.zeros((entry.height, entry.width), dtype = np.uint8)
     seg = item.segmentation
     if seg and len(seg) >= 4:
-        poly = np.array(seg, dtype=np.int32).reshape(-1, 2)
+        poly = np.array(seg, dtype = np.int32).reshape(-1, 2)
         cv2.fillPoly(mask, [poly], 1)
     x1, y1, x2, y2 = item.bbox
     return mask[y1:y2, x1:x2]
 
-def pad_to_size(img, target_h, target_w):
+
+def pad_to_size( img, target_h, target_w ):
     h, w = img.shape[:2]
     pad_h = target_h - h
     pad_w = target_w - w
@@ -112,17 +108,19 @@ def pad_to_size(img, target_h, target_w):
     right = pad_w - left
 
     return cv2.copyMakeBorder(
-        img,
-        top,
-        bottom,
-        left,
-        right,
-        cv2.BORDER_CONSTANT,
-        value=[0, 0, 0]
+            img,
+            top,
+            bottom,
+            left,
+            right,
+            cv2.BORDER_CONSTANT,
+            value = [0, 0, 0]
     )
 
 
-# %%
+#%% md
+# ##### Collect all crops first and record their shapes
+#%%
 # bboxes = []
 # for item in sample_entry.items:
 #     p(crop_bbox(sample_entry, item))
@@ -144,8 +142,7 @@ def pad_to_size(img, target_h, target_w):
 # show_side_by_side([padded_bboxes[0], padded_masks[0], overlays[0]], ["bbox", "mask", "overlay"])
 #
 
-
-# %%
+#%%
 crops = []
 #crops = [crop_bbox(sample_entry, item) for item in sample_entry.items]
 for item in sample_entry.items:
@@ -156,11 +153,9 @@ heights = [c.shape[0] for c in crops]
 widths = [c.shape[1] for c in crops]
 max_h = max(heights)
 max_w = max(widths)
-
-# %% [markdown]
+#%% md
 # ##### Build padded crops, padded masks, and overlays.
-
-# %%
+#%%
 padded_crops = []
 padded_masks = []
 padded_overlays = []
@@ -184,24 +179,27 @@ for idx, item in enumerate(sample_entry.items):
     padded_masks.append(mask_p)
     padded_overlays.append(overlay)
 
-
-# %%
+#%%
 num_show = 9
 indexes = list(range(min(num_show, len(padded_crops))))
 
 triplets, titles = [], []
 
 for idx in indexes:
-    triplets.extend([
-        padded_crops[idx],
-        padded_masks[idx],
-        padded_overlays[idx]
-    ])
-    titles.extend([
-        f"crop {idx}",
-        f"mask {idx}",
-        f"overlay {idx}"
-    ])
+    triplets.extend(
+            [
+                padded_crops[idx],
+                padded_masks[idx],
+                padded_overlays[idx]
+            ]
+    )
+    titles.extend(
+            [
+                f"crop {idx}",
+                f"mask {idx}",
+                f"overlay {idx}"
+            ]
+    )
 
 show_side_by_side(
         *triplets,
@@ -209,135 +207,102 @@ show_side_by_side(
         maxcolumns = 9
 )
 
-
-# %% [markdown]
+#%% md
 # ##### FOR TRAINING
-
-# %% [markdown]
+#%% md
 # ##### Prepare all individual crops for training
-
-# %%
-
-raw_crops_ind = []
-raw_masks_ind = []
-idx_entry_map = []
-idx_item_map = []
-
+#%%
+# Step 1: Group items by image to minimize disk loads
+image_to_items = defaultdict(list)
 for e_idx, entry in enumerate(single_individual):
     for j_idx, item in enumerate(entry.items):
         if item.cls == "individual_tree":
-            raw_crops_ind.append(crop_bbox(entry, item))
-            raw_masks_ind.append(crop_mask(entry, item))
-            idx_entry_map.append(e_idx)
-            idx_item_map.append(j_idx)
+            image_to_items[entry.image_path.name].append((entry, item, e_idx, j_idx))
 
-heights = [c.shape[0] for c in raw_crops_ind]
-widths = [c.shape[1] for c in raw_crops_ind]
-
-max_h = max(heights)
-max_w = max(widths)
-
-
+p("Unique images to process", len(image_to_items))
+#%%
+# Step 2: Process each image once
 padded_crops_ind = []
 padded_masks_ind = []
+idx_entry_map = []
+idx_item_map = []
 
-for c, m in zip(raw_crops_ind, raw_masks_ind):
-    padded_crops_ind.append(pad_to_size(c, max_h, max_w))
-    padded_masks_ind.append(pad_to_size(m, max_h, max_w))
+for img_name, items_list in image_to_items.items():
+    # Load image ONCE per unique image
+    entry = items_list[0][0]
+    img_path = image_dir / img_name
 
+    img = cv2.imread(str(img_path))
+    if img is None:
+        p("Warning: Failed to load", img_name, color1 = "red")
+        continue
 
-#if using vector instead
-# padded_crops_ind = [pad_to_size(c, max_h, max_w) for c in raw_crops_ind]
-# padded_masks_ind = [pad_to_size(m, max_h, max_w) for m in raw_masks_ind]
+    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
+    # Collect ALL crops and masks for THIS image
+    local_crops = []
+    local_masks = []
+    local_entries = []
 
-# %%
-p("total raw crops", len(raw_crops_ind))
-p("total raw masks", len(raw_masks_ind))
+    for entry, item, e_idx, j_idx in items_list:
+        # Crop directly from loaded image
+        x1, y1, x2, y2 = item.bbox
+        crop = img[y1:y2, x1:x2]
+
+        # Create mask
+        mask = np.zeros((entry.height, entry.width), dtype = np.uint8)
+        seg = item.segmentation
+        if seg and len(seg) >= 4:
+            poly = np.array(seg, dtype = np.int32).reshape(-1, 2)
+            cv2.fillPoly(mask, [poly], 1)
+        mask_crop = mask[y1:y2, x1:x2]
+
+        local_crops.append(crop)
+        local_masks.append(mask_crop)
+        local_entries.append((e_idx, j_idx))
+
+    # Calculate max dimensions for THIS IMAGE ONLY
+    local_heights = [c.shape[0] for c in local_crops]
+    local_widths = [c.shape[1] for c in local_crops]
+    local_max_h = max(local_heights)
+    local_max_w = max(local_widths)
+
+    # Pad to local max (not global)
+    for crop, mask, (e_idx, j_idx) in zip(local_crops, local_masks, local_entries):
+        padded_crops_ind.append(pad_to_size(crop, local_max_h, local_max_w))
+        padded_masks_ind.append(pad_to_size(mask, local_max_h, local_max_w))
+        idx_entry_map.append(e_idx)
+        idx_item_map.append(j_idx)
+
 p("total padded crops", len(padded_crops_ind))
 p("total padded masks", len(padded_masks_ind))
-p("max_h", max_h)
-p("max_w", max_w)
-
-
-# %% [markdown]
+t("Extraction complete!")
+#%% md
 # ##### Sample padded and original images
-
-# %%
-
-class PaddedCropDataset(torch.utils.data.Dataset):
-
-    def __init__( self, images, masks, transform = None ):
-        self.images = images
-        self.masks = masks
-        self.transform = transform
-
-    def __len__( self ):
-        return len(self.images)
-
-    def __getitem__( self, idx ):
-        img = self.images[idx]
-        msk = self.masks[idx]
-
-        if self.transform:
-            out = self.transform(image = img, mask = msk)
-            img = out["image"]
-            msk = out["mask"]
-
-        if isinstance(img, torch.Tensor):
-            img_t = img.float()
-        else:
-            img_t = torch.from_numpy(img.transpose(2, 0, 1)).float() / 255.0
-
-        if isinstance(msk, torch.Tensor):
-            msk_t = msk.float()
-            if msk_t.ndim == 2:
-                msk_t = msk_t.unsqueeze(0)
-        else:
-            msk = msk.astype("float32")
-            if msk.ndim == 2:
-                msk = msk[None, ...]
-            msk_t = torch.from_numpy(msk)
-
-        return img_t, msk_t
-
-
-
-# %%
+#%%
+# Sort by area (for visualization)
 sizes = [(i, padded_crops_ind[i].shape) for i in range(len(padded_crops_ind))]
-sizes_sorted = sorted(sizes, key=lambda x: x[1][0] * x[1][1], reverse=True)
-#sizes_sorted = sorted(sizes, key = lambda x: x[1][0] * x[1][1])
+sizes_sorted = sorted(sizes, key = lambda x: x[1][0] * x[1][1], reverse = True)
+#sizes_sorted = sizes_sorted + sorted(sizes, key=lambda x: x[1][0]*x[1][1])
 
 #if using vector instead
 # sizes = [(i, raw_crops_ind[i].shape) for i in range(len(raw_crops_ind))]
 # sizes_sorted = sorted(sizes, key = lambda x: x[1][0] * x[1][1])
 # #sizes_sorted = sorted(sizes, key = lambda x: x[1][0] * x[1][1], reverse = True)
-
-# %%
-
-
-sizes = [(i, padded_crops_ind[i].shape) for i in range(len(padded_crops_ind))]
-sizes_sorted = sorted(sizes, key = lambda x: x[1][0] * x[1][1], reverse = True)
-#sizes_sorted = sizes_sorted + sorted(sizes, key=lambda x: x[1][0]*x[1][1])
-
-
+#%%
+# Visualize top 5 largest crops with their source images
 for i in range(min(5, len(sizes_sorted))):
     idx = sizes_sorted[i][0]
 
     entry = single_individual[idx_entry_map[idx]]
+
+    # Load full image for display
     full_img = cv2.imread(str(image_dir / entry.image_path.name))
     full_img = cv2.cvtColor(full_img, cv2.COLOR_BGR2RGB)
 
-    crop = raw_crops_ind[idx]
-    mask = raw_masks_ind[idx]
-
-    local_crops = [crop_bbox(entry, it) for it in entry.items if it.cls == "individual_tree"]
-    local_heights = [c.shape[0] for c in local_crops]
-    local_widths = [c.shape[1] for c in local_crops]
-    lh, lw = max(local_heights), max(local_widths)
-
-    padded_crop = pad_to_size(crop, lh, lw)
-    padded_mask = pad_to_size(mask, lh, lw)
+    # Get the already-padded crop and mask
+    padded_crop = padded_crops_ind[idx]
+    padded_mask = padded_masks_ind[idx]
 
     overlay = cv2.addWeighted(
             padded_crop.astype(np.uint8),
@@ -348,27 +313,12 @@ for i in range(min(5, len(sizes_sorted))):
     )
 
     show_side_by_side(
-            full_img, crop, padded_crop, overlay,
-            titles = (f"orig {idx}", f"crop {idx}", f"padded {idx}", f"overlay {idx}")
+            full_img, padded_crop, overlay,
+            titles = (f"orig {idx}", f"padded {idx}", f"overlay {idx}")
     )
-
-# %%
-
-
+#%%
+# grid of crops
 idxs = [x[0] for x in sizes_sorted[:num_show]]
-
-#idxs = list(range(min(num_show, len(padded_crops_ind))))
-
-# # get heights
-# sizes = [(i, padded_crops_ind[i].shape[1]) for i in range(len(padded_crops_ind))]
-# # sort by height descending
-# sizes = sorted(sizes, key=lambda x: x[1], reverse=True)
-# # take top four indexes
-# idxs = [x[0] for x in sizes[:num_show]]
-
-# sizes = [(i, padded_crops_ind[i].shape) for i in range(len(padded_crops_ind))]
-# sizes_sorted = sorted(sizes, key = lambda x: x[1][0] * x[1][1], reverse = True)
-# idxs = [x[0] for x in sizes_sorted[:num_show]]
 
 tiplets, titles = [], []
 for i in idxs:
@@ -387,14 +337,10 @@ for i in idxs:
 
 show_side_by_side(*triplets, titles = tuple(titles), maxcolumns = 12)
 
-
-# %% [markdown]
-# #### Step 3: Apply filters and kernel exploration on crops
-
-# %% [markdown]
+#### Step 3: Apply filters and kernel exploration on crops
+#%% md
 # ##### Direct crop
-
-# %%
+#%%
 crop = crop_bbox(sample_entry, sample_entry.items[0])
 gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
 
@@ -404,11 +350,9 @@ la = cv2_apply_laplacian(crop)
 
 show_side_by_side(crop, ga, so, la, titles = ("orig", "gauss", "sobel", "lap"))
 
-
-# %% [markdown]
+#%% md
 # ##### Padded Crop
-
-# %%
+#%%
 padded = pad_to_size(crop, max_h, max_w)
 
 ga_p = cv2_apply_gaussian(padded)
@@ -425,19 +369,16 @@ show_side_by_side(
 )
 
 
-
-# %%
+#%%
 kernels = get_kernels()
 lap_k = kernels["Laplacian_3x3"]
 lap_resp = apply_kernel_using_convolution(gray, lap_k)
 
 show_side_by_side(gray, lap_resp, titles = ("gray", "lap3x3"))
 
-
-# %% [markdown]
+#%% md
 # #### Step 4: Train model on only individual class
-
-# %%
+#%%
 train_tf = get_train_augmentations(config.train.image_size)
 val_tf = get_val_augmentations(config.train.image_size)
 
@@ -465,11 +406,9 @@ trainer_ind = run_training(
         config.paths.models,
         model_name = "simple_cnn"
 )
-
-# %% [markdown]
+#%% md
 # #### Step 5: Train model on only group class
-
-# %%
+#%%
 
 vm = VersionManager(config.paths.models)
 version_dir = vm.find_latest()
@@ -492,11 +431,9 @@ len(all_singles)
 
 
 
-
-# %% [markdown]
+#%% md
 # #### Step 6: Run single-class model on all images and save predictions
-
-# %%
+#%%
 
 train_ds_grp = ImageMaskDataset(
         single_group,
@@ -523,11 +460,9 @@ trainer_grp = run_training(
         model_name = "simple_cnn"
 )
 
-
-# %% [markdown]
+#%% md
 # #### Step 7: Run group-class model on all images
-
-# %%
+#%%
 # Load group model
 vm = VersionManager(config.paths.models)
 version_dir = vm.find_latest()
@@ -546,12 +481,10 @@ results_group = predictor_grp.run_on_folder(
 
 all_groups = results_group
 p("all_groups", len(all_groups))
-
-# %% [markdown]
+#%% md
 # #### Step 8: Final combined training
-
-# %%
-combined_entries = single_individual + single_group + mixed
+#%%
+combined_entries = single_individual + single_group
 
 train_ds_comb = ImageMaskDataset(combined_entries, image_dir, transform = train_tf)
 val_ds_comb = ImageMaskDataset(combined_entries[:40], image_dir, transform = val_tf)
@@ -567,7 +500,6 @@ trainer_final = run_training(
         model_name = "simple_cnn"
 )
 
+#%%
 
-# %%
-
-# %%
+#%%
