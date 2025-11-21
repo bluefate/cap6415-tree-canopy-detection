@@ -1,5 +1,5 @@
 ﻿# Auto-strip notebook metadata
-*.ipynb filter=nbstripout
+*.ipynb filter=nbstripout -s
 
 # Normalize line endings
 * text=auto
@@ -10,3 +10,5 @@
 *.png binary
 *.jpg binary
 *.pdf binary
+*.zpln filter=nbstripout
+*.ipynb diff=ipynb
