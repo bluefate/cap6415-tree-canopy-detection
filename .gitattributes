@@ -1,1 +1,12 @@
-﻿*.ipynb filter=nbstripout
+﻿# Auto-strip notebook metadata
+*.ipynb filter=nbstripout
+
+# Normalize line endings
+* text=auto
+*.py text eol=lf
+*.ipynb text eol=lf
+
+# Treat as binary
+*.png binary
+*.jpg binary
+*.pdf binary
