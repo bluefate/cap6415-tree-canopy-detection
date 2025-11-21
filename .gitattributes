@@ -1,13 +1,1 @@
-*.ipynb filter=nbstripout
-
-
-; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
-; # Install
-; pip install nbstripout
-;
-; # PowerShell - run this in your project directory
-; Get-ChildItem -Recurse -Filter *.ipynb | Where-Object { $_.FullName -notlike '*\.ipynb_checkpoints\*' } | ForEach-Object { nbstripout $_.FullName; Write-Host "Cleaned: $($_.Name)" }
-;
-; # With custom configuration
-; nbstripout --install
-; -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --
+﻿*.ipynb filter=nbstripout
