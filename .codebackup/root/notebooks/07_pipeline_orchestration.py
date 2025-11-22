@@ -1,9 +1,11 @@
-#%% md
+# %% [markdown]
 # # Notebook: 07 Pipeline Orchestration
 # ### Imports and setup
-#%% md
+
+# %% [markdown]
 # #### Imports and setup
-#%%
+
+# %%
 import os
 import sys
 
@@ -27,18 +29,22 @@ from src.training.engine import run_training
 from src.utils.config import Config
 from src.utils.helpers import init_notebook, p, t
 from src.utils.versioning import VersionManager
-#%%
+
+# %%
 config = Config.load()
 init_notebook(config.train.seed)
 
 entries = load_json_annotations(config.paths.annotations)
 image_dir = config.paths.train_images
 
-#%%
+
+# %%
 explore_bboxes(entries[42], image_dir)
-#%% md
+
+# %% [markdown]
 # #### Step 1: Identify single class and group images
-#%%
+
+# %%
 # individual_tree images
 single_individual = [
     e for e in entries
@@ -60,12 +66,15 @@ for entry in entries:
 p("single_individual", len(single_individual))
 p("single_group", len(single_group))
 
-#%% md
+
+# %% [markdown]
 # #### Step 2: Extract each bbox from each single image and inspect
-#%%
+
+# %%
 sample_entry = single_individual[0]
 
-#%%
+
+# %%
 # def crop_bbox( entry, item ):
 #     img = cv2.imread(str(image_dir / entry.image_path.name))
 #     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -118,9 +127,11 @@ def pad_to_size( img, target_h, target_w ):
     )
 
 
-#%% md
+
+# %% [markdown]
 # ##### Collect all crops first and record their shapes
-#%%
+
+# %%
 # bboxes = []
 # for item in sample_entry.items:
 #     p(crop_bbox(sample_entry, item))
@@ -142,7 +153,8 @@ def pad_to_size( img, target_h, target_w ):
 # show_side_by_side([padded_bboxes[0], padded_masks[0], overlays[0]], ["bbox", "mask", "overlay"])
 #
 
-#%%
+
+# %%
 crops = []
 #crops = [crop_bbox(sample_entry, item) for item in sample_entry.items]
 for item in sample_entry.items:
@@ -153,9 +165,11 @@ heights = [c.shape[0] for c in crops]
 widths = [c.shape[1] for c in crops]
 max_h = max(heights)
 max_w = max(widths)
-#%% md
+
+# %% [markdown]
 # ##### Build padded crops, padded masks, and overlays.
-#%%
+
+# %%
 padded_crops = []
 padded_masks = []
 padded_overlays = []
@@ -179,7 +193,8 @@ for idx, item in enumerate(sample_entry.items):
     padded_masks.append(mask_p)
     padded_overlays.append(overlay)
 
-#%%
+
+# %%
 num_show = 9
 indexes = list(range(min(num_show, len(padded_crops))))
 
@@ -207,11 +222,14 @@ show_side_by_side(
         maxcolumns = 9
 )
 
-#%% md
+
+# %% [markdown]
 # ##### FOR TRAINING
-#%% md
+
+# %% [markdown]
 # ##### Prepare all individual crops for training
-#%%
+
+# %%
 # Step 1: Group items by image to minimize disk loads
 image_to_items = defaultdict(list)
 for e_idx, entry in enumerate(single_individual):
@@ -220,7 +238,8 @@ for e_idx, entry in enumerate(single_individual):
             image_to_items[entry.image_path.name].append((entry, item, e_idx, j_idx))
 
 p("Unique images to process", len(image_to_items))
-#%%
+
+# %%
 # Step 2: Process each image once
 padded_crops_ind = []
 padded_masks_ind = []
@@ -277,9 +296,11 @@ for img_name, items_list in image_to_items.items():
 p("total padded crops", len(padded_crops_ind))
 p("total padded masks", len(padded_masks_ind))
 t("Extraction complete!")
-#%% md
+
+# %% [markdown]
 # ##### Sample padded and original images
-#%%
+
+# %%
 # Sort by area (for visualization)
 sizes = [(i, padded_crops_ind[i].shape) for i in range(len(padded_crops_ind))]
 sizes_sorted = sorted(sizes, key = lambda x: x[1][0] * x[1][1], reverse = True)
@@ -289,7 +310,8 @@ sizes_sorted = sorted(sizes, key = lambda x: x[1][0] * x[1][1], reverse = True)
 # sizes = [(i, raw_crops_ind[i].shape) for i in range(len(raw_crops_ind))]
 # sizes_sorted = sorted(sizes, key = lambda x: x[1][0] * x[1][1])
 # #sizes_sorted = sorted(sizes, key = lambda x: x[1][0] * x[1][1], reverse = True)
-#%%
+
+# %%
 # Visualize top 5 largest crops with their source images
 for i in range(min(5, len(sizes_sorted))):
     idx = sizes_sorted[i][0]
@@ -316,7 +338,8 @@ for i in range(min(5, len(sizes_sorted))):
             full_img, padded_crop, overlay,
             titles = (f"orig {idx}", f"padded {idx}", f"overlay {idx}")
     )
-#%%
+
+# %%
 # grid of crops
 idxs = [x[0] for x in sizes_sorted[:num_show]]
 
@@ -338,9 +361,11 @@ for i in idxs:
 show_side_by_side(*triplets, titles = tuple(titles), maxcolumns = 12)
 
 #### Step 3: Apply filters and kernel exploration on crops
-#%% md
+
+# %% [markdown]
 # ##### Direct crop
-#%%
+
+# %%
 crop = crop_bbox(sample_entry, sample_entry.items[0])
 gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
 
@@ -350,9 +375,11 @@ la = cv2_apply_laplacian(crop)
 
 show_side_by_side(crop, ga, so, la, titles = ("orig", "gauss", "sobel", "lap"))
 
-#%% md
+
+# %% [markdown]
 # ##### Padded Crop
-#%%
+
+# %%
 padded = pad_to_size(crop, max_h, max_w)
 
 ga_p = cv2_apply_gaussian(padded)
@@ -369,16 +396,19 @@ show_side_by_side(
 )
 
 
-#%%
+
+# %%
 kernels = get_kernels()
 lap_k = kernels["Laplacian_3x3"]
 lap_resp = apply_kernel_using_convolution(gray, lap_k)
 
 show_side_by_side(gray, lap_resp, titles = ("gray", "lap3x3"))
 
-#%% md
+
+# %% [markdown]
 # #### Step 4: Train model on only individual class
-#%%
+
+# %%
 train_tf = get_train_augmentations(config.train.image_size)
 val_tf = get_val_augmentations(config.train.image_size)
 
@@ -406,9 +436,11 @@ trainer_ind = run_training(
         config.paths.models,
         model_name = "simple_cnn"
 )
-#%% md
+
+# %% [markdown]
 # #### Step 5: Train model on only group class
-#%%
+
+# %%
 
 vm = VersionManager(config.paths.models)
 version_dir = vm.find_latest()
@@ -431,9 +463,11 @@ len(all_singles)
 
 
 
-#%% md
+
+# %% [markdown]
 # #### Step 6: Run single-class model on all images and save predictions
-#%%
+
+# %%
 
 train_ds_grp = ImageMaskDataset(
         single_group,
@@ -460,9 +494,11 @@ trainer_grp = run_training(
         model_name = "simple_cnn"
 )
 
-#%% md
+
+# %% [markdown]
 # #### Step 7: Run group-class model on all images
-#%%
+
+# %%
 # Load group model
 vm = VersionManager(config.paths.models)
 version_dir = vm.find_latest()
@@ -481,9 +517,11 @@ results_group = predictor_grp.run_on_folder(
 
 all_groups = results_group
 p("all_groups", len(all_groups))
-#%% md
+
+# %% [markdown]
 # #### Step 8: Final combined training
-#%%
+
+# %%
 combined_entries = single_individual + single_group
 
 train_ds_comb = ImageMaskDataset(combined_entries, image_dir, transform = train_tf)
@@ -500,6 +538,7 @@ trainer_final = run_training(
         model_name = "simple_cnn"
 )
 
-#%%
 
-#%%
+# %%
+
+# %%
