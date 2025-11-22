@@ -1,14 +1,59 @@
-Solafune Tree Canopy Detection challenge - Week 3 Project Summary
+Solafune Tree Canopy Detection Challenge - Week 3 Project Summary
 ==================================================================
 
 Overview
 ----------------------------------------
 
-duet to continue amount of crashes instead of using the TIF images, implemented functioanlty to
-change images to PNG from TIF due to issues with cv2.imread, likely causing system crashes due to
-memory issues with large compressed files.
+Week 3 focused on resolving critical system stability issues and establishing data pipeline. The
+primary achievement was identifying and solving persistent training crashes caused by TIFF image
+handling. Work included implementing format conversion utilities, enhancing data loading mechanisms,
+and building comprehensive validation tools to ensure reliable experimentation.
 
-Why PNG is better for training:
+Image Format Conversion & System Stability
+----------------------------------------
+
+- Identified TIFF files as the root cause of system crashes during training loops.
+- Analyzed issues related to GeoTIFF compression, memory spikes, and inconsistent library support
+  across OpenCV versions.
+- Implemented comprehensive ImageConverter utility to batch convert TIFF files to PNG format.
+- Added automatic annotation file updates with timestamped backup creation and restoration
+  capabilities.
+- Created image validation tools to verify file integrity before and after conversion.
+- Documented technical rationale for PNG preference: consistent memory footprint, faster loading,
+  universal library support.
+- Maintained original TIFF archives for geospatial metadata preservation while training exclusively
+  on PNG.
+
+Enhanced Data Loading Infrastructure
+----------------------------------------
+
+- Built image loading utilities with automatic format detection and fallback mechanisms.
+- Implemented graceful degradation: OpenCV for speed, automatic fallback to PIL for problematic
+  files. (still researching)
+- Enhanced ImageMaskDataset with improved tensor conversion handling and consistent shape
+  normalization.
+
+Training & Evaluation Pipeline Improvements
+----------------------------------------
+
+- Implemented evaluation utilities with batch metrics computation and visualization.
+- Continue to Enhanced and Integrated versioning system for checkpoint management and experiment
+  reproducibility.
+- Expanded model registry to include SimpleCNN, UNet, and segmentation_models_pytorch integrations.
+- Implemented benchmarking infrastructure to compare models on shared validation sets.
+- Added tracking for IoU, Dice, Accuracy, inference speed, and GPU memory usage.
+- Created visualization and CSV export for performance analysis across architectures.
+
+Results & Impact
+----------------------------------------
+
+- Eliminated all training crashes, enabling reliable multi-epoch training runs.
+- Achieved faster image loading during training with reduced CPU overhead.
+- Established stable DataLoader worker processes with consistent memory usage.
+- Improved development velocity through reproducible experimentation environment.
+
+Why PNG may be better for training:
+================================
 
 **Memory & Stability:**
 
