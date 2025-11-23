@@ -1,10 +1,12 @@
-#%% md
+# %% [markdown]
 # # Notebook: 00 Verify Tensor Shape
 # ### Purpose: Used for shape verification diagnostic to make sure  data loaders produce correct shapes
-# 
-#%% md
+#
+
+# %% [markdown]
 # #### Imports and setup
-#%%
+
+# %%
 import os
 import sys
 
@@ -26,10 +28,12 @@ from models.zoo import build_model
 config = Config.load()
 entries = load_json_annotations(config.paths.annotations)
 
-#%% md
+
+# %% [markdown]
 # #### Test 1: Original ImageMaskDataset
-# 
-#%%
+#
+
+# %%
 
 t("Testing Original ImageMaskDataset")
 
@@ -54,10 +58,12 @@ elif mask_t.shape[0] != 1:
 else:
     p("✓ SUCCESS", "Mask shape is correct [1, H, W]", color1 = c.CYAN, color2 = c.CYAN)
 
-#%% md
+
+# %% [markdown]
 # #### Test 2: EnhancedImageMaskDataset
-# 
-#%%
+#
+
+# %%
 
 
 
@@ -89,17 +95,8 @@ except Exception as e:
 
     traceback.print_exc()
 
-#%%
 
-
-# from filter_utils_robust import (
-#     create_enhanced_image_robust,
-#     normalize_filter_output,
-#     apply_filters_safe,
-#     create_multichannel_image
-# )
-
-#%%
+# %%
 t("Testing EnhancedImageMaskDataset")
 
 for mode in ['rgb', 'filtered']:
@@ -124,10 +121,12 @@ for mode in ['rgb', 'filtered']:
     except AssertionError as e:
         p("ASSERTION FAILED", str(e), color1 = c.RED, color2 = c.RED)
 
-#%% md
+
+# %% [markdown]
 # #### Test 3: DataLoader Batches
-# 
-#%%
+#
+
+# %%
 from torch.utils.data import DataLoader
 
 
@@ -159,10 +158,12 @@ try:
     p("SUCCESS", "DataLoader produces correct batch shapes!", color1=c.GREEN, color2=c.GREEN)
 except AssertionError as e:
     p("ASSERTION FAILED", str(e), color1=c.RED, color2=c.RED)
-#%% md
+
+# %% [markdown]
 # #### Test 4: Model Forward Pass
-# 
-#%%
+#
+
+# %%
 
 
 
@@ -190,10 +191,12 @@ try:
 except AssertionError as e:
     p("ASSERTION FAILED", str(e), color1=c.RED, color2=c.RED)
 
-#%% md
+
+# %% [markdown]
 # #### Test 5: Loss Computation
-# 
-#%%
+#
+
+# %%
 from torch.nn import BCEWithLogitsLoss
 
 
@@ -211,9 +214,11 @@ except Exception as e:
     import traceback
     traceback.print_exc()
 
-#%% md
+
+# %% [markdown]
 # #### Test 6: Comprehensive Dataset Verification Function
-#%%
+
+# %%
 def verify_dataset_shapes():
     """
     Comprehensive test that verifies all datasets return correct shapes.
@@ -411,4 +416,5 @@ def verify_dataset_shapes():
 
 all_passed = verify_dataset_shapes()
 
-#%%
+
+# %%
