@@ -1,40 +1,42 @@
-#%% md
+# %% [markdown]
 # # Notebook: 09 Master Execution Plan
 # ### Purpose: Complete pipeline from data preparation to final submission
-#%%
+
+# %%
 import os
 import sys
 
 
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
-
 import torch
 from torch.utils.data import DataLoader
-
 from src.data.annotations import load_json_annotations
 from src.data.augmentations import get_train_augmentations, get_val_augmentations
 from src.data.loaders import ImageMaskDataset
 from src.training.engine import run_training
 from src.utils.config import Config
-from src.utils.helpers import init_notebook, p, t
+from src.utils.helpers import c, init_notebook, p, t
 from src.data.enhance_masks import EnhancedImageMaskDataset
+from src.utils.versioning import VersionManager
 
 
 config = Config.load()
 init_notebook(config.train.seed)
 
 
-#%% md
+
+# %% [markdown]
 # #### Stage 1: Data Preparation
-# 
+#
 # - TIFF → PNG conversion (notebook 00_preprocess_images)
 # - Annotation loading
 # - Mask generation
 # - Data augmentation
-# 
-# 
-#%%
+#
+#
+
+# %%
 t("Loading Annotations")
 entries = load_json_annotations(config.paths.annotations)
 p("Total images", len(entries))
@@ -47,25 +49,28 @@ p("Images with individual trees", individual_count)
 p("Images with tree groups", group_count)
 
 
-#%% md
+
+# %% [markdown]
 # #### Stage 2: Filter Experimentation
-# 
+#
 # **Action:** Run and retrieve notebook 08 to identify top 3 filters
-# 
+#
 # **Expected Output:**
 # - Filter ranking CSV
 # - Top 3 filter names
 # - Visual comparisons
-# 
-# 
-#%% md
+#
+#
+
+# %% [markdown]
 # #### Stage 3: Enhanced Dataset Creation
-# 
+#
 # - Create training dataset with filter-enhanced inputs
 # - Apply filters as additional channels.
-# 
-# 
-#%%
+#
+#
+
+# %%
 t("Testing Enhanced Dataset")
 
 val_tf = get_val_augmentations(config.train.image_size)
@@ -84,22 +89,24 @@ for mode in ['rgb', 'filtered', 'concat']:
     p(f"Mode: {mode}", f"Image shape: {img_t.shape}, Mask shape: {mask_t.shape}")
 
 
-#%% md
+
+# %% [markdown]
 # #### Stage 4: Model Training Comparison
-# 
+#
 # **Experiment Design:**
 # Comparing model performance across input types:
 # 1. Baseline: RGB only
 # 2. Filtered: Top 3 filters as channels
 # 3. Concat: RGB + Filters (6 channels)
-# 
+#
 # **Models to test:**
 # - SimpleCNN (fast baseline)
 # - UNet (standard architecture)
 # - SMP UNet + ResNet34 (transfer learning)
-# 
-# 
-#%%
+#
+#
+
+# %%
 def train_experiment( model_name, input_mode, filter_names = None, num_epochs = None ):
     """
     Run one training experiment and return metrics.
@@ -155,19 +162,31 @@ def train_experiment( model_name, input_mode, filter_names = None, num_epochs = 
         # For now, skip 6-channel experiments
         return None
 
-    # Use modified config for this experiment
+    # Use modified config
     import copy
 
     exp_config = copy.deepcopy(config)
     if num_epochs is not None:
         exp_config.train.epochs = num_epochs
 
-    # Train
+    # Adding experiment metadata to config for versioning
+    exp_config.extra['experiment'] = {
+        'model_name':   model_name,
+        'input_mode':   input_mode,
+        'filter_names': filter_names,
+    }
+    # model-specific version root
+    version_root = config.paths.models / model_name / input_mode
+    version_root.mkdir(parents = True, exist_ok = True)
+
+    p("Version root", version_root)
+    # Train (VersionManager will handle versioning inside run_training -> Trainer)
     trainer = run_training(
             config = exp_config,
             train_loader = train_loader,
             val_loader = val_loader,
-            version_root = config.paths.models,
+            #version_root = config.paths.models,
+            version_root = version_root,  # Model-specific path
             model_name = model_name
     )
 
@@ -177,7 +196,8 @@ def train_experiment( model_name, input_mode, filter_names = None, num_epochs = 
 p("", "Experiments configured")
 
 
-#%%
+
+# %%
 # Running experiments
 
 experiments = [
@@ -192,22 +212,24 @@ for model_name, mode, filters in experiments:
     key = f"{model_name}_{mode}"
     results[key] = train_experiment(model_name, mode, filters, num_epochs = 10)
 
-#%% md
+
+# %% [markdown]
 # #### Stage 5: Class-Specific Training
-# 
+#
 # **Strategy:**
 # Trainning separate models for:
 # 1. Individual trees
 # 2. Groups of trees
 # 3. Combined predictions
-# 
+#
 # **Rationale:**
 # - Individual trees have distinct boundaries
 # - Tree groups have larger, more diffuse edges
 # - Specialized models may perform better
-# 
-# 
-#%%
+#
+#
+
+# %%
 def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
     """
     Train a model for a specific class.
@@ -265,26 +287,30 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
 
 
 p("", "Class-specific training configured")
-#%%
+
+# %%
 ## Train individual tree model
 trainer_individual = train_class_specific_model('individual_tree', 'simple_cnn')
 trainer_group = train_class_specific_model('group_of_trees', 'simple_cnn')
-#%% md
+
+
+# %% [markdown]
 # #### Stage 6: Ensemble Predictions
-# 
+#
 # **Approach:**
 # Combine predictions from multiple models:
 # 1. RGB-trained model
 # 2. Filter-enhanced model
 # 3. Class-specific models
-# 
+#
 # **Fusion methods:**
 # - Average (simple)
 # - Weighted average (based on validation IoU)
 # - Majority voting (threshold-based)
-# 
-# 
-#%%
+#
+#
+
+# %%
 def ensemble_predict( models_and_weights, image_tensor, device = 'cpu' ):
     """
     Combine predictions from multiple models.
@@ -306,24 +332,16 @@ def ensemble_predict( models_and_weights, image_tensor, device = 'cpu' ):
 p("", "Ensemble prediction function ready")
 
 
-#%%
-### TEST PSEUDO CODE
-models = [
-    (model_rgb, 1.0),
-    (model_filtered, 1.2),  # Higher weight if better validation IoU
-    (model_individual, 0.8),
-    (model_group, 0.8),
-]
 
-final_prediction = ensemble_predict(models, input_tensor)
-#%% md
+# %% [markdown]
 # #### Stage 7: Submission Generation
-# 
+#
 # **Current Status:**
 # - Prediction pipeline exists (notebook 05)
 # - Submission export implemented (`export_submission`)
-# 
-#%%
+#
+
+# %%
 from src.prediction.pipeline import Predictor
 from src.prediction.submission import export_submission
 
@@ -368,36 +386,43 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
             p("Sample annotation keys", list(first_ann.keys()))
 
     return output_path
-#%%
-submission_path = generate_submission(
-        model_path = config.paths.models / "v001" / "best_model.pth",
-        model_name = "simple_cnn",
-        eval_dir = config.paths.eval_images,
-        output_path = config.paths.models / "submission.json"
-)
-#%% md
-# #### Completed
-# - Data preparation (TIFF→PNG, annotations, masks)
-# - Exploration tools (kernels, filters, visualization)
-# - Training infrastructure (models, metrics, versioning)
-# - Prediction pipeline
-# 
-# 
-# #### Ideas, To Do
-# 
-# - Identify top 3 filters
-# - Update config.yaml with TOP_3_FILTERS
-# 
-# Run Stage 4 - Model Comparison
-# - Train SimpleCNN on RGB
-# - Train SimpleCNN on filtered input
-# - Compare IoU/Dice scores
-# 
-# Run Stage 5 (Class-Specific Training)
-# - Train model for individual_tree
-# - Train model for group_of_trees
-# - Compare with combined model
-# 
-# Other
-# - Implement ensemble predictions
-# - Validate submission JSON
+
+# %% [markdown]
+# #### Generate submissions for all trained experiments
+
+# %%
+
+
+# Generate submissions for all trained experiments
+for model_name in ['simple_cnn', 'unet']:
+    for input_mode in ['rgb', 'filtered']:
+        version_root = config.paths.models / model_name / input_mode
+
+        if not version_root.exists():
+            p("Skipping", f"{model_name}/{input_mode} (not trained yet)")
+            continue
+
+        vm = VersionManager(version_root)
+        latest_version = vm.find_latest()
+
+        if latest_version is None:
+            p("No versions found for", f"{model_name}/{input_mode}")
+            continue
+
+        model_path = latest_version / "best_model.pth"
+
+        if not model_path.exists():
+            p("Model not found", model_path)
+            continue
+
+        p(f"Generating submission for {model_name}/{input_mode}", color1 = c.RED)
+
+        submission_path = generate_submission(
+                model_path = model_path,
+                model_name = model_name,
+                eval_dir = config.paths.eval_images,
+                output_path = latest_version / "submission.json"
+        )
+
+        p("Saved submission", submission_path)
+        p()
