@@ -1,4 +1,18 @@
 # %%
+import glob
+import os
+import shutil
+
+
+# root (up a directory)
+root = os.path.dirname(os.getcwd())
+
+# --- Backup folders ---
+backup_root = os.path.join(root, ".codebackup", "root")
+backup_root_src = os.path.join(backup_root, "src")
+
+os.makedirs(backup_root, exist_ok = True)
+os.makedirs(backup_root_src, exist_ok = True)
 
 # %%
 #  --- Copy py files ---
