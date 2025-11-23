@@ -238,8 +238,9 @@ def init_notebook( seed: int = 42 ) -> None:
     Initialize common notebook settings. Sets random seeds and default renderers.
     """
     t("init_notebook")
-    warnings.filterwarnings("ignore", category = UserWarning)
+    warnings.filterwarnings('ignore', category = UserWarning, module = 'albumentations')
     warnings.filterwarnings("ignore", category = FutureWarning)
+
   
     pio.renderers.default = "png"
 
@@ -601,6 +602,7 @@ from PIL import Image
 from tqdm import tqdm
 
 from src.utils.logging import Logger
+from utils.helpers import c, p
 
 
 class ImageConverter:
@@ -779,25 +781,26 @@ class ImageConverter:
             backup_path = annotations_path.with_suffix('.json.backup')
 
         if not backup_path.exists():
-            print(f"Backup not found: {backup_path}")
+            p("Backup not found", str(backup_path))
 
             # List available backups
             backup_dir = annotations_path.parent
             backups = list(backup_dir.glob(f"{annotations_path.stem}.json.backup*"))
 
             if backups:
-                print("\nAvailable backups:")
+                p("Available backups")
                 for b in sorted(backups):
-                    print(f"  {b.name}")
+                    p("", f"  {b.name}")
 
             return False
 
         try:
             shutil.copy2(backup_path, annotations_path)
-            print(f"Restored annotations from: {backup_path.name}")
+            p("Restored annotations from", backup_path.name, color1= c.GREEN)
+
             return True
         except Exception as e:
-            print(f"Failed to restore backup: {e}")
+            p("Failed to restore backup", str(e), color1=c.RED, color2 = c.RED)
             return False
 
 
@@ -906,42 +909,42 @@ class Tester:
 
 
 def p_test():
-    print("\n--- Testing Number ---")
+    p("--- Testing Number ---")
     Tester("num", 42)._print()
     Tester("float", 3.14159)._print()
 
-    print("\n--- Testing Dict ---")
+    p("--- Testing Dict ---")
     Tester("dict", { "a": 1, "b": 2 })._print()
 
-    print("\n--- Testing List ---")
+    p("--- Testing List ---")
     Tester("list", [10, 20, 30, 40, 50, 60])._print()
 
-    print("\n--- Testing Tuple ---")
+    p("--- Testing Tuple ---")
     Tester("tuple", ("x", "y", "z"))._print()
 
-    print("\n--- Testing Numpy Array ---")
+    p("--- Testing Numpy Array ---")
     Tester("array", np.zeros((2, 3)))._print()
 
-    print("\n--- Testing String ---")
+    p("--- Testing String ---")
     Tester("string", "hello")._print()
 
-    print("\n--- Testing Empty ---")
+    p("--- Testing Empty ---")
     Tester("", None)._print()
 
-    print("\n--- Testing Color ---")
+    p("--- Testing Color ---")
     color1 = c.ORANGE
     color2 = c.PURPLE
     c.print_color(color1)
     c.print_color(color2)
     p(f"OBJ color test {color1.name}", f"VALUE color test {color2.name}", color1 = color1, color2 = color2)
 
-    print("\n--- Testing Title w/blue ---")
+    p("--- Testing Title w/blue ---")
     Tester("Title", color1 = c.BLUE)._print()
 
-    print("\n--- Testing Value w/yellow ---")
+    p("--- Testing Value w/yellow ---")
     Tester("", "Value", color2 = c.YELLOW)._print()
 
-    print("\n--- Testing Bold  ---")
+    p("--- Testing Bold  ---")
     Tester("Bold", "Not bold")._print()
 
 

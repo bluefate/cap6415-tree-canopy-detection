@@ -88,8 +88,9 @@ def init_notebook( seed: int = 42 ) -> None:
     Initialize common notebook settings. Sets random seeds and default renderers.
     """
     t("init_notebook")
-    warnings.filterwarnings("ignore", category = UserWarning)
+    warnings.filterwarnings('ignore', category = UserWarning, module = 'albumentations')
     warnings.filterwarnings("ignore", category = FutureWarning)
+
   
     pio.renderers.default = "png"
 

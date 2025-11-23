@@ -93,19 +93,12 @@ class ImageMaskDataset(Dataset):
         ## else:
         ##     mask_t = torch.from_numpy(mask).unsqueeze(0).float()
 
-        ##---------------------------------------
-        # if isinstance(mask, torch.Tensor):
-        #     mask_t = mask.float()
-        #     if mask_t.ndim == 2:
-        #         mask_t = mask_t.unsqueeze(0)
-        # else:
-        #     if mask.ndim == 2:
-        #         mask = np.expand_dims(mask, 0)
-        #     mask_t = torch.from_numpy(mask).float()
-        ##---------------------------------------
         # eliminates all shape variance
         if isinstance(mask, torch.Tensor):
             mask_t = mask.float()
+            ### FIX
+            if mask_t.ndim == 2:
+                mask_t = mask_t.unsqueeze(0)
         else:
             mask = mask.astype("float32")
             if mask.ndim == 2:

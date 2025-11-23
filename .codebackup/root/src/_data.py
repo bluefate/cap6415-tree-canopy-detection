@@ -152,9 +152,129 @@ def get_val_augmentations( image_size: int ):
     )
 
 
+# From C:\github\Tree-Canopy-Detection\src\data\enhance_masks.py
+import cv2
+import numpy as np
+import torch
+
+from src.data.loaders import ImageMaskDataset
+
+
+class EnhancedImageMaskDataset(ImageMaskDataset):
+    """
+    Extended dataset that applies filter enhancements during loading.
+
+    Can operate in 3 modes:
+    1. 'rgb' - Original 3-channel RGB
+    2. 'filtered' - Top 3 filters as RGB channels
+    3. 'concat' - 6-channel (RGB + 3 filters)
+    """
+
+    def __init__( self, entries, image_dir, mode = 'rgb', filter_names = None, classes = None, transform = None ):
+        super().__init__(entries, image_dir, classes, transform)
+        self.mode = mode
+        self.filter_names = filter_names or ['laplacian', 'sobel', 'clahe']
+
+    def apply_filters( self, img ):
+        """Apply the specified filters and return as channels."""
+        from src.exploration.enhancement import clahe_enhance, to_gray
+        from src.exploration.filters import cv2_apply_laplacian, cv2_apply_sobel
+
+        gray = to_gray(img)
+        target_h, target_w = img.shape[:2]
+
+        filter_map = {
+            'laplacian': lambda: cv2_apply_laplacian(img),
+            'sobel':     lambda: cv2_apply_sobel(img),
+            'clahe':     lambda: clahe_enhance(gray),
+        }
+
+        channels = []
+        for fname in self.filter_names:
+            if fname in filter_map:
+                filtered = filter_map[fname]()
+                #
+                # # Ensure 2D (grayscale)
+                # if filtered.ndim == 3:
+                #     filtered = cv2.cvtColor(filtered, cv2.COLOR_RGB2GRAY)
+                #
+                # # Resize if needed
+                # if filtered.shape != (target_h, target_w):
+                #     filtered = cv2.resize(filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+                #
+                # Normalize to 0-255
+                if filtered.dtype != np.uint8:
+                    filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+                channels.append(filtered)
+
+        # Ensure we have exactly 3 channels
+        while len(channels) < 3:
+            #channels.append(channels[-1].copy())
+            channels.append(channels[-1])
+
+        return np.stack(channels[:3], axis = 2)
+
+    def __getitem__( self, idx ):
+        """Override to apply filter enhancement."""
+        entry = self.entries[idx]
+        img_path = self.image_dir / entry.image_path.name
+
+        image = cv2.imread(str(img_path))
+        if image is None:
+            raise RuntimeError(f"Failed to read {img_path}")
+
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        H, W = image.shape[:2]
+
+        # Generate mask
+        if self.classes is None:
+            polys = [item.segmentation for item in entry.items]
+        else:
+            polys = [item.segmentation for item in entry.items if item.cls in self.classes]
+
+        from src.data.masks import build_multi_mask
+
+        mask = build_multi_mask(polys, W, H)
+
+        # Apply filter enhancement based on mode
+        if self.mode == 'filtered':
+            image = self.apply_filters(image)
+        elif self.mode == 'concat':
+            filtered = self.apply_filters(image)
+            # Concatenate RGB + filtered (6 channels)
+            image = np.concatenate([image, filtered], axis = 2)
+        # else: mode == 'rgb', use original image
+
+        # Apply augmentations
+        if self.transform:
+            augmented = self.transform(image = image, mask = mask)
+            image = augmented["image"]
+            mask = augmented["mask"]
+
+        # Convert to tensors
+        if isinstance(image, torch.Tensor):
+            img_t = image.float()
+            if img_t.ndim == 3 and img_t.shape[0] not in [3, 6]:
+                img_t = img_t.permute(2, 0, 1)
+        else:
+            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
+
+        if isinstance(mask, torch.Tensor):
+            mask_t = mask.float()
+            if mask_t.ndim == 2:
+                mask_t = mask_t.unsqueeze(0)
+        else:
+            mask = mask.astype('float32')
+            if mask.ndim == 2:
+                mask = mask[None, ...]
+            mask_t = torch.from_numpy(mask)
+
+        return img_t, mask_t
+
 # From C:\github\Tree-Canopy-Detection\src\data\image_loader.py
 """
-Robust image loading utilities that handle multiple formats.
+Image loading utilities that handle multiple formats.
 """
 from pathlib import Path
 from typing import Union
@@ -162,6 +282,10 @@ from typing import Union
 import cv2
 import numpy as np
 from PIL import Image
+
+from src.exploration.enhancement import clahe_enhance, to_gray
+from src.exploration.filters import cv2_apply_gaussian, cv2_apply_laplacian, cv2_apply_sobel
+from src.exploration.kernels import apply_kernel_using_convolution, get_kernels
 
 
 def load_image(image_path: Union[str, Path]) -> np.ndarray:
@@ -244,9 +368,89 @@ def validate_image_directory(image_dir: Path) -> dict:
     if results["problematic_files"]:
         p("Problematic files", "")
         for path in results["problematic_files"][:10]:
-            print(f"  {path}")
+            p("", f"  {path}", color1 = c.SALMON)
 
     return results
+
+def apply_all_filters( img ):
+    """Apply comprehensive set of filters to one image."""
+    gray = to_gray(img)
+
+    filters = { }
+
+    # Edge detection filters
+    filters['sobel'] = cv2_apply_sobel(img)
+    filters['laplacian'] = cv2_apply_laplacian(img)
+
+    kernels = get_kernels()
+    filters['scharr_x'] = apply_kernel_using_convolution(gray, kernels['Scharr_X'])
+    filters['scharr_y'] = apply_kernel_using_convolution(gray, kernels['Scharr_Y'])
+    filters['scharr_combined'] = np.sqrt(
+            filters['scharr_x'].astype(float) ** 2 +
+            filters['scharr_y'].astype(float) ** 2
+    ).astype(np.uint8)
+
+    # Contrast enhancement
+    filters['clahe'] = clahe_enhance(gray, clip = 2.0, tile = 8)
+    filters['hist_eq'] = cv2.equalizeHist(gray)
+
+    # Smoothing (often used before edge detection)
+    filters['gaussian_3x3'] = cv2_apply_gaussian(img, ksize = 3, sigma = 1.0)
+    filters['gaussian_5x5'] = cv2_apply_gaussian(img, ksize = 5, sigma = 1.5)
+
+    # Custom kernels
+    filters['high_pass'] = apply_kernel_using_convolution(gray, kernels['High_Pass_3x3'])
+    filters['sharpen'] = apply_kernel_using_convolution(gray, kernels['Sharpen_Basic'])
+
+    # Gradient magnitude (Sobel components combined)
+    filters['gradient_mag'] = cv2_apply_sobel(img)
+
+    return filters
+
+
+def create_enhanced_image(img, filter_names):
+    """
+    Create multi-channel enhanced image using specified filters.
+    Returns 3-channel image suitable for model input.
+    """
+    filters_dict = apply_all_filters(img)
+
+    # Get target shape from original image
+    target_h, target_w = img.shape[:2]
+
+    channels = []
+    for fname in filter_names[:3]:  # Take up to 3 filters
+        filtered = filters_dict[fname]
+
+        # Ensure it's 2D (grayscale)
+        if filtered.ndim == 3:
+            filtered = cv2.cvtColor(filtered, cv2.COLOR_RGB2GRAY)
+
+        # Resize to match target dimensions if needed
+        if filtered.shape != (target_h, target_w):
+            filtered = cv2.resize(filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+
+        # Normalize to 0-255
+        if filtered.dtype != np.uint8:
+            filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+        channels.append(filtered)
+
+    # If we have fewer than 3 filters, pad with the last one
+    while len(channels) < 3:
+        channels.append(channels[-1].copy())
+
+    # Verify all channels have same shape
+    # shapes = [ch.shape for ch in channels[:3]]
+    # if len(set(shapes)) != 1:
+    #     p("Warning", f"Channel shape mismatch: {shapes}")
+    #     # Force resize all to target
+    #     channels = [cv2.resize(ch, (target_w, target_h)) if ch.shape != (target_h, target_w) else ch
+    #                 for ch in channels[:3]]
+
+    # Stack into 3-channel image
+    enhanced = np.stack(channels[:3], axis=2)
+    return enhanced
 
 # From C:\github\Tree-Canopy-Detection\src\data\loaders.py
 from pathlib import Path
@@ -344,19 +548,12 @@ class ImageMaskDataset(Dataset):
         ## else:
         ##     mask_t = torch.from_numpy(mask).unsqueeze(0).float()
 
-        ##---------------------------------------
-        # if isinstance(mask, torch.Tensor):
-        #     mask_t = mask.float()
-        #     if mask_t.ndim == 2:
-        #         mask_t = mask_t.unsqueeze(0)
-        # else:
-        #     if mask.ndim == 2:
-        #         mask = np.expand_dims(mask, 0)
-        #     mask_t = torch.from_numpy(mask).float()
-        ##---------------------------------------
         # eliminates all shape variance
         if isinstance(mask, torch.Tensor):
             mask_t = mask.float()
+            ### FIX
+            if mask_t.ndim == 2:
+                mask_t = mask_t.unsqueeze(0)
         else:
             mask = mask.astype("float32")
             if mask.ndim == 2:

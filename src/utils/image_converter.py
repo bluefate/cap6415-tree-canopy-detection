@@ -10,6 +10,7 @@ from PIL import Image
 from tqdm import tqdm
 
 from src.utils.logging import Logger
+from utils.helpers import c, p
 
 
 class ImageConverter:
@@ -188,25 +189,26 @@ class ImageConverter:
             backup_path = annotations_path.with_suffix('.json.backup')
 
         if not backup_path.exists():
-            print(f"Backup not found: {backup_path}")
+            p("Backup not found", str(backup_path))
 
             # List available backups
             backup_dir = annotations_path.parent
             backups = list(backup_dir.glob(f"{annotations_path.stem}.json.backup*"))
 
             if backups:
-                print("\nAvailable backups:")
+                p("Available backups")
                 for b in sorted(backups):
-                    print(f"  {b.name}")
+                    p("", f"  {b.name}")
 
             return False
 
         try:
             shutil.copy2(backup_path, annotations_path)
-            print(f"Restored annotations from: {backup_path.name}")
+            p("Restored annotations from", backup_path.name, color1= c.GREEN)
+
             return True
         except Exception as e:
-            print(f"Failed to restore backup: {e}")
+            p("Failed to restore backup", str(e), color1=c.RED, color2 = c.RED)
             return False
 
 
