@@ -157,7 +157,10 @@ for _ in range(5):
 
     overlay = cv2.addWeighted(base, 0.6, pred_rgb, 0.4, 0)
 
-    show_side_by_side(base, mask_u8, pred_u8, overlay,
-                      titles = titles,
-                      cmaps = [None, "gray", "gray", None]
-                      )
+    show_side_by_side(
+        base, mask_u8, pred_u8, overlay,
+        titles = titles,
+        cmaps = [None, "gray", "gray", None]
+        )
+
+# %%

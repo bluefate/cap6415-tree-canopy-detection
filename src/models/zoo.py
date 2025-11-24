@@ -101,15 +101,26 @@ def create_smp_deeplabv3plus(
 
 
 def create_segformer(
-    model_name="nvidia/segformer-b0-finetuned-ade-512-512", out_channels=1
+        model_name="nvidia/segformer-b0-finetuned-ade-512-512",
+        in_channels=3,
+        out_channels=1
 ):
     if not HF_AVAILABLE:
         raise ImportError("transformers not installed")
+    # Note: SegFormer does NOT support custom in_channels.
+    # It assumes 3-channel RGB input. We ignore in_channels to prevent errors.
+    if in_channels != 3:
+        raise ValueError("SegFormer only supports 3-channel RGB input.")
+
     model = SegformerForSemanticSegmentation.from_pretrained(
         model_name,
         num_labels=out_channels,
+        ignore_mismatched_sizes=True
     )
+
     return model
+
+
 
 
 def create_timm_segformer(encoder_name="tf_efficientnetv2_s", out_channels=1):

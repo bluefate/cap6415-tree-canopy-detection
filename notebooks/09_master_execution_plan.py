@@ -7,8 +7,16 @@ import os
 import sys
 
 
+#os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  #enable for debugging ONLY
+
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
+
+
+def timeout_handler( signum, frame ):
+    raise TimeoutError("Training took too long")
+
+
 import torch
 from torch.utils.data import DataLoader
 from src.data.annotations import load_json_annotations
@@ -22,6 +30,7 @@ from src.utils.versioning import VersionManager
 
 
 config = Config.load()
+#config = Config.load("config_PROD.yaml")
 init_notebook(config.train.seed)
 
 
@@ -202,9 +211,9 @@ p("", "Experiments configured")
 
 experiments = [
     ('simple_cnn', 'rgb', None),
-    ('simple_cnn', 'filtered', ['laplacian', 'sobel', 'clahe']),
-    ('unet', 'rgb', None),
-    ('unet', 'filtered', ['laplacian', 'sobel', 'clahe']),
+    # ('simple_cnn', 'filtered', ['laplacian', 'sobel', 'clahe']),
+    # ('unet', 'rgb', None),
+    # ('unet', 'filtered', ['laplacian', 'sobel', 'clahe']),
 ]
 
 results = { }
@@ -426,3 +435,35 @@ for model_name in ['simple_cnn', 'unet']:
 
         p("Saved submission", submission_path)
         p()
+
+# %%
+import cv2
+from exploration.class_explorer import load_image, mask_all, color_mask
+from src.exploration.visualize import show_side_by_side
+import random
+
+
+image_dir = config.paths.train_images
+
+# sample three entries
+sample_entries = random.sample(entries, 5)
+
+for e in sample_entries:
+    p("Image", e.image_path.name)
+
+    img = load_image(image_dir, e)
+    mask = mask_all(e)
+    mask_rgb = color_mask(e)
+    overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
+
+    show_side_by_side(
+            img,
+            mask,
+            mask_rgb,
+            overlay,
+            titles = ("Original", "Mask", "Color Mask", "Overlay"),
+            maxcolumns = 6
+    )
+
+
+# %%

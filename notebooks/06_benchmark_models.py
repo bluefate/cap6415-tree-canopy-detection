@@ -107,15 +107,17 @@ for name, params in MODEL_BENCHMARKS.items():
     mem_used = end_mem - start_mem
     params_num = sum(p.numel() for p in model.parameters())
 
-    rows.append({
-        "model": name,
-        "params": params_num,
-        "avg_iou": total_iou / n,
-        "avg_dice": total_dice / n,
-        "avg_acc": total_acc / n,
-        "avg_time_sec": total_time / n,
-        "gpu_mem_bytes": int(mem_used),
-    })
+    rows.append(
+            {
+                "model":         name,
+                "params":        params_num,
+                "avg_iou":       total_iou / n,
+                "avg_dice":      total_dice / n,
+                "avg_acc":       total_acc / n,
+                "avg_time_sec":  total_time / n,
+                "gpu_mem_bytes": int(mem_used),
+            }
+    )
 
 df = pd.DataFrame(rows)
 df

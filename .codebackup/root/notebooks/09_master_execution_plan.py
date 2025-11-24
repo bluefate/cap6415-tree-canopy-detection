@@ -5,10 +5,24 @@
 # %%
 import os
 import sys
-
+os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
 
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
+
+
+import signal
+
+def timeout_handler(signum, frame):
+    raise TimeoutError("Training took too long")
+
+# Setting 2-hour timeout per experiment
+signal.signal(signal.SIGALRM, timeout_handler)
+signal.alarm(7200)  # 2 hours in seconds
+
+
+
+
 import torch
 from torch.utils.data import DataLoader
 from src.data.annotations import load_json_annotations
@@ -202,9 +216,9 @@ p("", "Experiments configured")
 
 experiments = [
     ('simple_cnn', 'rgb', None),
-    ('simple_cnn', 'filtered', ['laplacian', 'sobel', 'clahe']),
-    ('unet', 'rgb', None),
-    ('unet', 'filtered', ['laplacian', 'sobel', 'clahe']),
+    # ('simple_cnn', 'filtered', ['laplacian', 'sobel', 'clahe']),
+    # ('unet', 'rgb', None),
+    # ('unet', 'filtered', ['laplacian', 'sobel', 'clahe']),
 ]
 
 results = { }
