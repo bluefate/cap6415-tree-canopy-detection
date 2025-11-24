@@ -166,6 +166,13 @@ class Trainer:
             config: Any,
             version_root: Path,
     ):
+        # GPU memory optimization
+        if self.device.type == "cuda":
+            torch.cuda.empty_cache()
+            torch.backends.cudnn.benchmark = True  # Speed up training
+            self.logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
+            self.logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
+
         self.model = model
         self.optimizer = optimizer
         self.criterion = criterion
@@ -251,6 +258,10 @@ class Trainer:
             self.scaler.update()
 
             total_loss += loss.item()
+
+            # Clear GPU cache periodically (every 10 batches)
+            if self.device.type == "cuda" and (len(self.train_loader) % 10 == 0):
+                torch.cuda.empty_cache()
 
         return total_loss / max(1, len(self.train_loader))
 

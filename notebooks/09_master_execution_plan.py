@@ -5,6 +5,7 @@
 # %%
 import os
 import sys
+from pathlib import Path
 
 
 #os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  #enable for debugging ONLY
@@ -30,13 +31,14 @@ from src.utils.versioning import VersionManager
 
 
 config = Config.load()
-#config = Config.load("config_PROD.yaml")
+#config = Config.load(Path("..").resolve() / "config_PROD.yaml")
 init_notebook(config.train.seed)
+config.show()
 
 
 
 # %% [markdown]
-# #### Stage 1: Data Preparation
+# #### Step 1: Data Preparation
 #
 # - TIFF → PNG conversion (notebook 00_preprocess_images)
 # - Annotation loading
@@ -60,7 +62,7 @@ p("Images with tree groups", group_count)
 
 
 # %% [markdown]
-# #### Stage 2: Filter Experimentation
+# #### Step 2: Filter Experimentation
 #
 # **Action:** Run and retrieve notebook 08 to identify top 3 filters
 #
@@ -72,7 +74,7 @@ p("Images with tree groups", group_count)
 #
 
 # %% [markdown]
-# #### Stage 3: Enhanced Dataset Creation
+# #### Step 3: Enhanced Dataset Creation
 #
 # - Create training dataset with filter-enhanced inputs
 # - Apply filters as additional channels.
@@ -100,7 +102,7 @@ for mode in ['rgb', 'filtered', 'concat']:
 
 
 # %% [markdown]
-# #### Stage 4: Model Training Comparison
+# #### Step 4: Model Training Comparison
 #
 # **Experiment Design:**
 # Comparing model performance across input types:
@@ -116,9 +118,10 @@ for mode in ['rgb', 'filtered', 'concat']:
 #
 
 # %%
-def train_experiment( model_name, input_mode, filter_names = None, num_epochs = None ):
+def train_experiment( model_name, input_mode, filter_names = None, num_epochs = config.train.epochs ):
     """
     Run one training experiment and return metrics.
+    Supports RGB (3ch), filtered (3ch), and concat (6ch) modes.
     """
     t(f"Experiment: {model_name} with {input_mode} input")
 
@@ -145,51 +148,65 @@ def train_experiment( model_name, input_mode, filter_names = None, num_epochs = 
             transform = val_tf
     )
 
+    # Determine input channels
+    sample_img, _ = train_ds[0]
+    in_channels = sample_img.shape[0]
+
+    p("Input channels", in_channels)
+    p("Mode", input_mode)
+    if filter_names:
+        p("Filters", filter_names)
+
+    # Need to modify model for non-standard input
+    # Skip 6-channel experiments if model doesn't support it
+    if in_channels == 6 and model_name in ['simple_cnn', 'unet']:
+        p("Warning", f"Skipping 6-channel experiment for {model_name}", color1 = c.ORANGE)
+        p("", "  (requires custom model architecture)", color1 = c.ORANGE)
+        # For now, skip 6-channel experiments
+        return None
+
+    # Create data loaders
     train_loader = DataLoader(
             train_ds,
             batch_size = config.train.batch_size,
             shuffle = True,
-            num_workers = config.train.num_workers
+            num_workers = config.train.num_workers,
+            pin_memory = True if torch.cuda.is_available() else False
     )
 
     val_loader = DataLoader(
             val_ds,
             batch_size = config.train.batch_size,
             shuffle = False,
-            num_workers = config.train.num_workers
+            num_workers = config.train.num_workers,
+            pin_memory = True if torch.cuda.is_available() else False
     )
 
-    # Determine input channels
-    sample_img, _ = train_ds[0]
-    in_channels = sample_img.shape[0]
-    p("Input channels", in_channels)
-
-    # Build model
-    if in_channels != 3:
-        # Need to modify model for non-standard input
-        p("Warning", "6-channel input requires model modification")
-        # For now, skip 6-channel experiments
-        return None
-
-    # Use modified config
+    # Configure training
     import copy
 
     exp_config = copy.deepcopy(config)
     if num_epochs is not None:
         exp_config.train.epochs = num_epochs
 
-    # Adding experiment metadata to config for versioning
+    # Adding experiment metadata
     exp_config.extra['experiment'] = {
-        'model_name':   model_name,
-        'input_mode':   input_mode,
-        'filter_names': filter_names,
+        'model_name':     model_name,
+        'input_mode':     input_mode,
+        'filter_names':   filter_names,
+        'input_channels': in_channels,
     }
-    # model-specific version root
+
+    # model-specific directory
     version_root = config.paths.models / model_name / input_mode
+    if filter_names:
+        filter_str = "_".join(filter_names)
+        version_root = version_root / filter_str[:30]  # Limit path length
+
     version_root.mkdir(parents = True, exist_ok = True)
 
     p("Version root", version_root)
-    # Train (VersionManager will handle versioning inside run_training -> Trainer)
+    # Train (VersionManager handles versioning inside run_training -> Trainer)
     trainer = run_training(
             config = exp_config,
             train_loader = train_loader,
@@ -206,24 +223,78 @@ p("", "Experiments configured")
 
 
 
+# %% [markdown]
+# ##### Experiment setup
+
 # %%
 # Running experiments
 
-experiments = [
-    ('simple_cnn', 'rgb', None),
-    # ('simple_cnn', 'filtered', ['laplacian', 'sobel', 'clahe']),
-    # ('unet', 'rgb', None),
-    # ('unet', 'filtered', ['laplacian', 'sobel', 'clahe']),
-]
+# Define filter combinations to test
+filter_sets = {
+    'classic':        ['laplacian', 'sobel', 'clahe'],
+    'gaussian':       ['gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7'],
+    'kernel_sharpen': ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'],
+    'kernel_edge':    ['sobel_x', 'sobel_y', 'laplacian_3x3'],
+    'combined':       ['laplacian', 'gaussian_5x5', 'clahe'],
+}
+
+# TODO  - EXPLORE other methods (subtract filters maybe)
+# Define experiments
+experiments = []
+
+# Baseline: RGB only
+for model in ['simple_cnn', 'unet']:
+    experiments.append((model, 'rgb', None))
+
+# Filtered mode: 3 channels from filters
+for model in ['simple_cnn', 'unet']:
+    for set_name, filters in filter_sets.items():
+        experiments.append((model, 'filtered', filters))
+
+# Concat mode: 6 channels (RGB + 3 filters)
+# Note: This requires model architecture modification for 6-channel input
+# for model in ['simple_cnn', 'unet']:
+#     experiments.append((model, 'concat', filter_sets['combined']))
 
 results = { }
-for model_name, mode, filters in experiments:
+for i, (model_name, mode, filters) in enumerate(experiments, 1):
+    p("")
+    t(f"Experiment {i}/{len(experiments)}")
+    p("Model", model_name)
+    p("Mode", mode)
+    p("Filters", filters)
+
     key = f"{model_name}_{mode}"
+    if filters:
+        filter_key = "_".join(filters)[:20]
+        key = f"{key}_{filter_key}"
+
     results[key] = train_experiment(model_name, mode, filters, num_epochs = 10)
+
+# # If running all experiments:
+# experiments = [
+#     # === Simple CNN ===
+#     ('simple_cnn', 'rgb', None),
+#     ('simple_cnn', 'filtered', ['laplacian', 'sobel', 'clahe']),
+#     ('simple_cnn', 'filtered', ['gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7']),
+#     ('simple_cnn', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance']),
+#     ('simple_cnn', 'filtered', ['sobel_x', 'sobel_y', 'laplacian_3x3']),
+#
+#     # === UNet ===
+#     ('unet', 'rgb', None),
+#     ('unet', 'filtered', ['laplacian', 'sobel', 'clahe']),
+#     ('unet', 'filtered', ['gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7']),
+#     ('unet', 'filtered', ['sobel_x', 'sobel_y', 'laplacian_3x3']),
+# ]
+
+# Minimal experiment set for initial testing
+experiments = [
+    ('simple_cnn', 'rgb', None),
+]
 
 
 # %% [markdown]
-# #### Stage 5: Class-Specific Training
+# #### Step 5: Class-Specific Training
 #
 # **Strategy:**
 # Trainning separate models for:
@@ -304,7 +375,7 @@ trainer_group = train_class_specific_model('group_of_trees', 'simple_cnn')
 
 
 # %% [markdown]
-# #### Stage 6: Ensemble Predictions
+# #### Step 6: Ensemble Predictions
 #
 # **Approach:**
 # Combine predictions from multiple models:
@@ -343,7 +414,7 @@ p("", "Ensemble prediction function ready")
 
 
 # %% [markdown]
-# #### Stage 7: Submission Generation
+# #### Step 7: Submission Generation
 #
 # **Current Status:**
 # - Prediction pipeline exists (notebook 05)

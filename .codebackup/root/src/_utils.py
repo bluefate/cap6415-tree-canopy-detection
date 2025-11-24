@@ -878,6 +878,16 @@ class Logger:
         self.write(f"Error: {text}")
         p("[Error]", text, color1 = c.RED, color2 = c.BLACK)
 
+    def exception(self, text: str, exc: Exception) -> None:
+        """
+        Log an exception with traceback.
+        """
+        import traceback
+
+        error_msg = f"Exception: {text}\n{str(exc)}\n{traceback.format_exc()}"
+        self.write(error_msg)
+        p("[Exception]", text, color1=c.RED, color2=c.RED)
+        p("", str(exc), color1=c.ORANGE, color2=c.ORANGE)
 
 # From C:\github\Tree-Canopy-Detection\src\utils\tester.py
 import numpy as np

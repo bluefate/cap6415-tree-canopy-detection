@@ -2,6 +2,7 @@ import cv2
 import numpy as np
 import torch
 
+from exploration.enhancement import clahe_enhance
 from src.data.loaders import ImageMaskDataset
 
 
@@ -20,45 +21,86 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         self.mode = mode
         self.filter_names = filter_names or ['laplacian', 'sobel', 'clahe']
 
-    def apply_filters( self, img ):
-        """Apply the specified filters and return as channels."""
-        from src.exploration.enhancement import clahe_enhance, to_gray
-        from src.exploration.filters import cv2_apply_laplacian, cv2_apply_sobel
+    def apply_filters(self, img):
+        from src.exploration.kernels import get_kernels
+        from src.exploration.enhancement import to_gray
+        import cv2
+        import numpy as np
 
         gray = to_gray(img)
-        target_h, target_w = img.shape[:2]
 
-        filter_map = {
-            'laplacian': lambda: cv2_apply_laplacian(img),
-            'sobel':     lambda: cv2_apply_sobel(img),
-            'clahe':     lambda: clahe_enhance(gray),
+        # loading kernel bank dynamically
+        kernel_bank = get_kernels("all")
+
+        # create callable filters dynamically
+        dynamic_kernels = {
+            name.lower(): lambda k=kernel: cv2.filter2D(gray, -1, k)
+            for name, kernel in kernel_bank.items()
         }
+
+        # adding algorithmic filters
+        dynamic_kernels.update({
+            "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
+            "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0) + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+            "clahe": lambda: clahe_enhance(gray),
+        })
 
         channels = []
         for fname in self.filter_names:
-            if fname in filter_map:
-                filtered = filter_map[fname]()
-                #
-                # # Ensure 2D (grayscale)
-                # if filtered.ndim == 3:
-                #     filtered = cv2.cvtColor(filtered, cv2.COLOR_RGB2GRAY)
-                #
-                # # Resize if needed
-                # if filtered.shape != (target_h, target_w):
-                #     filtered = cv2.resize(filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
-                #
-                # Normalize to 0-255
-                if filtered.dtype != np.uint8:
-                    filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            key = fname.lower()
+            if key not in dynamic_kernels:
+                raise KeyError(f"Unknown filter '{fname}'. Available: {list(dynamic_kernels.keys())}")
 
-                channels.append(filtered)
+            filtered = dynamic_kernels[key]()
+            filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            channels.append(filtered)
 
-        # Ensure we have exactly 3 channels
+        # Ensure at least 3 channels
+        if len(channels) == 0:
+            raise RuntimeError(f"No filters produced output for {self.filter_names}")
+
         while len(channels) < 3:
-            #channels.append(channels[-1].copy())
             channels.append(channels[-1])
 
-        return np.stack(channels[:3], axis = 2)
+        return np.stack(channels[:3], axis=2)
+
+
+    # def apply_filters(self, img):
+    #     from src.exploration.enhancement import clahe_enhance, to_gray
+    #     from src.exploration.filters import cv2_apply_laplacian, cv2_apply_sobel
+    #
+    #     gray = to_gray(img)
+    #     target_h, target_w = img.shape[:2]
+    #
+    #     filter_map = {
+    #         'laplacian': lambda: cv2_apply_laplacian(img),
+    #         'sobel':     lambda: cv2_apply_sobel(img),
+    #         'clahe':     lambda: clahe_enhance(gray),
+    #         'gaussian_3x3': lambda: cv2.GaussianBlur(img, (3,3), 1.0),
+    #         'gaussian_5x5': lambda: cv2.GaussianBlur(img, (5,5), 1.5),
+    #         'sharpen':      lambda: cv2.filter2D(gray, -1, np.array([[0,-1,0],[-1,5,-1],[0,-1,0]])),
+    #     }
+    #
+    #     channels = []
+    #     for fname in self.filter_names:
+    #         if fname in filter_map:
+    #             filtered = filter_map[fname]()
+    #             if filtered.dtype != np.uint8:
+    #                 filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    #             channels.append(filtered)
+    #
+    #
+    #     if len(channels) == 0:
+    #         raise RuntimeError(
+    #                 f"No filters produced output. filter_names={self.filter_names}"
+    #         )
+    #
+    #     # Ensure 3 channels by repeating the last one
+    #     while len(channels) < 3:
+    #         channels.append(channels[-1])
+    #
+    #     return np.stack(channels[:3], axis=2)
+
 
     def __getitem__( self, idx ):
         """Override to apply filter enhancement."""

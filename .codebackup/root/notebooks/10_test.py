@@ -21,7 +21,7 @@ from src.data.enhance_masks import EnhancedImageMaskDataset
 from src.utils.config import Config
 from src.utils.helpers import c, p, t
 from src.data.loaders import ImageMaskDataset
-from src.data.image_loader import apply_all_filters, create_enhanced_image
+from src.data.image_loader import apply_filters, create_enhanced_image
 from models.zoo import build_model
 
 
@@ -77,7 +77,7 @@ img = cv2.imread(str(img_path))
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 # Apply all filters (assumes apply_all_filters function exists in notebook)
-filters = apply_all_filters(img)
+filters = apply_filters(img)
 
 # Get top 3 filter names (adjust based on your results)
 test_filters = list(filters.keys())[:3]
@@ -417,4 +417,42 @@ def verify_dataset_shapes():
 all_passed = verify_dataset_shapes()
 
 
+# %% [markdown]
+# #### Test CLAHE Error Fix
+
 # %%
+from exploration.enhancement import clahe_enhance, to_gray
+
+# %%
+t("Testing CLAHE with different input types")
+
+# Test 1: Grayscale
+try:
+    gray = to_gray(img)
+    clahe_result = clahe_enhance(gray)
+    p("✓ CLAHE on grayscale", "PASS", color1=c.GREEN)
+except Exception as e:
+    p("✗ CLAHE on grayscale", str(e), color1=c.RED)
+
+# Test 2: RGB (works via to_gray)
+try:
+    gray = to_gray(img)  # Convert first
+    clahe_result = clahe_enhance(gray)
+    p("✓ CLAHE on RGB (converted)", "PASS", color1=c.GREEN)
+except Exception as e:
+    p("✗ CLAHE on RGB", str(e), color1=c.RED)
+
+# Test 3: EnhancedImageMaskDataset with CLAHE filter
+try:
+    dataset = EnhancedImageMaskDataset(
+        entries[:5],
+        config.paths.train_images,
+        mode='filtered',
+        filter_names=['laplacian', 'sobel', 'clahe'],
+        transform=train_tf
+    )
+    img_t, mask_t = dataset[0]
+    p("✓ EnhancedDataset with CLAHE", "PASS", color1=c.GREEN)
+    p("  Shape", img_t.shape)
+except Exception as e:
+    p("✗ EnhancedDataset with CLAHE", str(e), color1=c.RED)

@@ -19,7 +19,7 @@ from src.data.annotations import load_json_annotations
 from src.exploration.visualize import show_side_by_side
 from src.utils.config import Config
 from src.utils.helpers import init_notebook, p, t
-from src.data.image_loader import create_enhanced_image, apply_all_filters
+from src.data.image_loader import create_enhanced_image, apply_filters
 
 
 config = Config.load()
@@ -115,35 +115,105 @@ def compute_edge_quality( filtered_img, ground_truth_mask, threshold = 0.5 ):
 #
 
 # %%
+from src.exploration.kernels import get_kernels, apply_kernel_using_convolution
+from src.exploration.enhancement import to_gray, clahe_enhance
+from src.exploration.filters import cv2_apply_laplacian, cv2_apply_sobel
+
+
+
 # Select random samples for testing
 num_samples = min(10, len(entries))
 sample_entries = random.sample(entries, num_samples)
 
+# results = []
+# t("Evaluating filters on sample images")
+# for idx, entry in enumerate(sample_entries):
+#     p(f"Processing sample {idx + 1}/{num_samples}", entry.image_path.name)
+#
+#     # Apply All Filters to Sample Images
+#     img, mask = load_sample_with_mask(entry, train_dir)
+#     filters = apply_all_filters(img) XXXXXXXX
+#
+#     for filter_name, filtered_img in filters.items():
+#         metrics = compute_edge_quality(filtered_img, mask)
+#
+#         results.append(
+#                 {
+#                     'image':  entry.image_path.name,
+#                     'filter': filter_name,
+#                     **metrics
+#                 }
+#         )
+
+# Get all available kernels
+kernel_bank = get_kernels("all")  # returns dict of {name: kernel_matrix}
+
+t("Evaluating all kernels from get_kernels()")
+
 results = []
 
-t("Evaluating filters on sample images")
-
 for idx, entry in enumerate(sample_entries):
-    p(f"Processing sample {idx + 1}/{num_samples}", entry.image_path.name)
 
-    # Apply All Filters to Sample Images
+    p(f"Processing sample {idx + 1}/{len(sample_entries)}", entry.image_path.name)
+
+    # Load image and mask
     img, mask = load_sample_with_mask(entry, train_dir)
-    filters = apply_all_filters(img)
+    gray = to_gray(img)
 
-    for filter_name, filtered_img in filters.items():
-        metrics = compute_edge_quality(filtered_img, mask)
+    # Evaluating all kernels from kernel bank
+    for kname, kernel in kernel_bank.items():
 
-        results.append(
-                {
-                    'image':  entry.image_path.name,
-                    'filter': filter_name,
-                    **metrics
-                }
-        )
+        # apply kernel
+        try:
+            filtered = apply_kernel_using_convolution(gray, kernel)
+
+            # compute metrics
+            metrics = compute_edge_quality(filtered, mask)
+
+            results.append(
+                    {
+                        'image':  entry.image_path.name,
+                        'filter': kname.lower(),
+                        **metrics
+                    }
+            )
+        except Exception as e:
+            p("Warning", f"Kernel {kname} failed: {e}")
+            continue
+
+    # Evaluate algorithmic filters (OpenCV native)
+    algorithmic_filters = {
+        'laplacian': lambda: cv2_apply_laplacian(img),
+        'sobel': lambda: cv2_apply_sobel(img),
+        'clahe': lambda: clahe_enhance(gray, clip=2.0, tile=8),
+        'gaussian_3x3': lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
+        'gaussian_5x5': lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
+    }
+
+    # Evaluate algorithmic filters (OpenCV native)
+    for fname, filter_func in algorithmic_filters.items():
+        try:
+            filtered = filter_func()
+
+            # Normalize if needed
+            if filtered.dtype != np.uint8:
+                filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+            metrics = compute_edge_quality(filtered, mask)
+
+            results.append({
+                'image': entry.image_path.name,
+                'filter': fname,
+                'filter_type': 'algorithmic',
+                **metrics
+            })
+        except Exception as e:
+            p("Warning", f"Filter '{fname}' failed: {e}", color1=c.ORANGE)
+            continue
 
 # Convert to DataFrame
 df = pd.DataFrame(results)
-
+t(f"Evaluation complete: {len(results)} filter-image combinations tested")
 
 # %% [markdown]
 # #### Step 4: Rank Filters by Performance
@@ -180,7 +250,7 @@ p("Top 3 Filters", top_3_filters)
 # Visualize top 3 filters on a sample image
 sample_entry = sample_entries[0]
 img, mask = load_sample_with_mask(sample_entry, train_dir)
-filters = apply_all_filters(img)
+filters = apply_filters(img)
 
 t(f"Visual comparison: {sample_entry.image_path.name}")
 
@@ -249,7 +319,7 @@ t("Comprehensive Filter Comparison")
 
 sample_entry = sample_entries[0]
 img, mask = load_sample_with_mask(sample_entry, train_dir)
-filters = apply_all_filters(img)
+filters = apply_filters(img)
 
 # Prepare all filters for visualization
 all_filters = list(filters.keys())
