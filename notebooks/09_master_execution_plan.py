@@ -5,7 +5,6 @@
 # %%
 import os
 import sys
-from pathlib import Path
 
 
 #os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  #enable for debugging ONLY
@@ -227,8 +226,6 @@ p("", "Experiments configured")
 # ##### Experiment setup
 
 # %%
-# Running experiments
-
 # Define filter combinations to test
 filter_sets = {
     'classic':        ['laplacian', 'sobel', 'clahe'],
@@ -237,6 +234,9 @@ filter_sets = {
     'kernel_edge':    ['sobel_x', 'sobel_y', 'laplacian_3x3'],
     'combined':       ['laplacian', 'gaussian_5x5', 'clahe'],
 }
+p("filter_sets", filter_sets)
+
+# %%
 
 # TODO  - EXPLORE other methods (subtract filters maybe)
 # Define experiments
@@ -255,6 +255,63 @@ for model in ['simple_cnn', 'unet']:
 # Note: This requires model architecture modification for 6-channel input
 # for model in ['simple_cnn', 'unet']:
 #     experiments.append((model, 'concat', filter_sets['combined']))
+
+p("experiments", experiments)
+
+# %%
+# Minimal experiment set for initial testing
+t("Testing")
+filter_sets = dict(list(filter_sets.items())[:1])
+p("filter_sets", filter_sets)
+
+experiments = [
+    ('simple_cnn', 'rgb', None),
+]
+p("experiments", experiments)
+
+
+# %%
+def summarize_experiments( experiments, filter_sets ):
+    """
+    Summarize experiment count based on:
+      experiments: list of (model, mode, filters)
+      filter_sets: dict {name: [filters]} used externally
+    """
+
+    t("TOTAL EXPERIMENTS")
+
+    # Extract models from experiments
+    models = sorted({ m for m, _, _ in experiments })
+
+    # Count experiments by mode
+    num_rgb = sum(1 for m, mode, f in experiments if mode == "rgb")
+    num_filtered = sum(1 for m, mode, f in experiments if mode == "filtered")
+    num_concat = sum(1 for m, mode, f in experiments if mode == "concat")
+
+    # Total
+    total = len(experiments)
+
+    # Print counts
+    p("Models", len(models), color1 = c.BLUE)
+    p("Filter sets", len(filter_sets), color1 = c.SALMON)
+    p("RGB experiments", num_rgb)
+    p("Filtered experiments", num_filtered)
+    p("Concat experiments", num_concat)
+    p("TOTAL EXPERIMENTS TO RUN", total, color1 = c.RED, color2 = c.RED)
+
+
+    # Print experiment combinations
+    p("\n", "Experiment combinations", color1 = c.BLACK)
+    for model, mode, filters in experiments:
+        p("", f"{model} | {mode} | {filters}")
+
+
+summarize_experiments(experiments, filter_sets)
+
+
+# %%
+# Running experiments
+
 
 results = { }
 for i, (model_name, mode, filters) in enumerate(experiments, 1):
@@ -287,10 +344,6 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
 #     ('unet', 'filtered', ['sobel_x', 'sobel_y', 'laplacian_3x3']),
 # ]
 
-# Minimal experiment set for initial testing
-experiments = [
-    ('simple_cnn', 'rgb', None),
-]
 
 
 # %% [markdown]
