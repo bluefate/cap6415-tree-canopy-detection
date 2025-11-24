@@ -538,7 +538,3 @@ trainer_final = run_training(
         model_name = "simple_cnn"
 )
 
-
-# %%
-
-# %%

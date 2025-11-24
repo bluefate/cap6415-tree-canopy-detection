@@ -22,35 +22,38 @@ paths:
 
   plots: "plots"
 
+  # for code TESTING
+  #train:
+  #  image_size: 32
+  #  num_workers: 0
+  #  seed: 42
+  #  batch_size: 8
+  #  epochs: 2
+  #  learning_rate: 1e-4
+  #  early_stop_patience: 8
+  #  scheduler_factor: 0.5
+  #  scheduler_patience: 3
+
+
 train:
-  image_size: 32
+  image_size: 512
   num_workers: 0
   seed: 42
+
+  # training params
   batch_size: 8
-  epochs: 2
+  epochs: 10
   learning_rate: 1e-4
+  # best_val_loss: 1.0e9
   early_stop_patience: 8
+
+  # scheduler
   scheduler_factor: 0.5
   scheduler_patience: 3
-
-
-#train:
-#  image_size: 512
-#  num_workers: 0
-#  seed: 42
-#
-#  # training params
-#  batch_size: 8
-#  epochs: 10
-#  learning_rate: 1e-4
-#  # best_val_loss: 1.0e9
-#  early_stop_patience: 8
-#
-#  # scheduler
-#  scheduler_factor: 0.5
-#  scheduler_patience: 3
 
 
 extra:
   log_predictions: true
   use_amp: true
+
+

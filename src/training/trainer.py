@@ -159,11 +159,7 @@ class Trainer:
             train_loss = self.train_epoch()
             val = self.validate_epoch()
 
-            self.logger.info(f"Train loss {train_loss:.4f}")
-            self.logger.info(f"Val loss {val['loss']:.4f}")
-            self.logger.info(f"IoU {val['iou']:.4f}")
-            self.logger.info(f"Dice {val['dice']:.4f}")
-            self.logger.info(f"Acc {val['acc']:.4f}")
+            self.logger.info(f"Train loss {train_loss:.4f}, Val loss {val['loss']:.4f}, IoU {val['iou']:.4f}, Dice {val['dice']:.4f}, Acc {val['acc']:.4f}")
 
             is_best = val["loss"] < self.best_val_loss
             if is_best:

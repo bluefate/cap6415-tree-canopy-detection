@@ -1,7 +1,8 @@
-#%% md
+# %% [markdown]
 # # Notebook: 08 Filter Experimentation
 # ### Purpose: Systematically identify the top 3 filters that best enhance tree canopy boundaries
-#%%
+
+# %%
 import os
 import sys
 
@@ -28,28 +29,30 @@ train_dir = config.paths.train_images
 annotations_path = config.paths.annotations
 entries = load_json_annotations(annotations_path)
 
-#%% md
+
+# %% [markdown]
 # #### Step 1: Define Filter Candidates
-# 
+#
 # Test these filters based on computer vision theory:
-# 
+#
 # **Edge Detection:**
 # - Sobel (X, Y, combined) - First derivative, directional
 # - Laplacian - Second derivative, isotropic
 # - Scharr - Enhanced Sobel
-# 
+#
 # **Contrast Enhancement:**
 # - CLAHE - Adaptive histogram equalization
 # - Histogram Equalization - Global contrast
-# 
+#
 # **Noise Reduction:**
 # - Gaussian Blur - Smoothing before edge detection
-# 
+#
 # **Custom Kernels:**
 # - High-pass filter - Emphasizes edges
 # - Sharpening - Enhances boundaries
-# 
-#%%
+#
+
+# %%
 def load_sample_with_mask( entry, image_dir ):
     """Load image and its ground truth mask."""
     img_path = image_dir / entry.image_path.name
@@ -106,10 +109,12 @@ def compute_edge_quality( filtered_img, ground_truth_mask, threshold = 0.5 ):
     }
 
 
-#%% md
+
+# %% [markdown]
 # #### Step 3: Quantitative Evaluation
-# 
-#%%
+#
+
+# %%
 # Select random samples for testing
 num_samples = min(10, len(entries))
 sample_entries = random.sample(entries, num_samples)
@@ -139,10 +144,12 @@ for idx, entry in enumerate(sample_entries):
 # Convert to DataFrame
 df = pd.DataFrame(results)
 
-#%% md
+
+# %% [markdown]
 # #### Step 4: Rank Filters by Performance
-# 
-#%%
+#
+
+# %%
 # Aggregate metrics across all images
 t("Filter Performance Summary")
 
@@ -164,10 +171,12 @@ p("Top filters by F1 score", summary.head(10))
 top_3_filters = summary.head(3).index.tolist()
 p("Top 3 Filters", top_3_filters)
 
-#%% md
+
+# %% [markdown]
 # #### Step 5: Visual Comparison
-# 
-#%%
+#
+
+# %%
 # Visualize top 3 filters on a sample image
 sample_entry = sample_entries[0]
 img, mask = load_sample_with_mask(sample_entry, train_dir)
@@ -189,12 +198,14 @@ show_side_by_side(
         cmaps = tuple([None, 'gray'] + ['gray'] * len(top_3_filters))
 )
 
-#%% md
+
+# %% [markdown]
 # #### Step 6: Combining Multiple Filters Strategy
-# 
+#
 # **Create a 3-channel "enhanced" image using the top 3 filters as RGB channels.**
-# 
-#%%
+#
+
+# %%
 
 
 
@@ -208,10 +219,12 @@ show_side_by_side(
         titles = ("Original RGB", f"Enhanced (Top 3 Filters)")
 )
 
-#%% md
+
+# %% [markdown]
 # #### Step 7: Export Results
-# 
-#%%
+#
+
+# %%
 # Save detailed results
 output_path = config.paths.models / "filter_analysis.csv"
 df.to_csv(output_path, index = False)
@@ -225,10 +238,12 @@ p("Saved summary", summary_path)
 # Save top 3 filters to config
 p("TOP_3_FILTERS", top_3_filters)
 
-#%% md
+
+# %% [markdown]
 # #### Step 8: Comparison Visualization Grid
-# 
-#%%
+#
+
+# %%
 # Create comprehensive comparison for one image
 t("Comprehensive Filter Comparison")
 
@@ -246,3 +261,4 @@ show_side_by_side(
         titles = tuple(titles_all),
         maxcolumns = 3
 )
+

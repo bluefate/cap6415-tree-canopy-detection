@@ -117,12 +117,12 @@ def get_train_augmentations( image_size: int ):
                 A.Resize(image_size, image_size),
                 A.HorizontalFlip(p = 0.5),
                 A.VerticalFlip(p = 0.5),
-                A.ShiftScaleRotate(
-                        shift_limit = 0.1,
-                        scale_limit = 0.1,
-                        rotate_limit = 15,
-                        p = 0.5,
-                ),
+                # A.ShiftScaleRotate(
+                #         shift_limit = 0.1,
+                #         scale_limit = 0.1,
+                #         rotate_limit = 15,
+                #         p = 0.5,
+                # ),
                 A.Affine(
                         scale = (0.9, 1.1),
                         rotate = (-15, 15),
