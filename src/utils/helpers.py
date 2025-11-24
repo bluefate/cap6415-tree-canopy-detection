@@ -274,7 +274,8 @@ class p:
                 return
 
             # Case 4: nothing provided
-            self.print_with_color("None", "None")
+            self.print_with_color("", "")
+            return
 
         except Exception as e:
             p.print_exception(e, self.obj, self.value)
@@ -300,21 +301,26 @@ class p:
         value_color = value_color or self.color2
 
         if (label is None or str(label) == "") and (value is None or str(value) == ""):
-            print("None", "None")
+            #print("None", "None")
+            print("")
+            return
 
         elif label is None or str(label) == "":
             style = f"\033[{value_color.value}{';1' if bold else ''}m{value}\033[0m"
             print(style)
+            return
 
         elif value is None or str(value) == "":
             style = f"\033[{label_color.value}{';1' if bold else ''}m{label}\033[0m"
             print(style)
+            return
 
         else:
             if bold:
                 print(f"\033[{label_color.value};1m{label}:\033[0m \033[{value_color.value}m{value}\033[0m")
             else:
                 print(f"\033[{label_color.value}m{label}:\033[0m \033[{value_color.value};1m{value}\033[0m")
+            return
 
 
     # -----------------------

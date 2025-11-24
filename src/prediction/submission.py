@@ -8,9 +8,9 @@ import numpy as np
 from src.utils.helpers import p, t
 
 
-def mask_to_polygons( mask: np.ndarray ) -> List[List[int]]:
+def mask_to_polygons(mask: np.ndarray) -> List[List[int]]:
     """
-    Convert a binary mask into COCO style polygon lists.
+    Convert a binary mask to COCO-style polygon lists.
     Returns a list of polygon coordinate lists.
     """
     mask = (mask > 0).astype(np.uint8)
@@ -21,8 +21,8 @@ def mask_to_polygons( mask: np.ndarray ) -> List[List[int]]:
     for cnt in contours:
         if len(cnt) >= 3:
             cnt = cnt.reshape(-1, 2).tolist()
-            # Flatten: [[x1,y1], [x2,y2]] -> [x1,y1,x2,y2]
-            flat = [coord for point in cnt for coord in point]
+			# Flatten: [[x1,y1], [x2,y2]] -> [x1,y1,x2,y2]
+            flat = [coord for pt in cnt for coord in pt]
             polygons.append(flat)
 
     return polygons
@@ -33,30 +33,28 @@ def build_submission_entry(
         width: int,
         height: int,
         polygons: List[List[int]],
-        # scene_type: str = "unknown",
-        # cm_resolution: int = 0,
+        scene_type: str = "unknown",
+        cm_resolution: int = 10,
 ) -> Dict[str, Any]:
     """
-    Build one image level submission item.
+    Build one image level submission entry.
     """
     annotations = []
     for poly in polygons:
         if len(poly) >= 6:
-            annotations.append(
-                {
-                    "class": "tree",
-                    "confidence_score": 1.0,
-                    "segmentation": poly,
-                },
-        )
+            annotations.append({
+                "class": "tree",
+                "confidence_score": 1.0,
+                "segmentation": poly,
+            })
 
     return {
         "file_name": file_name,
         "width": width,
         "height": height,
-        # "cm_resolution": cm_resolution,
-        # "scene_type": scene_type,
-        # "annotations": annotations,
+        "scene_type": scene_type,
+        "cm_resolution": cm_resolution,
+        "annotations": annotations,
     }
 
 
@@ -65,31 +63,27 @@ def export_submission(
         output_path: Path,
 ) -> None:
     """
-    Convert a list of prediction results into a submission JSON file.
-    Each result entry must contain:
-    file, image, mask
-
-    Saves output_path as a JSON file.
+    Convert prediction results into expected submission JSON structure.
+    Enforces required fields and valid geometry.
     """
 
-    images  = []
+    images = []
 
     for r in results:
-        image = r["image"]
-        mask = r["mask"]
-        fname = r["name"]
+        image = r.get("image", None)
+        mask = r.get("mask", None)
+        fname = r.get("name", "")
 
         # enforce .tif extension
         fname = Path(fname).stem + ".tif"
 
-        # Get dimensions from mask or image
+        # Dimensions
         if image is not None:
             h, w = image.shape[:2]
         elif mask is not None:
             h, w = mask.shape
         else:
-            raise ValueError(f"Missing image/mask for result: {r}")
-
+            raise ValueError(f"Missing image/mask for result entry: {r}")
 
         # Convert mask to polygons
         try:
@@ -98,33 +92,29 @@ def export_submission(
             p("Warning", f"Polygon conversion failed for {fname}: {e}", color1=c.ORANGE)
             polygons = []
 
-
-        # Build entry
+        # Build final entry with required keys
         entry = build_submission_entry(
-                file_name = fname,
-                width = w,
-                height = h,
-                polygons = polygons,
+            file_name=fname,
+            width=w,
+            height=h,
+            polygons=polygons,
+            scene_type=r.get("scene_type", "unknown"),
+            cm_resolution = extract_cm_resolution(fname),
         )
 
-        # Safety: ensure annotations key exists
-        if "annotations" not in entry or entry["annotations"] is None:
-            entry["annotations"] = []
+        images.append(entry)
 
-        images .append(entry)
-
-    # Output path
+    # Save JSON
     output_path = Path(output_path)
-    output_path.parent.mkdir(parents = True, exist_ok = True)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    # Write JSON
     submission = {"images": images}
-    with open(output_path, "w", encoding = "utf8") as f:
+    # with open(output_path, "w", encoding = "utf8") as f:
+    with output_path.open("w", encoding="utf8") as f:
         json.dump(submission, f, indent=2, ensure_ascii=False)
 
+    # Logging
     t("Submission Export Complete")
-
-    # Validation
     p("✓ Submission saved", output_path)
     p("✓ Total images", len(images))
     p("✓ Total annotations", sum(len(img["annotations"]) for img in images))
@@ -137,6 +127,8 @@ def export_submission(
         p("file_name", sample["file_name"])
         p("width", sample["width"])
         p("height", sample["height"])
+        p("scene_type", sample["scene_type"])
+        p("cm_resolution", sample["cm_resolution"])
         p("annotations", f"{len(sample['annotations'])} polygons")
 
         if sample["annotations"]:
@@ -146,4 +138,18 @@ def export_submission(
             p("  segmentation points", len(ann["segmentation"]))
 
 
+def extract_cm_resolution(fname: str) -> int:
+    """
+    Extract resolution in cm from filenames like 'forest_10cm_001.tif'
+    Returns integer resolution (eg: 10).
+    """
+    name = Path(fname).stem.lower()
 
+    # Search for patterns like 5cm, 10cm, 20cm, etc.
+    import re
+    match = re.search(r"(\d+)\s*cm", name)
+    if match:
+        return int(match.group(1))
+
+    # If no information found, return fallback
+    return 10

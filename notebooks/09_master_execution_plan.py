@@ -5,6 +5,7 @@
 # %%
 import os
 import sys
+from pathlib import Path
 
 
 #os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  #enable for debugging ONLY
@@ -259,15 +260,78 @@ for model in ['simple_cnn', 'unet']:
 p("experiments", experiments)
 
 # %%
-# Minimal experiment set for initial testing
-t("Testing")
-filter_sets = dict(list(filter_sets.items())[:1])
-p("filter_sets", filter_sets)
+# # Minimal experiment set for initial testing
+# t("Testing")
+# filter_sets = dict(list(filter_sets.items())[:1])
+# p("filter_sets", filter_sets)
+#
+# experiments = [
+#     ('simple_cnn', 'rgb', None),
+# ]
+# p("experiments", experiments)
 
-experiments = [
-    ('simple_cnn', 'rgb', None),
-]
-p("experiments", experiments)
+
+# %%
+def estimate_runtime( experiments, filter_sets ):
+    """
+    Estimate training runtime using:
+      - experiments list
+      - filter_sets dict
+    Adjusts time for rgb vs filtered vs concat.
+    """
+
+    t("Runtime Estimate")
+
+    # Load config and dataset size
+    config = Config.load()
+    from src.data.annotations import load_json_annotations
+
+    entries = load_json_annotations(config.paths.annotations)
+
+    train_size = int(0.8 * len(entries))
+    batch_size = config.train.batch_size
+    batches_per_epoch = max(1, train_size // batch_size)
+    epochs = config.train.epochs
+
+    # Baseline timing assumption (seconds per batch)
+    base_seconds = 1.0
+
+    total_seconds = 0.0
+
+    p("Experiments", len(experiments))
+    p("Filter sets", len(filter_sets))
+    p("Epochs per experiment", epochs)
+
+    # Mode timing multipliers
+    mode_multiplier = {
+        "rgb":      1.0,
+        "filtered": 1.5,
+        "concat":   2.0
+    }
+
+    for model_name, mode, filters in experiments:
+
+        # base seconds per batch
+        sec_per_batch = base_seconds * mode_multiplier.get(mode, 1.0)
+
+        exp_seconds = epochs * batches_per_epoch * sec_per_batch
+        total_seconds += exp_seconds
+
+        p(f"{model_name} | {mode}", f"{exp_seconds / 60:.2f} min")
+
+    total_minutes = total_seconds / 60
+    total_hours = total_minutes / 60
+    p()
+    t("Totals")
+    p("Training samples", train_size)
+    p("Batches per epoch", batches_per_epoch)
+    p("Estimated total time", f"~{total_hours:.2f} hours", color1 = c.RED, color2 = c.RED)
+
+    if total_hours > 4:
+        p("⚠ Long run", "Reduce epochs or filter sets", color1 = c.ORANGE)
+
+
+estimate_runtime(experiments, filter_sets)
 
 
 # %%
@@ -601,13 +665,14 @@ for model_name in ['simple_cnn', 'unet']:
 
         submission_file = latest_version / "submission.json"
 
-        best_submissions.append({
-            "model": model_name,
-            "mode": input_mode,
-            "version": str(latest_version),
-            "submission": str(submission_file)
-        })
-
+        best_submissions.append(
+                {
+                    "model":      model_name,
+                    "mode":       input_mode,
+                    "version":    str(latest_version),
+                    "submission": str(submission_file)
+                }
+        )
 
 # ===== Find best overall experiment =====
 
@@ -619,31 +684,32 @@ for item in best_submissions:
     if not ckpt_path.exists():
         continue
 
-    ckpt = torch.load(ckpt_path, map_location="cpu")
+    ckpt = torch.load(ckpt_path, map_location = "cpu")
     val_loss = ckpt.get("best_val_loss", None)
     if val_loss is None:
         continue
 
     if best_overall is None or val_loss < best_overall["best_val_loss"]:
         best_overall = {
-            "model": item["model"],
-            "mode": item["mode"],
-            "version": item["version"],
-            "submission": item["submission"],
+            "model":         item["model"],
+            "mode":          item["mode"],
+            "version":       item["version"],
+            "submission":    item["submission"],
             "best_val_loss": val_loss
         }
 
 # Append overall best
 if best_overall:
-    best_submissions.append({
-        "model": best_overall["model"],
-        "mode": best_overall["mode"],
-        "version": best_overall["version"],
-        "submission": best_overall["submission"],
-        "best_val_loss": best_overall["best_val_loss"],
-        "overall_best": True
-    })
-
+    best_submissions.append(
+            {
+                "model":         best_overall["model"],
+                "mode":          best_overall["mode"],
+                "version":       best_overall["version"],
+                "submission":    best_overall["submission"],
+                "best_val_loss": best_overall["best_val_loss"],
+                "overall_best":  True
+            }
+    )
 
 # ===== Summary =====
 t("Best Submissions Summary")
@@ -652,7 +718,7 @@ for item in best_submissions:
     is_overall = item.get("overall_best", False)
     label = "\nOVERALL BEST" if is_overall else "\nExperiment"
 
-    p(label, f"{item['model']} | {item['mode']}", color1=c.MAGENTA)
+    p(label, f"{item['model']} | {item['mode']}", color1 = c.MAGENTA)
     p("Version", item["version"])
     p("Submission", item["submission"])
 
