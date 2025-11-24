@@ -299,7 +299,6 @@ def summarize_experiments( experiments, filter_sets ):
     p("Concat experiments", num_concat)
     p("TOTAL EXPERIMENTS TO RUN", total, color1 = c.RED, color2 = c.RED)
 
-
     # Print experiment combinations
     p("\n", "Experiment combinations", color1 = c.BLACK)
     for model, mode, filters in experiments:
@@ -520,15 +519,17 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
 
     return output_path
 
+
 # %% [markdown]
 # #### Generate submissions for all trained experiments
 
 # %%
-
+best_submissions = []
 
 # Generate submissions for all trained experiments
 for model_name in ['simple_cnn', 'unet']:
     for input_mode in ['rgb', 'filtered']:
+
         version_root = config.paths.models / model_name / input_mode
 
         if not version_root.exists():
@@ -548,17 +549,117 @@ for model_name in ['simple_cnn', 'unet']:
             p("Model not found", model_path)
             continue
 
-        p(f"Generating submission for {model_name}/{input_mode}", color1 = c.RED)
+        p("\nGenerating submission", f"{model_name}/{input_mode}", color1 = c.MAGENTA, color2 = c.MAGENTA)
+
+        output_file = latest_version / "submission.json"
 
         submission_path = generate_submission(
                 model_path = model_path,
                 model_name = model_name,
                 eval_dir = config.paths.eval_images,
-                output_path = latest_version / "submission.json"
+                output_path = output_file
+        )
+
+        # Track best submission file per experiment
+        best_submissions.append(
+                {
+                    "model":      model_name,
+                    "mode":       input_mode,
+                    "version":    str(latest_version),
+                    "submission": str(output_file)
+                }
         )
 
         p("Saved submission", submission_path)
-        p()
+        p("")
+
+
+
+
+
+# %%
+# Build global list of all best experiment submissions
+best_submissions = []
+
+for model_name in ['simple_cnn', 'unet']:
+    for input_mode in ['rgb', 'filtered']:
+
+        version_root = config.paths.models / model_name / input_mode
+
+        if not version_root.exists():
+            continue
+
+        vm = VersionManager(version_root)
+        latest_version = vm.find_latest()
+
+        if latest_version is None:
+            continue
+
+        model_path = latest_version / "best_model.pth"
+        if not model_path.exists():
+            continue
+
+        submission_file = latest_version / "submission.json"
+
+        best_submissions.append({
+            "model": model_name,
+            "mode": input_mode,
+            "version": str(latest_version),
+            "submission": str(submission_file)
+        })
+
+
+# ===== Find best overall experiment =====
+
+best_overall = None
+
+for item in best_submissions:
+    ckpt_path = Path(item["version"]) / "checkpoint.pth"
+
+    if not ckpt_path.exists():
+        continue
+
+    ckpt = torch.load(ckpt_path, map_location="cpu")
+    val_loss = ckpt.get("best_val_loss", None)
+    if val_loss is None:
+        continue
+
+    if best_overall is None or val_loss < best_overall["best_val_loss"]:
+        best_overall = {
+            "model": item["model"],
+            "mode": item["mode"],
+            "version": item["version"],
+            "submission": item["submission"],
+            "best_val_loss": val_loss
+        }
+
+# Append overall best
+if best_overall:
+    best_submissions.append({
+        "model": best_overall["model"],
+        "mode": best_overall["mode"],
+        "version": best_overall["version"],
+        "submission": best_overall["submission"],
+        "best_val_loss": best_overall["best_val_loss"],
+        "overall_best": True
+    })
+
+
+# ===== Summary =====
+t("Best Submissions Summary")
+
+for item in best_submissions:
+    is_overall = item.get("overall_best", False)
+    label = "\nOVERALL BEST" if is_overall else "\nExperiment"
+
+    p(label, f"{item['model']} | {item['mode']}", color1=c.MAGENTA)
+    p("Version", item["version"])
+    p("Submission", item["submission"])
+
+    if "best_val_loss" in item:
+        p("Val Loss", item["best_val_loss"])
+    p("")
+
 
 # %%
 import cv2

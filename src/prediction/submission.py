@@ -73,21 +73,31 @@ def export_submission(
     """
 
     images  = []
+
     for r in results:
         image = r["image"]
         mask = r["mask"]
         fname = r["name"]
 
+        # enforce .tif extension
         fname = Path(fname).stem + ".tif"
 
         # Get dimensions from mask or image
-        if "image" in r:
-            h, w = r["image"].shape[:2]
-        else:
+        if image is not None:
+            h, w = image.shape[:2]
+        elif mask is not None:
             h, w = mask.shape
+        else:
+            raise ValueError(f"Missing image/mask for result: {r}")
+
 
         # Convert mask to polygons
-        polygons = mask_to_polygons(mask)
+        try:
+            polygons = mask_to_polygons(mask) if mask is not None else []
+        except Exception as e:
+            p("Warning", f"Polygon conversion failed for {fname}: {e}", color1=c.ORANGE)
+            polygons = []
+
 
         # Build entry
         entry = build_submission_entry(
@@ -96,14 +106,19 @@ def export_submission(
                 height = h,
                 polygons = polygons,
         )
+
+        # Safety: ensure annotations key exists
+        if "annotations" not in entry or entry["annotations"] is None:
+            entry["annotations"] = []
+
         images .append(entry)
 
+    # Output path
     output_path = Path(output_path)
     output_path.parent.mkdir(parents = True, exist_ok = True)
 
     # Write JSON
     submission = {"images": images}
-
     with open(output_path, "w", encoding = "utf8") as f:
         json.dump(submission, f, indent=2, ensure_ascii=False)
 
