@@ -74,6 +74,54 @@ p("Images with tree groups", group_count)
 #
 
 # %% [markdown]
+# ##### Validate Available Filters
+
+# %%
+def get_available_filters():
+    """
+    Get list of all available filter names from the system.
+    """
+    try:
+        available = EnhancedImageMaskDataset.get_available_filters()
+        return available
+    except Exception as e:
+        p("Warning", f"Could not load filters dynamically: {e}", color1 = c.ORANGE)
+        # Fallback to known filters
+        return [
+            'laplacian', 'sobel', 'clahe',
+            'gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7',
+            'sobel_x', 'sobel_y', 'laplacian_3x3',
+            'sharpen_basic', 'high_pass_3x3', 'edge_enhance',
+            'gaussian_3x3_sigma1', 'gaussian_5x5_sigma1', 'gaussian_7x7_sigma1',
+        ]
+
+
+def validate_filter_set( filter_names, available_filters ):
+    """
+    Validate a list of filter names against available filters.
+    """
+    invalid = []
+    suggestions = { }
+
+    for fname in filter_names:
+        if fname.lower() not in [f.lower() for f in available_filters]:
+            invalid.append(fname)
+            # Try to find suggestion
+            for avail in available_filters:
+                if fname.lower() in avail.lower() or avail.lower() in fname.lower():
+                    suggestions[fname] = avail
+                    break
+
+    return len(invalid) == 0, invalid, suggestions
+
+
+# Get available filters
+t("Validating Available Filters")
+AVAILABLE_FILTERS = get_available_filters()
+p("Available filters count", len(AVAILABLE_FILTERS))
+p("Sample filters", AVAILABLE_FILTERS[:15])
+
+# %% [markdown]
 # #### Step 3: Enhanced Dataset Creation
 #
 # - Create training dataset with filter-enhanced inputs
@@ -89,15 +137,19 @@ sample_entries = entries[:5]
 
 # Testing each mode
 for mode in ['rgb', 'filtered', 'concat']:
-    dataset = EnhancedImageMaskDataset(
-            sample_entries,
-            config.paths.train_images,
-            mode = mode,
-            transform = val_tf
-    )
+    try:
+        dataset = EnhancedImageMaskDataset(
+                sample_entries,
+                config.paths.train_images,
+                mode = mode,
+                transform = val_tf
+        )
 
-    img_t, mask_t = dataset[0]
-    p(f"Mode: {mode}", f"Image shape: {img_t.shape}, Mask shape: {mask_t.shape}")
+        img_t, mask_t = dataset[0]
+        p(f"Mode: {mode}", f"Image shape: {img_t.shape}, Mask shape: {mask_t.shape}")
+    except Exception as e:
+        p(f"Mode: {mode}", f"FAILED: {e}", color1 = c.RED, color2 = c.RED)
+
 
 
 
@@ -118,11 +170,15 @@ for mode in ['rgb', 'filtered', 'concat']:
 #
 
 # %%
-def train_experiment( model_name, input_mode, filter_names = None, num_epochs = config.train.epochs ):
+def train_experiment( model_name, input_mode, filter_names = None, num_epochs = None ):
     """
     Run one training experiment and return metrics.
     Supports RGB (3ch), filtered (3ch), and concat (6ch) modes.
     """
+    # Use config epochs if not specified
+    if num_epochs is None:
+        num_epochs = config.train.epochs
+
     t(f"Experiment: {model_name} with {input_mode} input")
 
     # Prepare data
@@ -186,8 +242,7 @@ def train_experiment( model_name, input_mode, filter_names = None, num_epochs = 
     import copy
 
     exp_config = copy.deepcopy(config)
-    if num_epochs is not None:
-        exp_config.train.epochs = num_epochs
+    exp_config.train.epochs = num_epochs
 
     # Adding experiment metadata
     exp_config.extra['experiment'] = {
@@ -235,6 +290,28 @@ filter_sets = {
     'kernel_edge':    ['sobel_x', 'sobel_y', 'laplacian_3x3'],
     'combined':       ['laplacian', 'gaussian_5x5', 'clahe'],
 }
+
+# Validate all filter sets before proceeding
+t("Validating Filter Sets")
+all_valid = True
+
+for set_name, filters in filter_sets.items():
+    is_valid, invalid, suggestions = validate_filter_set(filters, AVAILABLE_FILTERS)
+
+    if is_valid:
+        p(f"Filter set '{set_name}'", "VALID", color1 = c.GREEN)
+    else:
+        p(f"Filter set '{set_name}'", f"INVALID: {invalid}", color1 = c.RED, color2 = c.RED)
+        if suggestions:
+            p("  Suggestions", suggestions, color1 = c.ORANGE)
+        all_valid = False
+
+if not all_valid:
+    p("")
+    p("WARNING", "Some filter sets have invalid filter names!", color1 = c.RED, color2 = c.RED)
+    p("", "Check filter names against AVAILABLE_FILTERS", color1 = c.ORANGE)
+
+p("")
 p("filter_sets", filter_sets)
 
 # %%
@@ -282,11 +359,10 @@ def estimate_runtime( experiments, filter_sets ):
 
     t("Runtime Estimate")
 
-    # Load config and dataset size
-    config = Config.load()
-    from src.data.annotations import load_json_annotations
-
-    entries = load_json_annotations(config.paths.annotations)
+    # # Load config and dataset size
+    # config = Config.load()
+    # from src.data.annotations import load_json_annotations
+    # entries = load_json_annotations(config.paths.annotations)
 
     train_size = int(0.8 * len(entries))
     batch_size = config.train.batch_size
@@ -374,9 +450,12 @@ summarize_experiments(experiments, filter_sets)
 
 # %%
 # Running experiments
-
-
 results = { }
+
+# Pull epoch count from config
+num_epochs = config.train.epochs
+p("Using epochs from config", num_epochs)
+
 for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("")
     t(f"Experiment {i}/{len(experiments)}")
@@ -384,12 +463,63 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("Mode", mode)
     p("Filters", filters)
 
+    # experiment key
     key = f"{model_name}_{mode}"
     if filters:
         filter_key = "_".join(filters)[:20]
         key = f"{key}_{filter_key}"
 
-    results[key] = train_experiment(model_name, mode, filters, num_epochs = 10)
+    try:
+        results[key] = train_experiment(
+                model_name,
+                mode,
+                filters,
+                num_epochs = config.train.epochs
+        )
+
+        # Mark successful completion
+        if results[key] is not None:
+            p("EXPERIMENT COMPLETED", key, color1 = c.GREEN, color2 = c.GREEN)
+        else:
+            p("EXPERIMENT SKIPPED", key, color1 = c.ORANGE, color2 = c.ORANGE)
+
+
+    except KeyError as e:
+        # Filter name errors
+        p("EXPERIMENT FAILED", key, color1 = c.RED, color2 = c.RED)
+        p("[Filter Error]", str(e), color1 = c.RED)
+        p("Skipping to next experiment", color1 = c.BLUE)
+        results[key] = { "status": "FILTER_ERROR", "error": str(e) }
+        continue
+
+    except RuntimeError as e:
+        # Data loading or model errors
+        p("EXPERIMENT FAILED", key, color1 = c.RED, color2 = c.RED)
+        p("[Runtime Error]", str(e), color1 = c.RED)
+        p("Skipping to next experiment", color1 = c.BLUE)
+        results[key] = { "status": "RUNTIME_ERROR", "error": str(e) }
+        continue
+
+    except Exception as e:
+        # Catch-all for other errors
+        p("EXPERIMENT FAILED", key, color1 = c.RED, color2 = c.RED)
+        p("[Error]", str(e), color1 = c.RED)
+        p("Skipping to next experiment", color1 = c.BLUE)
+        results[key] = { "status": "ERROR", "error": str(e) }
+        continue
+
+# Summary of experiment results
+t("Experiment Results Summary")
+successful = sum(1 for v in results.values() if not isinstance(v, dict) or v.get("status") != "ERROR")
+failed = sum(1 for v in results.values() if isinstance(v, dict) and "status" in v)
+skipped = sum(1 for v in results.values() if v is None)
+
+p("Total experiments", len(experiments))
+p("Successful", successful - skipped, color1 = c.GREEN)
+p("Skipped", skipped, color1 = c.ORANGE)
+p("Failed", failed, color1 = c.RED if failed > 0 else c.GREEN)
+
+
 
 # # If running all experiments:
 # experiments = [
@@ -441,7 +571,7 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
     p(f"Images with {class_name}", len(class_entries))
 
     if len(class_entries) < 10:
-        p("Warning", "Insufficient samples for training")
+        p("Warning", "Insufficient samples for training", color1 = c.ORANGE)
         return None
 
     # Split
@@ -467,10 +597,21 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
             transform = val_tf
     )
 
-    train_loader = DataLoader(train_ds, batch_size = config.train.batch_size, shuffle = True)
-    val_loader = DataLoader(val_ds, batch_size = config.train.batch_size, shuffle = False)
+    train_loader = DataLoader(
+            train_ds,
+            batch_size = config.train.batch_size,
+            shuffle = True,
+            num_workers = config.train.num_workers
+    )
 
-    # Train
+    val_loader = DataLoader(
+            val_ds,
+            batch_size = config.train.batch_size,
+            shuffle = False,
+            num_workers = config.train.num_workers
+    )
+
+    # Train using config epochs
     trainer = run_training(
             config = config,
             train_loader = train_loader,
@@ -484,11 +625,20 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
 
 p("", "Class-specific training configured")
 
-# %%
-## Train individual tree model
-trainer_individual = train_class_specific_model('individual_tree', 'simple_cnn')
-trainer_group = train_class_specific_model('group_of_trees', 'simple_cnn')
 
+# %%
+# ## Train individual tree model
+# try:
+#     trainer_individual = train_class_specific_model('individual_tree', 'simple_cnn')
+# except Exception as e:
+#     p("Failed to train individual_tree model", str(e), color1=c.RED)
+#     trainer_individual = None
+#
+# try:
+#     trainer_group = train_class_specific_model('group_of_trees', 'simple_cnn')
+# except Exception as e:
+#     p("Failed to train group_of_trees model", str(e), color1=c.RED)
+#     trainer_group = None
 
 # %% [markdown]
 # #### Step 6: Ensemble Predictions
@@ -617,24 +767,30 @@ for model_name in ['simple_cnn', 'unet']:
 
         output_file = latest_version / "submission.json"
 
-        submission_path = generate_submission(
-                model_path = model_path,
-                model_name = model_name,
-                eval_dir = config.paths.eval_images,
-                output_path = output_file
-        )
+        try:
+            submission_path = generate_submission(
+                    model_path = model_path,
+                    model_name = model_name,
+                    eval_dir = config.paths.eval_images,
+                    output_path = output_file
+            )
 
-        # Track best submission file per experiment
-        best_submissions.append(
-                {
-                    "model":      model_name,
-                    "mode":       input_mode,
-                    "version":    str(latest_version),
-                    "submission": str(output_file)
-                }
-        )
+            # Track best submission file per experiment
+            best_submissions.append(
+                    {
+                        "model":      model_name,
+                        "mode":       input_mode,
+                        "version":    str(latest_version),
+                        "submission": str(output_file)
+                    }
+            )
 
-        p("Saved submission", submission_path)
+            p("Saved submission", submission_path)
+
+        except Exception as e:
+            p("Failed to generate submission", str(e), color1 = c.RED)
+            continue
+
         p("")
 
 
@@ -684,19 +840,23 @@ for item in best_submissions:
     if not ckpt_path.exists():
         continue
 
-    ckpt = torch.load(ckpt_path, map_location = "cpu")
-    val_loss = ckpt.get("best_val_loss", None)
-    if val_loss is None:
-        continue
+    try:
+        ckpt = torch.load(ckpt_path, map_location = "cpu")
+        val_loss = ckpt.get("best_val_loss", None)
+        if val_loss is None:
+            continue
 
-    if best_overall is None or val_loss < best_overall["best_val_loss"]:
-        best_overall = {
-            "model":         item["model"],
-            "mode":          item["mode"],
-            "version":       item["version"],
-            "submission":    item["submission"],
-            "best_val_loss": val_loss
-        }
+        if best_overall is None or val_loss < best_overall["best_val_loss"]:
+            best_overall = {
+                "model":         item["model"],
+                "mode":          item["mode"],
+                "version":       item["version"],
+                "submission":    item["submission"],
+                "best_val_loss": val_loss
+            }
+    except Exception as e:
+        p("Warning", f"Could not load checkpoint {ckpt_path}: {e}", color1=c.ORANGE)
+        continue
 
 # Append overall best
 if best_overall:
@@ -742,19 +902,22 @@ sample_entries = random.sample(entries, 5)
 for e in sample_entries:
     p("Image", e.image_path.name)
 
-    img = load_image(image_dir, e)
-    mask = mask_all(e)
-    mask_rgb = color_mask(e)
-    overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
+    try:
+        img = load_image(image_dir, e)
+        mask = mask_all(e)
+        mask_rgb = color_mask(e)
+        overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
 
-    show_side_by_side(
-            img,
-            mask,
-            mask_rgb,
-            overlay,
-            titles = ("Original", "Mask", "Color Mask", "Overlay"),
-            maxcolumns = 6
-    )
+        show_side_by_side(
+                img,
+                mask,
+                mask_rgb,
+                overlay,
+                titles = ("Original", "Mask", "Color Mask", "Overlay"),
+                maxcolumns = 6
+        )
+    except Exception as e_viz:
+        p("Failed to visualize", str(e_viz), color1=c.ORANGE)
 
 
 # %%

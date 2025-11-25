@@ -424,7 +424,8 @@ class p:
                 return
 
             # Case 4: nothing provided
-            self.print_with_color("None", "None")
+            self.print_with_color("", "")
+            return
 
         except Exception as e:
             p.print_exception(e, self.obj, self.value)
@@ -450,21 +451,26 @@ class p:
         value_color = value_color or self.color2
 
         if (label is None or str(label) == "") and (value is None or str(value) == ""):
-            print("None", "None")
+            #print("None", "None")
+            print("")
+            return
 
         elif label is None or str(label) == "":
             style = f"\033[{value_color.value}{';1' if bold else ''}m{value}\033[0m"
             print(style)
+            return
 
         elif value is None or str(value) == "":
             style = f"\033[{label_color.value}{';1' if bold else ''}m{label}\033[0m"
             print(style)
+            return
 
         else:
             if bold:
                 print(f"\033[{label_color.value};1m{label}:\033[0m \033[{value_color.value}m{value}\033[0m")
             else:
                 print(f"\033[{label_color.value}m{label}:\033[0m \033[{value_color.value};1m{value}\033[0m")
+            return
 
 
     # -----------------------
@@ -834,8 +840,9 @@ class Logger:
     Designed for training loops, evaluation runs, and debugging.
     """
 
-    def __init__( self, log_file: Optional[Path] = None ):
+    def __init__( self, log_file: Optional[Path] = None ,cfg=None):
         self.log_file = Path(log_file) if log_file is not None else None
+        self.cfg = cfg
         if self.log_file:
             self.log_file.parent.mkdir(parents = True, exist_ok = True)
 
@@ -857,12 +864,55 @@ class Logger:
         self.write(f"=== {text} ===")
         t(text)
 
-    def info( self, text: str ) -> None:
+    # def info( self, text: str ) -> None:
+    #     """
+    #     Write an informational line.
+    #     """
+    #     self.write(text)
+    #     p("[Info]", text, color1 = c.BLUE, color2 = c.BLACK)
+
+
+    def info(self, text):
         """
-        Write an informational line.
+        Write informational output. If 'text' is a PyTorch model,
+        display a clean torchinfo summary instead of the raw model dump.
         """
-        self.write(text)
-        p("[Info]", text, color1 = c.BLUE, color2 = c.BLACK)
+        from torchinfo import summary
+        import torch.nn as nn
+
+        # If the user passes a model
+        if isinstance(text, nn.Module):
+            try:
+                # Try to infer model input channels from common cases
+                in_channels = 3
+                if hasattr(text, 'in_channels'):
+                    in_channels = text.in_channels
+
+                # Default spatial size (can be adjusted)
+                img_size = self.cfg.train.image_size
+
+                model_summary = summary(
+                        text,
+                        input_size=(1, in_channels, img_size, img_size),
+                        depth=3,
+                        col_names=("input_size", "output_size", "num_params")
+                )
+
+                self.write(str(model_summary))
+                p("", str(model_summary))
+                # p("[Model]", "Summary printed via torchinfo", color1=c.BLUE, color2=c.BLACK)
+                return
+
+            except Exception as e:
+                # Fallback to normal printing if summary fails
+                self.write(str(text))
+                p("[Info]", f"torchinfo failed: {e}", color1=c.ORANGE)
+                return
+
+        # Normal text logging
+        self.write(str(text))
+        p("[Info]", str(text), color1=c.BLUE, color2=c.BLACK)
+
 
     def warn( self, text: str ) -> None:
         """

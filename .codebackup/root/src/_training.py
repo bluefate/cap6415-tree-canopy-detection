@@ -166,6 +166,26 @@ class Trainer:
             config: Any,
             version_root: Path,
     ):
+        # define device
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        self.model = model.to(self.device)
+        self.optimizer = optimizer
+        self.criterion = criterion
+        self.train_loader = train_loader
+        self.val_loader = val_loader
+        self.cfg = config
+
+        # versioning paths
+        self.version_mgr = VersionManager(version_root)
+        self.version_dir = self.version_mgr.resolve_version(self._extract_cfg())
+        self.paths = self.version_mgr.get_paths(self.version_dir)
+
+        # Initialize logger
+        self.logger = Logger(self.paths["log"], cfg=config)
+        self.logger.header("Training started")
+        self.logger.info(self.model)
+
         # GPU memory optimization
         if self.device.type == "cuda":
             torch.cuda.empty_cache()
@@ -173,31 +193,17 @@ class Trainer:
             self.logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
             self.logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
 
-        self.model = model
-        self.optimizer = optimizer
-        self.criterion = criterion
-        self.train_loader = train_loader
-        self.val_loader = val_loader
-        self.cfg = config
-
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.model = self.model.to(self.device)
-
-        self.version_mgr = VersionManager(version_root)
-        self.version_dir = self.version_mgr.resolve_version(self._extract_cfg())
-        self.paths = self.version_mgr.get_paths(self.version_dir)
-
-        self.logger = Logger(self.paths["log"])
-        self.logger.header("Training started")
-
-        self.logger.header(self.model)
-
+        # AMP scaler
         self.scaler = torch.cuda.amp.GradScaler(enabled = (self.device.type == "cuda"))
+
+        # checkpointing
         self.best_val_loss = float("inf")
         self.start_epoch = 0
 
         if self.paths["checkpoint"].exists():
             self._load_checkpoint()
+
+
 
     def _extract_cfg( self ) -> Dict[str, Any]:
         """

@@ -7,12 +7,18 @@
 # #### Imports and setup
 
 # %%
+from src.utils.tester import p_test
 import os
 import sys
 
 
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
+
+p_test()
+
+# %%
+
 import cv2
 import torch
 from src.data.annotations import load_json_annotations
@@ -21,13 +27,36 @@ from src.data.enhance_masks import EnhancedImageMaskDataset
 from src.utils.config import Config
 from src.utils.helpers import c, p, t
 from src.data.loaders import ImageMaskDataset
-from src.data.image_loader import apply_filters, create_enhanced_image
+from src.data.image_loader import apply_all_filters, apply_filters, create_enhanced_image
 from models.zoo import build_model
 
 
+
+
+
+# %%
+
 config = Config.load()
 entries = load_json_annotations(config.paths.annotations)
+config.show()
 
+
+# %%
+def print_versions():
+    from src.utils.helpers import p
+    import sys
+
+    import numpy as np
+    import pandas as pd
+    import torch
+
+
+    p("Python", sys.version)
+    p("Numpy", np.__version__)
+    p("Panda", pd.__version__)
+    p("Torch", torch.__version__)
+
+print_versions()
 
 # %% [markdown]
 # #### Test 1: Original ImageMaskDataset
@@ -77,7 +106,7 @@ img = cv2.imread(str(img_path))
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
 # Apply all filters (assumes apply_all_filters function exists in notebook)
-filters = apply_filters(img)
+filters = apply_all_filters(img)
 
 # Get top 3 filter names (adjust based on your results)
 test_filters = list(filters.keys())[:3]

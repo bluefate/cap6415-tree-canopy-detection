@@ -24,7 +24,7 @@ paths:
 
 train:
   #for code PROD
-  image_size: 512
+  image_size: 128 #512
   num_workers: 2 # ✓ 2 CPU threads pre-load data
   seed: 42
   batch_size: 2  # Critical for 2GB GPU

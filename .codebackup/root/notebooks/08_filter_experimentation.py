@@ -19,7 +19,7 @@ from src.data.annotations import load_json_annotations
 from src.exploration.visualize import show_side_by_side
 from src.utils.config import Config
 from src.utils.helpers import init_notebook, p, t
-from src.data.image_loader import create_enhanced_image, apply_filters
+from src.data.image_loader import apply_all_filters, create_enhanced_image, apply_filters
 
 
 config = Config.load()
@@ -250,7 +250,7 @@ p("Top 3 Filters", top_3_filters)
 # Visualize top 3 filters on a sample image
 sample_entry = sample_entries[0]
 img, mask = load_sample_with_mask(sample_entry, train_dir)
-filters = apply_filters(img)
+filters = apply_all_filters(img)
 
 t(f"Visual comparison: {sample_entry.image_path.name}")
 
@@ -319,7 +319,7 @@ t("Comprehensive Filter Comparison")
 
 sample_entry = sample_entries[0]
 img, mask = load_sample_with_mask(sample_entry, train_dir)
-filters = apply_filters(img)
+filters = apply_all_filters(img)
 
 # Prepare all filters for visualization
 all_filters = list(filters.keys())

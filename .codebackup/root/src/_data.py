@@ -325,6 +325,8 @@ import cv2
 import numpy as np
 from PIL import Image
 
+from utils.helpers import p
+
 
 def load_image(image_path: Union[str, Path]) -> np.ndarray:
     """
@@ -409,6 +411,58 @@ def validate_image_directory(image_dir: Path) -> dict:
             p("", f"  {path}", color1 = c.SALMON)
 
     return results
+
+def apply_all_filters(img):
+    """
+    Apply all available filters to an image and return dict of results.
+    Uses unified registry from kernels + algorithmic filters.
+    """
+    from src.exploration.kernels import get_kernels, apply_kernel_using_convolution
+    from src.exploration.enhancement import to_gray, clahe_enhance
+
+    gray = to_gray(img)
+    target_h, target_w = img.shape[:2]
+
+    kernel_bank = get_kernels("all")
+
+    # Create unified filter registry
+    filter_registry = {}
+
+    # Add kernel-based filters
+    for kname, kernel in kernel_bank.items():
+        filter_registry[kname.lower()] = (lambda k=kernel: apply_kernel_using_convolution(gray, k))
+
+    # Add algorithmic filters
+    filter_registry.update({
+        'laplacian': lambda: cv2.Laplacian(gray, cv2.CV_64F),
+        'sobel': lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0) + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+        'clahe': lambda: clahe_enhance(gray, clip=2.0, tile=8),
+        'gaussian_3x3': lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
+        'gaussian_5x5': lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
+        'gaussian_7x7': lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
+    })
+
+    # Apply all filters
+    results = {}
+    for fname, filter_func in filter_registry.items():
+        try:
+            filtered = filter_func()
+
+            # Normalize
+            if filtered.ndim == 3:
+                filtered = cv2.cvtColor(filtered, cv2.COLOR_RGB2GRAY)
+            if filtered.shape != (target_h, target_w):
+                filtered = cv2.resize(filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+            if filtered.dtype != np.uint8:
+                filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+            results[fname] = filtered
+        except Exception as e:
+            p("Warning", f"Filter '{fname}' failed: {e}", color1=c.ORANGE)
+            continue
+
+    return results
+
 
 def apply_filters( self, img ):
     """
@@ -496,7 +550,7 @@ def create_enhanced_image(img, filter_names):
     Create multi-channel enhanced image using specified filters.
     Returns 3-channel image suitable for model input.
     """
-    filters_dict = apply_filters(img)
+    filters_dict = apply_all_filters(img)
 
     # Get target shape from original image
     target_h, target_w = img.shape[:2]
