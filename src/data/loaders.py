@@ -8,7 +8,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from src.data.annotations import AnnotationEntry
-from src.data.masks import build_multi_mask
+from src.data.masks import build_multiclass_mask
 
 
 class ImageMaskDataset(Dataset):
@@ -65,7 +65,7 @@ class ImageMaskDataset(Dataset):
                 item.segmentation for item in entry.items if item.cls in self.classes
             ]
 
-        mask = build_multi_mask(polys, W, H)
+        mask = build_multiclass_mask(entry)
 
         if self.transform:
             augmented = self.transform(image=image, mask=mask)
@@ -85,25 +85,23 @@ class ImageMaskDataset(Dataset):
             # numpy HWC array
             img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
-        # mask_t = torch.tensor(mask).unsqueeze(0).float()
-        # same
-        # Convert image
-        ## if isinstance(mask, torch.Tensor):
-        ##     mask_t = mask.float()
-        ## else:
-        ##     mask_t = torch.from_numpy(mask).unsqueeze(0).float()
-
         # eliminates all shape variance
+        # if isinstance(mask, torch.Tensor):
+        #     mask_t = mask.float()
+        #     if mask_t.ndim == 2:
+        #         mask_t = mask_t.unsqueeze(0)
+        # else:
+        #     mask = mask.astype("float32")
+        #     if mask.ndim == 2:
+        #         mask = mask[None, ...]
+        #     mask_t = torch.from_numpy(mask)
+
+        # since multiclass was fixed
+        # mask should be [H, W] with class indices (long tensor)
         if isinstance(mask, torch.Tensor):
-            mask_t = mask.float()
-            ### FIX
-            if mask_t.ndim == 2:
-                mask_t = mask_t.unsqueeze(0)
+            mask_t = mask.long()
         else:
-            mask = mask.astype("float32")
-            if mask.ndim == 2:
-                mask = mask[None, ...]
-            mask_t = torch.from_numpy(mask)
+            mask_t = torch.from_numpy(mask).long()
 
         return img_t, mask_t
 

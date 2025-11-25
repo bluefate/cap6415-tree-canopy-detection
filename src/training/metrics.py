@@ -79,3 +79,47 @@ def compute_metrics(pred: torch.Tensor, true: torch.Tensor):
         "precision": tp / (tp + fp + 1e-8),
         "recall": tp / (tp + fn + 1e-8),
     }
+
+def compute_metrics_multiclass(pred: torch.Tensor, true: torch.Tensor, num_classes: int = 3):
+    """
+    Compute per-class IoU and mean IoU for multi-class segmentation.
+    """
+    # Convert logits to class predictions
+    if isinstance(pred, torch.Tensor):
+        pred_classes = torch.argmax(pred, dim=1).detach().cpu().numpy()  # [B, H, W]
+    else:
+        pred_classes = np.argmax(pred, axis=1)
+
+    if isinstance(true, torch.Tensor):
+        true_classes = true.detach().cpu().numpy()  # [B, H, W]
+    else:
+        true_classes = true
+
+    # Compute IoU for each class
+    ious = {}
+    class_names = {0: "background", 1: "individual_tree", 2: "group_of_trees"}
+
+    for cls_id in range(num_classes):
+        pred_mask = (pred_classes == cls_id)
+        true_mask = (true_classes == cls_id)
+
+        intersection = np.logical_and(pred_mask, true_mask).sum()
+        union = np.logical_or(pred_mask, true_mask).sum()
+
+        iou = float(intersection) / float(union + 1e-8)
+        ious[f"iou_{class_names[cls_id]}"] = iou
+
+    # Mean IoU (excluding background class 0)
+    tree_ious = [ious["iou_individual_tree"], ious["iou_group_of_trees"]]
+    ious["mean_iou"] = sum(tree_ious) / len(tree_ious)
+
+    # Also compute overall pixel accuracy
+    correct = (pred_classes == true_classes).sum()
+    total = pred_classes.size
+    ious["acc"] = float(correct) / float(total)
+
+    # For compatibility with existing code, also add these
+    ious["iou"] = ious["mean_iou"]  # Alias
+    ious["dice"] = 0.0  # Placeholder - can compute per-class dice if needed
+
+    return ious

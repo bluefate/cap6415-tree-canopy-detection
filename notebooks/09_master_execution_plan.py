@@ -13,11 +13,6 @@ from pathlib import Path
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
 
-
-def timeout_handler( signum, frame ):
-    raise TimeoutError("Training took too long")
-
-
 import torch
 from torch.utils.data import DataLoader
 from src.data.annotations import load_json_annotations
@@ -148,7 +143,7 @@ for mode in ['rgb', 'filtered', 'concat']:
         img_t, mask_t = dataset[0]
         p(f"Mode: {mode}", f"Image shape: {img_t.shape}, Mask shape: {mask_t.shape}")
     except Exception as e:
-        p(f"Mode: {mode}", f"FAILED: {e}", color1=c.RED, color2=c.RED)
+        p(f"Mode: {mode}", f"FAILED: {e}", color1 = c.RED, color2 = c.RED)
 
 
 # %% [markdown]
@@ -335,15 +330,18 @@ for model in ['simple_cnn', 'unet']:
 p("experiments", experiments)
 
 # %%
-# # Minimal experiment set for initial testing
-# t("Testing")
-# filter_sets = dict(list(filter_sets.items())[:1])
-# p("filter_sets", filter_sets)
-#
-# experiments = [
-#     ('simple_cnn', 'rgb', None),
-# ]
-# p("experiments", experiments)
+
+# TODO  - TESTING - remove
+# Minimal experiment set for initial testing
+t("Testing")
+filter_sets = dict(list(filter_sets.items())[:1])
+p("filter_sets", filter_sets)
+
+experiments = [
+    ('unet', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance']),
+    ('simple_cnn', 'rgb', None),
+]
+p("experiments", experiments)
 
 
 # %%
@@ -518,22 +516,6 @@ p("Skipped", skipped, color1 = c.ORANGE)
 p("Failed", failed, color1 = c.RED if failed > 0 else c.GREEN)
 
 
-
-# # If running all experiments:
-# experiments = [
-#     # === Simple CNN ===
-#     ('simple_cnn', 'rgb', None),
-#     ('simple_cnn', 'filtered', ['laplacian', 'sobel', 'clahe']),
-#     ('simple_cnn', 'filtered', ['gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7']),
-#     ('simple_cnn', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance']),
-#     ('simple_cnn', 'filtered', ['sobel_x', 'sobel_y', 'laplacian_3x3']),
-#
-#     # === UNet ===
-#     ('unet', 'rgb', None),
-#     ('unet', 'filtered', ['laplacian', 'sobel', 'clahe']),
-#     ('unet', 'filtered', ['gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7']),
-#     ('unet', 'filtered', ['sobel_x', 'sobel_y', 'laplacian_3x3']),
-# ]
 
 
 

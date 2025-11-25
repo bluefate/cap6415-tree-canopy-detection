@@ -153,10 +153,6 @@ def get_val_augmentations( image_size: int ):
 
 
 # From C:\github\Tree-Canopy-Detection\src\data\enhance_masks.py
-import cv2
-import numpy as np
-import torch
-
 from exploration.enhancement import clahe_enhance
 from src.data.loaders import ImageMaskDataset
 
@@ -176,7 +172,15 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         self.mode = mode
         self.filter_names = filter_names or ['laplacian', 'sobel', 'clahe']
 
+
+
     def apply_filters(self, img):
+        """
+        Apply specified filters and return as 3-channel image.
+
+        Handles both kernel-based and algorithmic filters with consistent
+        naming through the centralized filter registry approach.
+        """
         from src.exploration.kernels import get_kernels
         from src.exploration.enhancement import to_gray
         import cv2
@@ -187,17 +191,34 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         # loading kernel bank dynamically
         kernel_bank = get_kernels("all")
 
-        # create callable filters dynamically
+        # create callable filters dynamically from kernel bank
         dynamic_kernels = {
             name.lower(): lambda k=kernel: cv2.filter2D(gray, -1, k)
             for name, kernel in kernel_bank.items()
         }
 
-        # adding algorithmic filters
         dynamic_kernels.update({
+            # Edge detection
             "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
             "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0) + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+            "sobel_x_cv": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0),
+            "sobel_y_cv": lambda: cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+            "canny": lambda: cv2.Canny(gray, 50, 150),
+
+            # Enhancement
             "clahe": lambda: clahe_enhance(gray),
+            "histogram_eq": lambda: cv2.equalizeHist(gray),
+
+            # Gaussian blur variants - THIS FIXES THE gaussian_3x3 issue
+            "gaussian_3x3": lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
+            "gaussian_5x5": lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
+            "gaussian_7x7": lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
+            "gaussian_9x9": lambda: cv2.GaussianBlur(gray, (9, 9), 2.5),
+
+            # Other useful filters
+            "bilateral": lambda: cv2.bilateralFilter(gray, 9, 75, 75),
+            "median_3x3": lambda: cv2.medianBlur(gray, 3),
+            "median_5x5": lambda: cv2.medianBlur(gray, 5),
         })
 
         channels = []
@@ -220,99 +241,29 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         return np.stack(channels[:3], axis=2)
 
 
-    # def apply_filters(self, img):
-    #     from src.exploration.enhancement import clahe_enhance, to_gray
-    #     from src.exploration.filters import cv2_apply_laplacian, cv2_apply_sobel
-    #
-    #     gray = to_gray(img)
-    #     target_h, target_w = img.shape[:2]
-    #
-    #     filter_map = {
-    #         'laplacian': lambda: cv2_apply_laplacian(img),
-    #         'sobel':     lambda: cv2_apply_sobel(img),
-    #         'clahe':     lambda: clahe_enhance(gray),
-    #         'gaussian_3x3': lambda: cv2.GaussianBlur(img, (3,3), 1.0),
-    #         'gaussian_5x5': lambda: cv2.GaussianBlur(img, (5,5), 1.5),
-    #         'sharpen':      lambda: cv2.filter2D(gray, -1, np.array([[0,-1,0],[-1,5,-1],[0,-1,0]])),
-    #     }
-    #
-    #     channels = []
-    #     for fname in self.filter_names:
-    #         if fname in filter_map:
-    #             filtered = filter_map[fname]()
-    #             if filtered.dtype != np.uint8:
-    #                 filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-    #             channels.append(filtered)
-    #
-    #
-    #     if len(channels) == 0:
-    #         raise RuntimeError(
-    #                 f"No filters produced output. filter_names={self.filter_names}"
-    #         )
-    #
-    #     # Ensure 3 channels by repeating the last one
-    #     while len(channels) < 3:
-    #         channels.append(channels[-1])
-    #
-    #     return np.stack(channels[:3], axis=2)
 
+    @classmethod
+    def get_available_filters(cls):
+        """
+        Get list of all available filter names.
+        """
+        from src.exploration.kernels import get_kernels
 
-    def __getitem__( self, idx ):
-        """Override to apply filter enhancement."""
-        entry = self.entries[idx]
-        img_path = self.image_dir / entry.image_path.name
+        # Get kernel-based filters
+        kernel_bank = get_kernels("all")
+        kernel_names = [name.lower() for name in kernel_bank.keys()]
 
-        image = cv2.imread(str(img_path))
-        if image is None:
-            raise RuntimeError(f"Failed to read {img_path}")
+        # Algorithmic filters (always available)
+        algorithmic = [
+            'laplacian', 'sobel', 'clahe',
+            'gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7', 'gaussian_9x9',
+            'sobel_x_cv', 'sobel_y_cv', 'canny',
+            'histogram_eq', 'bilateral',
+            'median_3x3', 'median_5x5',
+        ]
 
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        H, W = image.shape[:2]
+        return sorted(set(kernel_names + algorithmic))
 
-        # Generate mask
-        if self.classes is None:
-            polys = [item.segmentation for item in entry.items]
-        else:
-            polys = [item.segmentation for item in entry.items if item.cls in self.classes]
-
-        from src.data.masks import build_multi_mask
-
-        mask = build_multi_mask(polys, W, H)
-
-        # Apply filter enhancement based on mode
-        if self.mode == 'filtered':
-            image = self.apply_filters(image)
-        elif self.mode == 'concat':
-            filtered = self.apply_filters(image)
-            # Concatenate RGB + filtered (6 channels)
-            image = np.concatenate([image, filtered], axis = 2)
-        # else: mode == 'rgb', use original image
-
-        # Apply augmentations
-        if self.transform:
-            augmented = self.transform(image = image, mask = mask)
-            image = augmented["image"]
-            mask = augmented["mask"]
-
-        # Convert to tensors
-        if isinstance(image, torch.Tensor):
-            img_t = image.float()
-            if img_t.ndim == 3 and img_t.shape[0] not in [3, 6]:
-                img_t = img_t.permute(2, 0, 1)
-        else:
-            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
-
-        if isinstance(mask, torch.Tensor):
-            mask_t = mask.float()
-            if mask_t.ndim == 2:
-                mask_t = mask_t.unsqueeze(0)
-        else:
-            mask = mask.astype('float32')
-            if mask.ndim == 2:
-                mask = mask[None, ...]
-            mask_t = torch.from_numpy(mask)
-
-        return img_t, mask_t
 
 # From C:\github\Tree-Canopy-Detection\src\data\image_loader.py
 """
@@ -600,7 +551,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 
 from src.data.annotations import AnnotationEntry
-from src.data.masks import build_multi_mask
+from src.data.masks import build_multiclass_mask
 
 
 class ImageMaskDataset(Dataset):
@@ -657,7 +608,7 @@ class ImageMaskDataset(Dataset):
                 item.segmentation for item in entry.items if item.cls in self.classes
             ]
 
-        mask = build_multi_mask(polys, W, H)
+        mask = build_multiclass_mask(polys, W, H)
 
         if self.transform:
             augmented = self.transform(image=image, mask=mask)
@@ -677,25 +628,23 @@ class ImageMaskDataset(Dataset):
             # numpy HWC array
             img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
-        # mask_t = torch.tensor(mask).unsqueeze(0).float()
-        # same
-        # Convert image
-        ## if isinstance(mask, torch.Tensor):
-        ##     mask_t = mask.float()
-        ## else:
-        ##     mask_t = torch.from_numpy(mask).unsqueeze(0).float()
-
         # eliminates all shape variance
+        # if isinstance(mask, torch.Tensor):
+        #     mask_t = mask.float()
+        #     if mask_t.ndim == 2:
+        #         mask_t = mask_t.unsqueeze(0)
+        # else:
+        #     mask = mask.astype("float32")
+        #     if mask.ndim == 2:
+        #         mask = mask[None, ...]
+        #     mask_t = torch.from_numpy(mask)
+
+        # since multiclass was fixed
+        # mask should be [H, W] with class indices (long tensor)
         if isinstance(mask, torch.Tensor):
-            mask_t = mask.float()
-            ### FIX
-            if mask_t.ndim == 2:
-                mask_t = mask_t.unsqueeze(0)
+            mask_t = mask.long()
         else:
-            mask = mask.astype("float32")
-            if mask.ndim == 2:
-                mask = mask[None, ...]
-            mask_t = torch.from_numpy(mask)
+            mask_t = torch.from_numpy(mask).long()
 
         return img_t, mask_t
 
@@ -787,6 +736,14 @@ import cv2
 import numpy as np
 
 
+# Class mapping for Solafune competition
+CLASS_TO_ID = {
+    "individual_tree": 1,
+    "group_of_trees": 2,
+}
+
+ID_TO_CLASS = {v: k for k, v in CLASS_TO_ID.items()}
+
 def build_binary_mask( segmentation: List[float], width: int, height: int ) -> np.ndarray:
     """
     Convert one segmentation polygon into a binary mask.
@@ -800,18 +757,39 @@ def build_binary_mask( segmentation: List[float], width: int, height: int ) -> n
     return mask
 
 
-def build_multi_mask( polygons: List[List[float]], width: int, height: int ) -> np.ndarray:
-    """
-    Convert multiple segmentation polygons into one mask.
-    """
-    mask = np.zeros((height, width), dtype = np.uint8)
-    for seg in polygons:
-        if seg is None or len(seg) < 4:
-            continue
-        poly = np.array(seg, dtype = np.int32).reshape(-1, 2)
-        cv2.fillPoly(mask, [poly], 1)
-    return mask
+# def build_multiclass_mask( polygons: List[List[float]], width: int, height: int ) -> np.ndarray:
+#     """
+#     Convert multiple segmentation polygons into one mask.
+#     """
+#     mask = np.zeros((height, width), dtype = np.uint8)
+#     for seg in polygons:
+#         if seg is None or len(seg) < 4:
+#             continue
+#         poly = np.array(seg, dtype = np.int32).reshape(-1, 2)
+#         cv2.fillPoly(mask, [poly], 1)
+#     return mask
 
+def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
+    """
+    Build mask with class indices for multi-class segmentation.
+    """
+    if class_to_id is None:
+        class_to_id = CLASS_TO_ID
+
+    mask = np.zeros((entry.height, entry.width), dtype=np.int64)
+
+    for item in entry.items:
+        seg = item.segmentation
+        if seg is None or len(seg) < 6:
+            continue
+
+        # Get class ID (0 if unknown class)
+        class_id = class_to_id.get(item.cls, 0)
+
+        poly = np.array(seg, dtype=np.int32).reshape(-1, 2)
+        cv2.fillPoly(mask, [poly], class_id)
+
+    return mask
 
 def save_mask( mask: np.ndarray, path: Path ) -> None:
     """

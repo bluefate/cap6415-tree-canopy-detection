@@ -4,7 +4,7 @@ from typing import Any, Dict
 import torch
 from torch.utils.data import DataLoader
 
-from src.training.metrics import compute_metrics
+from src.training.metrics import compute_metrics_multiclass
 from src.utils.logging import Logger
 from src.utils.versioning import VersionManager
 
@@ -51,6 +51,15 @@ class Trainer:
             torch.backends.cudnn.benchmark = True  # Speed up training
             self.logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
             self.logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
+
+
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+                self.optimizer,
+                mode='min',
+                factor=config.train.scheduler_factor,
+                patience=config.train.scheduler_patience,
+                verbose=True
+        )
 
         # AMP scaler
         self.scaler = torch.cuda.amp.GradScaler(enabled = (self.device.type == "cuda"))
@@ -137,7 +146,8 @@ class Trainer:
         self.model.eval()
         total_loss = 0.0
         total_iou = 0.0
-        total_dice = 0.0
+        total_iou_individual = 0.0
+        total_iou_group = 0.0
         total_acc = 0.0
 
         with torch.no_grad():
@@ -149,16 +159,20 @@ class Trainer:
                 loss = self.criterion(preds, masks)
                 total_loss += loss.item()
 
-                m = compute_metrics(preds, masks)
-                total_iou += m["iou"]
-                total_dice += m["dice"]
+                # NEW: Use multiclass metrics
+                m = compute_metrics_multiclass(preds, masks, num_classes=3)
+                total_iou += m["mean_iou"]
+                total_iou_individual += m["iou_individual_tree"]
+                total_iou_group += m["iou_group_of_trees"]
                 total_acc += m["acc"]
 
         n = max(1, len(self.val_loader))
         return {
             "loss": total_loss / n,
-            "iou": total_iou / n,
-            "dice": total_dice / n,
+            "iou": total_iou / n,  # This is now mean_iou of tree classes
+            "iou_individual_tree": total_iou_individual / n,
+            "iou_group_of_trees": total_iou_group / n,
+            "dice": 0.0,  # Placeholder
             "acc": total_acc / n,
         }
 
@@ -191,5 +205,8 @@ class Trainer:
             if no_improve >= patience:
                 self.logger.info("Early stop triggered")
                 break
+
+            self.scheduler.step(val['loss'])
+
 
         self.logger.warn("Training complete")

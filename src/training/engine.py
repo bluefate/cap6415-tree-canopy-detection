@@ -13,13 +13,19 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
     """
     return torch.optim.Adam(model.parameters(), lr=lr)
 
+# def prepare_criterion():
+#     """
+#     Binary cross entropy loss for segmentation.
+#     """
+#     # return torch.nn.BCELoss()
+#     return torch.nn.BCEWithLogitsLoss()
+
 
 def prepare_criterion():
     """
-    Binary cross entropy loss for segmentation.
+    Multiclass cross entropy + dice loss for 3-class segmentation.
     """
-    # return torch.nn.BCELoss()
-    return torch.nn.BCEWithLogitsLoss()
+    return torch.nn.CrossEntropyLoss()
 
 
 def run_training(

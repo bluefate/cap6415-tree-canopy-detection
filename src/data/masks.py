@@ -5,6 +5,14 @@ import cv2
 import numpy as np
 
 
+# Class mapping for Solafune competition
+CLASS_TO_ID = {
+    "individual_tree": 1,
+    "group_of_trees": 2,
+}
+
+ID_TO_CLASS = {v: k for k, v in CLASS_TO_ID.items()}
+
 def build_binary_mask( segmentation: List[float], width: int, height: int ) -> np.ndarray:
     """
     Convert one segmentation polygon into a binary mask.
@@ -18,18 +26,27 @@ def build_binary_mask( segmentation: List[float], width: int, height: int ) -> n
     return mask
 
 
-def build_multi_mask( polygons: List[List[float]], width: int, height: int ) -> np.ndarray:
+def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
     """
-    Convert multiple segmentation polygons into one mask.
+    Build mask with class indices for multi-class segmentation.
     """
-    mask = np.zeros((height, width), dtype = np.uint8)
-    for seg in polygons:
-        if seg is None or len(seg) < 4:
-            continue
-        poly = np.array(seg, dtype = np.int32).reshape(-1, 2)
-        cv2.fillPoly(mask, [poly], 1)
-    return mask
+    if class_to_id is None:
+        class_to_id = CLASS_TO_ID
 
+    mask = np.zeros((entry.height, entry.width), dtype=np.int64)
+
+    for item in entry.items:
+        seg = item.segmentation
+        if seg is None or len(seg) < 6:
+            continue
+
+        # Get class ID (0 if unknown class)
+        class_id = class_to_id.get(item.cls, 0)
+
+        poly = np.array(seg, dtype=np.int32).reshape(-1, 2)
+        cv2.fillPoly(mask, [poly], class_id)
+
+    return mask
 
 def save_mask( mask: np.ndarray, path: Path ) -> None:
     """
