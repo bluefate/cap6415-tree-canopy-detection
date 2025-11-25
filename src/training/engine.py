@@ -13,13 +13,6 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
     """
     return torch.optim.Adam(model.parameters(), lr=lr)
 
-# def prepare_criterion():
-#     """
-#     Binary cross entropy loss for segmentation.
-#     """
-#     # return torch.nn.BCELoss()
-#     return torch.nn.BCEWithLogitsLoss()
-
 
 def prepare_criterion():
     """

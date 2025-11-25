@@ -280,11 +280,9 @@ class p:
         except Exception as e:
             p.print_exception(e, self.obj, self.value)
 
-
     def _title( self, obj ):
         self.print_with_color(f"=== {obj} ===", bold = True)
         return
-
 
     # -----------------------
     # Color helper

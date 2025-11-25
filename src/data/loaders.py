@@ -130,11 +130,7 @@ class ImageOnlyDataset(Dataset):
         self.image_dir = Path(image_dir)
         self.transform = transform
         self.files = sorted(
-            [
-                f
-                for f in self.image_dir.glob("*.*")
-                if f.suffix.lower() in [".png"]
-            ],
+            [f for f in self.image_dir.glob("*.*") if f.suffix.lower() in [".png"]],
         )
 
     def __len__(self) -> int:

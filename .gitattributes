@@ -1,14 +1,21 @@
-﻿# Auto-strip notebook metadata
-*.ipynb filter=nbstripout -s
+﻿# Auto-strip notebook metadata  -s
+*.ipynb filter=nbstripout
 
-# Normalize line endings
-* text=auto
+# Normalize Line Endings (Consistency)
+#* text=auto
 *.py text eol=lf
 *.ipynb text eol=lf
+
+# PyCharm formatter support
+*.py merge=union
+*.ipynb merge=union
+
+# Ensures Git diff and merge tools only show code/markdown, not metadata noise.
+*.ipynb diff=ipynb
+
 
 # Treat as binary
 *.png binary
 *.jpg binary
 *.pdf binary
 *.zpln filter=nbstripout
-*.ipynb diff=ipynb

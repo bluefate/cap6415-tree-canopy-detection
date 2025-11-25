@@ -13,15 +13,16 @@ CLASS_TO_ID = {
 
 ID_TO_CLASS = {v: k for k, v in CLASS_TO_ID.items()}
 
-def build_binary_mask( segmentation: List[float], width: int, height: int ) -> np.ndarray:
+
+def build_binary_mask(segmentation: List[float], width: int, height: int) -> np.ndarray:
     """
     Convert one segmentation polygon into a binary mask.
     segmentation is a flat list of coordinates.
     """
-    mask = np.zeros((height, width), dtype = np.uint8)
+    mask = np.zeros((height, width), dtype=np.uint8)
     if segmentation is None or len(segmentation) < 4:
         return mask
-    poly = np.array(segmentation, dtype = np.int32).reshape(-1, 2)
+    poly = np.array(segmentation, dtype=np.int32).reshape(-1, 2)
     cv2.fillPoly(mask, [poly], 1)
     return mask
 
@@ -33,7 +34,7 @@ def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
     if class_to_id is None:
         class_to_id = CLASS_TO_ID
 
-    mask = np.zeros((entry.height, entry.width), dtype=np.int64)
+    mask = np.zeros((entry.height, entry.width), dtype=np.uint8)
 
     for item in entry.items:
         seg = item.segmentation
@@ -48,17 +49,18 @@ def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
 
     return mask
 
-def save_mask( mask: np.ndarray, path: Path ) -> None:
+
+def save_mask(mask: np.ndarray, path: Path) -> None:
     """
     Save a binary mask. Values are written as 0 or 255.
     """
     path = Path(path)
-    path.parent.mkdir(parents = True, exist_ok = True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     out = (mask * 255).astype(np.uint8)
     cv2.imwrite(str(path), out)
 
 
-def load_mask( path: Path ) -> np.ndarray:
+def load_mask(path: Path) -> np.ndarray:
     """
     Load a binary mask from disk. Converts 255 to 1.
     """
@@ -69,7 +71,9 @@ def load_mask( path: Path ) -> np.ndarray:
     return (img > 127).astype(np.uint8)
 
 
-def mask_to_overlay( image: np.ndarray, mask: np.ndarray, alpha: float = 0.4 ) -> np.ndarray:
+def mask_to_overlay(
+    image: np.ndarray, mask: np.ndarray, alpha: float = 0.4
+) -> np.ndarray:
     """
     Overlay a binary mask on an RGB image. Mask is shown in red.
     """

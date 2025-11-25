@@ -35,7 +35,6 @@ class SimpleCNN(nn.Module):
             block(features, features * 2),
             block(features * 2, features),
         )
-
         # segmentation head
         self.head = nn.Conv2d(features, out_channels, kernel_size=1)
 

@@ -2,8 +2,6 @@ from src.models.simple_cnn import SimpleCNN
 from src.models.unet import UNet
 
 
-
-
 # Model	            Year	Key Idea	            Strengths	                        Weaknesses
 # ResNet	        2015	Residual connections	Robust, widely used	                Heavy, less efficient
 # EfficientNet-B4	2019	Compound scaling	    High accuracy per parameter	        Larger input size
@@ -53,10 +51,10 @@ def create_unet(in_channels: int = 3, out_channels: int = 3):
 
 
 def create_smp_unet(
-        encoder_name="convnext_tiny",
-        encoder_weights="imagenet",
-        in_channels: int = 3,
-        out_channels: int = 3,
+    encoder_name="convnext_tiny",
+    encoder_weights="imagenet",
+    in_channels: int = 3,
+    out_channels: int = 3,
 ):
     if not SMP_AVAILABLE:
         raise ImportError("segmentation_models_pytorch is not installed")
@@ -70,7 +68,10 @@ def create_smp_unet(
 
 
 def create_smp_fpn(
-    encoder_name="convnext_tiny", encoder_weights="imagenet", in_channels: int = 3, out_channels: int = 3
+    encoder_name="convnext_tiny",
+    encoder_weights="imagenet",
+    in_channels: int = 3,
+    out_channels: int = 3,
 ):
     if not SMP_AVAILABLE:
         raise ImportError("segmentation_models_pytorch is not installed")
@@ -83,7 +84,10 @@ def create_smp_fpn(
 
 
 def create_smp_linknet(
-    encoder_name="convnext_tiny", encoder_weights="imagenet", in_channels: int = 3, out_channels: int = 3
+    encoder_name="convnext_tiny",
+    encoder_weights="imagenet",
+    in_channels: int = 3,
+    out_channels: int = 3,
 ):
     if not SMP_AVAILABLE:
         raise ImportError("segmentation_models_pytorch is not installed")
@@ -96,7 +100,10 @@ def create_smp_linknet(
 
 
 def create_smp_deeplabv3(
-    encoder_name="convnext_tiny", encoder_weights="imagenet", in_channels: int = 3, out_channels: int = 3
+    encoder_name="convnext_tiny",
+    encoder_weights="imagenet",
+    in_channels: int = 3,
+    out_channels: int = 3,
 ):
     if not SMP_AVAILABLE:
         raise ImportError("segmentation_models_pytorch is not installed")
@@ -109,7 +116,10 @@ def create_smp_deeplabv3(
 
 
 def create_smp_deeplabv3plus(
-    encoder_name="convnext_tiny", encoder_weights="imagenet", in_channels: int = 3, out_channels: int = 3
+    encoder_name="convnext_tiny",
+    encoder_weights="imagenet",
+    in_channels: int = 3,
+    out_channels: int = 3,
 ):
     if not SMP_AVAILABLE:
         raise ImportError("segmentation_models_pytorch is not installed")
@@ -122,9 +132,9 @@ def create_smp_deeplabv3plus(
 
 
 def create_segformer(
-        model_name="nvidia/segformer-b0-finetuned-ade-512-512",
-        in_channels: int = 3,
-        out_channels: int = 3
+    model_name="nvidia/segformer-b0-finetuned-ade-512-512",
+    in_channels: int = 3,
+    out_channels: int = 3,
 ):
     if not HF_AVAILABLE:
         raise ImportError("transformers not installed")
@@ -134,14 +144,10 @@ def create_segformer(
         raise ValueError("SegFormer only supports 3-channel RGB input.")
 
     model = SegformerForSemanticSegmentation.from_pretrained(
-        model_name,
-        num_labels=out_channels,
-        ignore_mismatched_sizes=True
+        model_name, num_labels=out_channels, ignore_mismatched_sizes=True
     )
 
     return model
-
-
 
 
 def create_timm_segformer(encoder_name="tf_efficientnetv2_s", out_channels: int = 3):
@@ -156,7 +162,9 @@ def create_timm_segformer(encoder_name="tf_efficientnetv2_s", out_channels: int 
     raise NotImplementedError("timm segformer head integration needs custom head")
 
 
-def create_timm_upernet(encoder_name="swin_base_patch4_window7_224", out_channels: int = 3):
+def create_timm_upernet(
+    encoder_name="swin_base_patch4_window7_224", out_channels: int = 3
+):
     if not TIMM_AVAILABLE:
         raise ImportError("timm not installed")
     raise NotImplementedError(

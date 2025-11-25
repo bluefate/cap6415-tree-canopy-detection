@@ -15,7 +15,6 @@ from src.utils.helpers import p
 # -----------------------------------------------------------
 # Core helpers
 # -----------------------------------------------------------
-
 config = Config.load()
 CLASS_NAMES = ["individual_tree", "group_of_trees"]
 

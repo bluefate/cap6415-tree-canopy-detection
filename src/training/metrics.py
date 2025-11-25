@@ -80,7 +80,10 @@ def compute_metrics(pred: torch.Tensor, true: torch.Tensor):
         "recall": tp / (tp + fn + 1e-8),
     }
 
-def compute_metrics_multiclass(pred: torch.Tensor, true: torch.Tensor, num_classes: int = 3):
+
+def compute_metrics_multiclass(
+    pred: torch.Tensor, true: torch.Tensor, num_classes: int = 3
+):
     """
     Compute per-class IoU and mean IoU for multi-class segmentation.
     """
@@ -100,8 +103,8 @@ def compute_metrics_multiclass(pred: torch.Tensor, true: torch.Tensor, num_class
     class_names = {0: "background", 1: "individual_tree", 2: "group_of_trees"}
 
     for cls_id in range(num_classes):
-        pred_mask = (pred_classes == cls_id)
-        true_mask = (true_classes == cls_id)
+        pred_mask = pred_classes == cls_id
+        true_mask = true_classes == cls_id
 
         intersection = np.logical_and(pred_mask, true_mask).sum()
         union = np.logical_or(pred_mask, true_mask).sum()

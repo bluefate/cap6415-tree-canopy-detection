@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 
-def to_gray( image: np.ndarray ) -> np.ndarray:
+def to_gray(image: np.ndarray) -> np.ndarray:
     """
     Convert an RGB image to grayscale.
     """
@@ -11,38 +11,38 @@ def to_gray( image: np.ndarray ) -> np.ndarray:
     return image
 
 
-def equalize_hist( gray: np.ndarray ) -> np.ndarray:
+def equalize_hist(gray: np.ndarray) -> np.ndarray:
     """
     Apply histogram equalization to a grayscale image.
     """
     return cv2.equalizeHist(gray)
 
 
-def clahe_enhance( gray: np.ndarray, clip: float = 2.0, tile: int = 8 ) -> np.ndarray:
+def clahe_enhance(gray: np.ndarray, clip: float = 2.0, tile: int = 8) -> np.ndarray:
     """
     Apply CLAHE to improve local contrast.
     """
-    clahe = cv2.createCLAHE(clipLimit = clip, tileGridSize = (tile, tile))
+    clahe = cv2.createCLAHE(clipLimit=clip, tileGridSize=(tile, tile))
     return clahe.apply(gray)
 
 
-def sharpen( gray: np.ndarray ) -> np.ndarray:
+def sharpen(gray: np.ndarray) -> np.ndarray:
     """
     Apply a basic sharpening filter to enhance edges.
     """
     kernel = np.array(
-            [
-                [0, -1, 0],
-                [-1, 5, -1],
-                [0, -1, 0],
-            ],
-            dtype = np.float32,
+        [
+            [0, -1, 0],
+            [-1, 5, -1],
+            [0, -1, 0],
+        ],
+        dtype=np.float32,
     )
     out = cv2.filter2D(gray, -1, kernel)
     return np.clip(out, 0, 255).astype(np.uint8)
 
 
-def normalize( gray: np.ndarray ) -> np.ndarray:
+def normalize(gray: np.ndarray) -> np.ndarray:
     """
     Normalize pixel values to zero to one.
     """
@@ -54,7 +54,7 @@ def normalize( gray: np.ndarray ) -> np.ndarray:
     return (g - m) / (M - m)
 
 
-def enhance_image_for_segmentation( image: np.ndarray ) -> tuple:
+def enhance_image_for_segmentation(image: np.ndarray) -> tuple:
     """
     Full enhancement pipeline used in notebooks.
     Returns enhanced image and intermediate stages.
@@ -67,7 +67,7 @@ def enhance_image_for_segmentation( image: np.ndarray ) -> tuple:
     5. normalize to zero to one
     """
 
-    stages = { }
+    stages = {}
 
     gray = to_gray(image)
     stages["gray"] = gray

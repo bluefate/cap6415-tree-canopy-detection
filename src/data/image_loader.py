@@ -1,6 +1,7 @@
 """
 Image loading utilities that handle multiple formats.
 """
+
 from pathlib import Path
 from typing import Union
 
@@ -23,7 +24,7 @@ def load_image(image_path: Union[str, Path]) -> np.ndarray:
         raise FileNotFoundError(f"Image not found: {image_path}")
 
     # Check for PNG version first (more reliable than TIFF)
-    png_path = image_path.with_suffix('.png')
+    png_path = image_path.with_suffix(".png")
     if png_path.exists() and png_path != image_path:
         image_path = png_path
 
@@ -62,15 +63,15 @@ def validate_image_directory(image_dir: Path) -> dict:
 
     # Find all image files
     image_files = []
-    for ext in ['*.tif']:
-    # for ext in ['*.png', '*.jpg', '*.jpeg', '*.tif', '*.tiff']:
+    for ext in ["*.tif"]:
+        # for ext in ['*.png', '*.jpg', '*.jpeg', '*.tif', '*.tiff']:
         image_files.extend(image_dir.glob(ext))
 
     results = {
         "total": len(image_files),
         "valid": 0,
         "invalid": 0,
-        "problematic_files": []
+        "problematic_files": [],
     }
 
     p("Validating images", f"{len(image_files)} files")
@@ -91,9 +92,10 @@ def validate_image_directory(image_dir: Path) -> dict:
     if results["problematic_files"]:
         p("Problematic files", "")
         for path in results["problematic_files"][:10]:
-            p("", f"  {path}", color1 = c.SALMON)
+            p("", f"  {path}", color1=c.SALMON)
 
     return results
+
 
 def apply_all_filters(img):
     """
@@ -113,17 +115,22 @@ def apply_all_filters(img):
 
     # Add kernel-based filters
     for kname, kernel in kernel_bank.items():
-        filter_registry[kname.lower()] = (lambda k=kernel: apply_kernel_using_convolution(gray, k))
+        filter_registry[kname.lower()] = (
+            lambda k=kernel: apply_kernel_using_convolution(gray, k)
+        )
 
     # Add algorithmic filters
-    filter_registry.update({
-        'laplacian': lambda: cv2.Laplacian(gray, cv2.CV_64F),
-        'sobel': lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0) + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
-        'clahe': lambda: clahe_enhance(gray, clip=2.0, tile=8),
-        'gaussian_3x3': lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
-        'gaussian_5x5': lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
-        'gaussian_7x7': lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
-    })
+    filter_registry.update(
+        {
+            "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
+            "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0)
+            + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+            "clahe": lambda: clahe_enhance(gray, clip=2.0, tile=8),
+            "gaussian_3x3": lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
+            "gaussian_5x5": lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
+            "gaussian_7x7": lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
+        }
+    )
 
     # Apply all filters
     results = {}
@@ -135,9 +142,13 @@ def apply_all_filters(img):
             if filtered.ndim == 3:
                 filtered = cv2.cvtColor(filtered, cv2.COLOR_RGB2GRAY)
             if filtered.shape != (target_h, target_w):
-                filtered = cv2.resize(filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+                filtered = cv2.resize(
+                    filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR
+                )
             if filtered.dtype != np.uint8:
-                filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                filtered = cv2.normalize(
+                    filtered, None, 0, 255, cv2.NORM_MINMAX
+                ).astype(np.uint8)
 
             results[fname] = filtered
         except Exception as e:
@@ -147,7 +158,7 @@ def apply_all_filters(img):
     return results
 
 
-def apply_filters( self, img ):
+def apply_filters(self, img):
     """
     Apply specified filters and return as 3-channel image.
     Handles both kernel-based and algorithmic filters.
@@ -170,17 +181,22 @@ def apply_filters( self, img ):
     # Add kernel-based filters
     for kname, kernel in kernel_bank.items():
         # Use closure to capture kernel value
-        filter_registry[kname.lower()] = (lambda k=kernel: apply_kernel_using_convolution(gray, k))
+        filter_registry[kname.lower()] = (
+            lambda k=kernel: apply_kernel_using_convolution(gray, k)
+        )
 
     # Add algorithmic filters
-    filter_registry.update({
-        'laplacian': lambda: cv2.Laplacian(gray, cv2.CV_64F),
-        'sobel': lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0) + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
-        'clahe': lambda: clahe_enhance(gray, clip=2.0, tile=8),
-        'gaussian_3x3': lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
-        'gaussian_5x5': lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
-        'gaussian_7x7': lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
-    })
+    filter_registry.update(
+        {
+            "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
+            "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0)
+            + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+            "clahe": lambda: clahe_enhance(gray, clip=2.0, tile=8),
+            "gaussian_3x3": lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
+            "gaussian_5x5": lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
+            "gaussian_7x7": lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
+        }
+    )
 
     # Apply requested filters
     channels = []
@@ -190,8 +206,8 @@ def apply_filters( self, img ):
         if key not in filter_registry:
             available = sorted(filter_registry.keys())
             raise KeyError(
-                    f"Unknown filter '{fname}'. "
-                    f"Available filters ({len(available)}): {available[:10]}..."
+                f"Unknown filter '{fname}'. "
+                f"Available filters ({len(available)}): {available[:10]}..."
             )
 
         try:
@@ -204,11 +220,15 @@ def apply_filters( self, img ):
 
             # Resize if needed
             if filtered.shape != (target_h, target_w):
-                filtered = cv2.resize(filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+                filtered = cv2.resize(
+                    filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR
+                )
 
             # Normalize to uint8
             if filtered.dtype != np.uint8:
-                filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                filtered = cv2.normalize(
+                    filtered, None, 0, 255, cv2.NORM_MINMAX
+                ).astype(np.uint8)
 
             channels.append(filtered)
 
@@ -248,11 +268,15 @@ def create_enhanced_image(img, filter_names):
 
         # Resize to match target dimensions if needed
         if filtered.shape != (target_h, target_w):
-            filtered = cv2.resize(filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+            filtered = cv2.resize(
+                filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR
+            )
 
         # Normalize to 0-255
         if filtered.dtype != np.uint8:
-            filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(
+                np.uint8
+            )
 
         channels.append(filtered)
 

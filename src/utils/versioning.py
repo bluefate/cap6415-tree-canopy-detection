@@ -4,7 +4,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-
 class VersionManager:
     """
     Handle automatic version numbering for training runs.
@@ -39,7 +38,6 @@ class VersionManager:
         clean = self._normalize_for_json(cfg)
         cfg_json = json.dumps(clean, sort_keys = True)
         return hashlib.md5(cfg_json.encode("utf8")).hexdigest()
-
 
     def find_latest( self ) -> Optional[Path]:
         """

@@ -42,7 +42,6 @@ class Logger:
     #     self.write(text)
     #     p("[Info]", text, color1 = c.BLUE, color2 = c.BLACK)
 
-
     def info(self, text):
         """
         Write informational output. If 'text' is a PyTorch model,

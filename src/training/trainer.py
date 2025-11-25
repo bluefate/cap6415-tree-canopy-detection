@@ -16,14 +16,14 @@ class Trainer:
     """
 
     def __init__(
-            self,
-            model: torch.nn.Module,
-            optimizer: torch.optim.Optimizer,
-            criterion,
-            train_loader: DataLoader,
-            val_loader: DataLoader,
-            config: Any,
-            version_root: Path,
+        self,
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        criterion,
+        train_loader: DataLoader,
+        val_loader: DataLoader,
+        config: Any,
+        version_root: Path,
     ):
         # define device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -50,19 +50,20 @@ class Trainer:
             torch.cuda.empty_cache()
             torch.backends.cudnn.benchmark = True  # Speed up training
             self.logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
-            self.logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
-
+            self.logger.info(
+                f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB"
+            )
 
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
-                self.optimizer,
-                mode='min',
-                factor=config.train.scheduler_factor,
-                patience=config.train.scheduler_patience,
-                verbose=True
+            self.optimizer,
+            mode="min",
+            factor=config.train.scheduler_factor,
+            patience=config.train.scheduler_patience,
+            verbose=True,
         )
 
         # AMP scaler
-        self.scaler = torch.cuda.amp.GradScaler(enabled = (self.device.type == "cuda"))
+        self.scaler = torch.cuda.amp.GradScaler(enabled=(self.device.type == "cuda"))
 
         # checkpointing
         self.best_val_loss = float("inf")
@@ -71,9 +72,7 @@ class Trainer:
         if self.paths["checkpoint"].exists():
             self._load_checkpoint()
 
-
-
-    def _extract_cfg( self ) -> Dict[str, Any]:
+    def _extract_cfg(self) -> Dict[str, Any]:
         """
         Convert the config object into a dictionary.
         """
@@ -83,7 +82,7 @@ class Trainer:
             "extra": self.cfg.extra,
         }
 
-    def _save_checkpoint( self, epoch: int, is_best: bool ) -> None:
+    def _save_checkpoint(self, epoch: int, is_best: bool) -> None:
         """
         Save model, optimizer, scaler, and metrics.
         """
@@ -98,11 +97,11 @@ class Trainer:
         if is_best:
             torch.save(state, self.paths["best"])
 
-    def _load_checkpoint( self ) -> None:
+    def _load_checkpoint(self) -> None:
         """
         Resume training from the latest checkpoint.
         """
-        data = torch.load(self.paths["checkpoint"], map_location = self.device)
+        data = torch.load(self.paths["checkpoint"], map_location=self.device)
         self.model.load_state_dict(data["model"])
         self.optimizer.load_state_dict(data["optimizer"])
         self.scaler.load_state_dict(data["scaler"])
@@ -110,7 +109,7 @@ class Trainer:
         self.start_epoch = data.get("epoch", 0) + 1
         self.logger.info(f"Resuming from epoch {self.start_epoch}")
 
-    def train_epoch( self ) -> float:
+    def train_epoch(self) -> float:
         """
         Train one epoch and return the average loss.
         """
@@ -123,7 +122,7 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-            with torch.cuda.amp.autocast(enabled = (self.device.type == "cuda")):
+            with torch.cuda.amp.autocast(enabled=(self.device.type == "cuda")):
                 preds = self.model(images)
                 loss = self.criterion(preds, masks)
 
@@ -139,7 +138,7 @@ class Trainer:
 
         return total_loss / max(1, len(self.train_loader))
 
-    def validate_epoch( self ) -> Dict[str, float]:
+    def validate_epoch(self) -> Dict[str, float]:
         """
         Validate one epoch and return metrics.
         """
@@ -176,7 +175,7 @@ class Trainer:
             "acc": total_acc / n,
         }
 
-    def run( self ) -> None:
+    def run(self) -> None:
         """
         Run full training loop using configuration settings.
         """
@@ -190,7 +189,9 @@ class Trainer:
             train_loss = self.train_epoch()
             val = self.validate_epoch()
 
-            self.logger.info(f"Train loss {train_loss:.4f}, Val loss {val['loss']:.4f}, IoU {val['iou']:.4f}, Dice {val['dice']:.4f}, Acc {val['acc']:.4f}")
+            self.logger.info(
+                f"Train loss {train_loss:.4f}, Val loss {val['loss']:.4f}, IoU {val['iou']:.4f}, Dice {val['dice']:.4f}, Acc {val['acc']:.4f}"
+            )
 
             is_best = val["loss"] < self.best_val_loss
             if is_best:
@@ -206,7 +207,6 @@ class Trainer:
                 self.logger.info("Early stop triggered")
                 break
 
-            self.scheduler.step(val['loss'])
-
+            self.scheduler.step(val["loss"])
 
         self.logger.warn("Training complete")

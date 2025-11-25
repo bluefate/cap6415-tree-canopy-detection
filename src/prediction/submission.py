@@ -8,7 +8,9 @@ import numpy as np
 from src.utils.helpers import p, t
 
 
-def mask_to_polygons_multiclass( mask: np.ndarray, id_to_class: dict = None ) -> List[dict]:
+def mask_to_polygons_multiclass(
+    mask: np.ndarray, id_to_class: dict = None
+) -> List[dict]:
     """
     Convert a multi-class mask to list of annotation dicts with correct class names.
     """
@@ -25,7 +27,9 @@ def mask_to_polygons_multiclass( mask: np.ndarray, id_to_class: dict = None ) ->
         binary_mask = (mask == class_id).astype(np.uint8)
 
         # Find contours
-        contours, _ = cv2.findContours(binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(
+            binary_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+        )
 
         for cnt in contours:
             # Filter small artifacts
@@ -37,17 +41,20 @@ def mask_to_polygons_multiclass( mask: np.ndarray, id_to_class: dict = None ) ->
                 segmentation = cnt.reshape(-1).tolist()
 
                 if len(segmentation) >= 6:  # At least 3 points
-                    annotations.append({
-                        "class": class_name,
-                        "confidence_score": 1.0,
-                        "segmentation": segmentation
-                    })
+                    annotations.append(
+                        {
+                            "class": class_name,
+                            "confidence_score": 1.0,
+                            "segmentation": segmentation,
+                        }
+                    )
 
     return annotations
 
+
 def export_submission(
-        results: List[Dict[str, Any]],
-        output_path: Path,
+    results: List[Dict[str, Any]],
+    output_path: Path,
 ) -> None:
     """
     Convert prediction results into expected submission JSON structure.
@@ -87,7 +94,7 @@ def export_submission(
             "height": h,
             "scene_type": r.get("scene_type", "unknown"),
             "cm_resolution": extract_cm_resolution(fname),
-            "annotations": annotations  # ← Already has correct class names!
+            "annotations": annotations,  # ← Already has correct class names!
         }
 
         images.append(entry)
@@ -108,14 +115,16 @@ def export_submission(
 
     # Count by class
     individual_count = sum(
-            1 for img in images
-            for ann in img["annotations"]
-            if ann["class"] == "individual_tree"
+        1
+        for img in images
+        for ann in img["annotations"]
+        if ann["class"] == "individual_tree"
     )
     group_count = sum(
-            1 for img in images
-            for ann in img["annotations"]
-            if ann["class"] == "group_of_trees"
+        1
+        for img in images
+        for ann in img["annotations"]
+        if ann["class"] == "group_of_trees"
     )
     p("✔ individual_tree annotations", individual_count)
     p("✔ group_of_trees annotations", group_count)
@@ -138,6 +147,7 @@ def export_submission(
             p("  confidence", ann["confidence_score"])
             p("  segmentation points", len(ann["segmentation"]))
 
+
 def extract_cm_resolution(fname: str) -> int:
     """
     Extract resolution in cm from filenames like 'forest_10cm_001.tif'
@@ -147,6 +157,7 @@ def extract_cm_resolution(fname: str) -> int:
 
     # Search for patterns like 5cm, 10cm, 20cm, etc.
     import re
+
     match = re.search(r"(\d+)\s*cm", name)
     if match:
         return int(match.group(1))

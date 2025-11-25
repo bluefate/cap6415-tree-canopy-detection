@@ -12,14 +12,14 @@ class AnnotationItem:
     Stores class name, segmentation polygon, confidence score, and the computed bounding box.
     """
 
-    def __init__( self, cls: str, segmentation: List[float], confidence: float = 1.0 ):
+    def __init__(self, cls: str, segmentation: List[float], confidence: float = 1.0):
         self.cls = cls
         self.segmentation = segmentation
         self.confidence = confidence
         self.bbox = self.compute_bbox(segmentation)
 
     @staticmethod
-    def compute_bbox( seg: List[float] ) -> List[int]:
+    def compute_bbox(seg: List[float]) -> List[int]:
         """
         Convert a flat segmentation list into a bounding box.
         Returns [x1, y1, x2, y2].
@@ -37,27 +37,29 @@ class AnnotationEntry:
     Includes path, width, height, and a list of AnnotationItem objects.
     """
 
-    def __init__( self, image_path: Path, width: int, height: int, items: List[AnnotationItem] ):
+    def __init__(
+        self, image_path: Path, width: int, height: int, items: List[AnnotationItem]
+    ):
         self.image_path = image_path
         self.width = width
         self.height = height
         self.items = items
 
-    def to_mask( self ) -> np.ndarray:
+    def to_mask(self) -> np.ndarray:
         """
         Build a binary mask from all polygons in this entry.
         """
-        mask = np.zeros((self.height, self.width), dtype = np.uint8)
+        mask = np.zeros((self.height, self.width), dtype=np.uint8)
         for item in self.items:
             seg = item.segmentation
             if seg is None or len(seg) < 4:
                 continue
-            poly = np.array(seg, dtype = np.int32).reshape(-1, 2)
+            poly = np.array(seg, dtype=np.int32).reshape(-1, 2)
             cv2.fillPoly(mask, [poly], 1)
         return mask
 
 
-def load_json_annotations( json_path: Path ) -> List[AnnotationEntry]:
+def load_json_annotations(json_path: Path) -> List[AnnotationEntry]:
     """
     Load annotation entries from a JSON file that contains images and annotations.
     Returns a list of AnnotationEntry objects.
@@ -66,7 +68,7 @@ def load_json_annotations( json_path: Path ) -> List[AnnotationEntry]:
     if not json_path.exists():
         raise FileNotFoundError(f"Missing annotation file {json_path}")
 
-    with open(json_path, "r", encoding = "utf8") as f:
+    with open(json_path, "r", encoding="utf8") as f:
         data = json.load(f)
 
     entries = []
@@ -90,7 +92,7 @@ def load_json_annotations( json_path: Path ) -> List[AnnotationEntry]:
     return entries
 
 
-def get_unique_classes( entries: List[AnnotationEntry] ) -> List[str]:
+def get_unique_classes(entries: List[AnnotationEntry]) -> List[str]:
     """
     Return a sorted list of unique classes across all entries.
     """
