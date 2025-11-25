@@ -43,7 +43,7 @@ def build_submission_entry(
     for poly in polygons:
         if len(poly) >= 6:
             annotations.append({
-                "class": "tree",
+                "class": "individual_tree",
                 "confidence_score": 1.0,
                 "segmentation": poly,
             })

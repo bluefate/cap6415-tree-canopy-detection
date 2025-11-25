@@ -85,7 +85,7 @@ def get_available_filters():
         available = EnhancedImageMaskDataset.get_available_filters()
         return available
     except Exception as e:
-        p("Warning", f"Could not load filters dynamically: {e}", color1 = c.ORANGE)
+        p("Warning", f"Could not load filters dynamically: {e}", color1 = c.ORANGE, color2 = c.ORANGE)
         # Fallback to known filters
         return [
             'laplacian', 'sobel', 'clahe',
@@ -148,9 +148,7 @@ for mode in ['rgb', 'filtered', 'concat']:
         img_t, mask_t = dataset[0]
         p(f"Mode: {mode}", f"Image shape: {img_t.shape}, Mask shape: {mask_t.shape}")
     except Exception as e:
-        p(f"Mode: {mode}", f"FAILED: {e}", color1 = c.RED, color2 = c.RED)
-
-
+        p(f"Mode: {mode}", f"FAILED: {e}", color1=c.RED, color2=c.RED)
 
 
 # %% [markdown]
@@ -855,7 +853,7 @@ for item in best_submissions:
                 "best_val_loss": val_loss
             }
     except Exception as e:
-        p("Warning", f"Could not load checkpoint {ckpt_path}: {e}", color1=c.ORANGE)
+        p("Warning", f"Could not load checkpoint {ckpt_path}: {e}", color1 = c.ORANGE)
         continue
 
 # Append overall best
@@ -917,7 +915,7 @@ for e in sample_entries:
                 maxcolumns = 6
         )
     except Exception as e_viz:
-        p("Failed to visualize", str(e_viz), color1=c.ORANGE)
+        p("Failed to visualize", str(e_viz), color1 = c.ORANGE)
 
 
 # %%
