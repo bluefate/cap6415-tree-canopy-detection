@@ -233,7 +233,8 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
                 gray, result,
                 titles = ["Gray", f"Motion Blur {angle}°"],
                 cmaps = ["gray", "seismic"],
-                kernel = kernel
+                kernel = kernel,
+                figsize = 6
         )
     p("\n")
     t("=== === === === === === === === ===  Gaussian blur tests === === === === === === === === ===")
@@ -246,7 +247,8 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
                 image, result,
                 titles = ["Orignal", f"Gaussian σ={sigma}"],
                 cmaps = [None, "seismic"],
-                kernel = kernel
+                kernel = kernel,
+                figsize = 6
         )
     p("\n")
     t("=== === === === === === === === === Directional edge tests === === === === === === === === ===")
@@ -259,7 +261,8 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
                 image, result,
                 titles = ["Orignal", f"Edge {direction}"],
                 cmaps = [None, "seismic"],
-                kernel = kernel
+                kernel = kernel,
+                figsize = 6
         )
 
 
@@ -293,7 +296,8 @@ def demo_kernels( image, names = ("Sobel_X", "Sobel_Y", "Laplacian_3x3") ):
                 titles = ("gray", name),
                 cmaps = ("gray", "seismic"),
                 kernel = kernel,
-                kernel_title = name
+                kernel_title = name,
+                figsize = 6
         )
 
 

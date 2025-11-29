@@ -17,6 +17,7 @@ def show_side_by_side(
     kernel_title=None,
     kernel_cmap="seismic",
     mask_colors=None,
+    figsize=4,
 ) -> None:
     """Show multiple images side by side."""
 
@@ -50,7 +51,7 @@ def show_side_by_side(
     if add_kernel:
         ncols = ncols + 2  # reserve 2 columns for 2D + 3D kernel plots
 
-    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 4 * nrows))
+    fig, axes = plt.subplots(nrows, ncols, figsize=(figsize * ncols, figsize * nrows))
     fig.patch.set_facecolor("white")
 
     # Flatten axes for easy iteration
