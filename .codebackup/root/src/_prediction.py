@@ -26,7 +26,7 @@ class Predictor:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger = Logger()
 
-        self.model = build_model(model_name, in_channels=3, out_channels=1).to(
+        self.model = build_model(model_name, in_channels=3, out_channels=3).to(
             self.device
         )
         self._load_weights()

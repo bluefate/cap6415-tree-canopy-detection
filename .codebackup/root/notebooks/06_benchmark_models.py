@@ -67,7 +67,7 @@ for name, params in MODEL_BENCHMARKS.items():
     p("Testing model", name)
 
     try:
-        model = build_model(name, in_channels = 3, out_channels = 1, **params).to(device)
+        model = build_model(name, in_channels = 3, out_channels = 3, **params).to(device)
 
 
     except Exception as e:

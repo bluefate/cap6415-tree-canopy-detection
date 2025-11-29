@@ -16,7 +16,7 @@ sys.path.append(os.path.abspath("../src"))
 from src.utils.helpers import p, t, c
 
 
-t("notebooks")
+t("Run All Notebooks")
 
 root = os.path.dirname(os.getcwd())
 source_folder = os.path.join(root, "notebooks")
@@ -24,6 +24,7 @@ p("source_folder", source_folder)
 p()
 notebooks = glob.glob(os.path.join(source_folder, "*.ipynb"))
 notebooks = [nb for nb in notebooks if os.path.basename(nb) != "_run_all.ipynb"]
+notebooks = sorted(notebooks)
 
 for nb in notebooks:
     print(os.path.basename(nb))

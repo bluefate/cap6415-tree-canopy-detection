@@ -10,8 +10,8 @@ class SampleModelProvided(nn.Module):
 
     def __init__(
         self,
-        in_channels=3,
-        out_channels=1,
+        in_channels: int = 3,
+        out_channels: int = 3,
         base_features=64,
         use_batchnorm=True,
         dropout=0.0,
@@ -246,7 +246,7 @@ from src.models.unet import UNet
 # convnext_xlarge	~350M	State-of-the-art accuracy, but very resource-intensive
 
 
-# out_channels=3, # <- Should be 3, background=0, individual_tree=1, group_of_trees=2
+# out_channels = 3, # <- Should be 3, background=0, individual_tree=1, group_of_trees=2
 
 try:
     import segmentation_models_pytorch as smp

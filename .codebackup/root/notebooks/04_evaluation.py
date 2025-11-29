@@ -68,7 +68,7 @@ def load_best_model( model_name: str, config ):
     best_path = version_dir / "best_model.pth"
     p("Using model version", version_dir.name)
 
-    model = build_model(model_name, in_channels = 3, out_channels = 1)
+    model = build_model(model_name, in_channels = 3, out_channels = 3)
     state = torch.load(best_path, map_location = "cpu")
     if "model" in state:
         model.load_state_dict(state["model"])
@@ -158,9 +158,9 @@ for _ in range(5):
     overlay = cv2.addWeighted(base, 0.6, pred_rgb, 0.4, 0)
 
     show_side_by_side(
-        base, mask_u8, pred_u8, overlay,
-        titles = titles,
-        cmaps = [None, "gray", "gray", None]
-        )
+            base, mask_u8, pred_u8, overlay,
+            titles = titles,
+            cmaps = [None, "gray", "gray", None]
+    )
 
 # %%

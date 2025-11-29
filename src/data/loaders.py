@@ -58,18 +58,8 @@ class ImageMaskDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         H, W = image.shape[:2]
 
-        # Build mask - handle class filtering
-        if self.classes is None:
-            mask = build_multiclass_mask(entry)
-        else:
-            # Create filtered entry with only specified classes
-            from src.data.annotations import AnnotationEntry
-
-            filtered_items = [item for item in entry.items if item.cls in self.classes]
-            filtered_entry = AnnotationEntry(
-                entry.image_path, entry.width, entry.height, filtered_items
-            )
-            mask = build_multiclass_mask(filtered_entry)
+        # Build multi-class mask (values: 0=background, 1=individual, 2=group)
+        mask = build_multiclass_mask(entry)
 
         if self.transform:
             augmented = self.transform(image=image, mask=mask)
@@ -86,13 +76,13 @@ class ImageMaskDataset(Dataset):
 
         # Convert mask to tensor [H, W] -> [1, H, W]
         if isinstance(mask, torch.Tensor):
-            mask_t = mask.float()
+            mask_t = mask.long()
         else:
-            mask_t = torch.from_numpy(mask).float()
+            mask_t = torch.from_numpy(mask).long()
 
-        # Ensure mask has shape [1, H, W]
-        if mask_t.ndim == 2:
-            mask_t = mask_t.unsqueeze(0)
+        # Ensure mask has shape [H, W]
+        if mask_t.ndim == 3 and mask_t.shape[0] == 1:
+            mask_t = mask_t.squeeze(0)
 
         return img_t, mask_t
 

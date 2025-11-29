@@ -7,9 +7,10 @@
 # #### Imports and setup
 
 # %%
-from src.utils.tester import p_test
 import os
 import sys
+
+from src.utils.tester import p_test
 
 
 sys.path.append(os.path.abspath(".."))
@@ -27,7 +28,7 @@ from src.data.enhance_masks import EnhancedImageMaskDataset
 from src.utils.config import Config
 from src.utils.helpers import c, p, t
 from src.data.loaders import ImageMaskDataset
-from src.data.image_loader import apply_all_filters, apply_filters, create_enhanced_image
+from src.data.image_loader import apply_all_filters, create_enhanced_image
 from models.zoo import build_model
 
 
@@ -55,6 +56,7 @@ def print_versions():
     p("Numpy", np.__version__)
     p("Panda", pd.__version__)
     p("Torch", torch.__version__)
+
 
 print_versions()
 
@@ -184,9 +186,9 @@ try:
     assert images.ndim == 4, f"Batch images should be 4D, got {images.ndim}D"
     assert masks.ndim == 4, f"Batch masks should be 4D, got {masks.ndim}D"
     assert masks.shape[1] == 1, f"Masks should have 1 channel, got {masks.shape[1]}"
-    p("SUCCESS", "DataLoader produces correct batch shapes!", color1=c.GREEN, color2=c.GREEN)
+    p("SUCCESS", "DataLoader produces correct batch shapes!", color1 = c.GREEN, color2 = c.GREEN)
 except AssertionError as e:
-    p("ASSERTION FAILED", str(e), color1=c.RED, color2=c.RED)
+    p("ASSERTION FAILED", str(e), color1 = c.RED, color2 = c.RED)
 
 # %% [markdown]
 # #### Test 4: Model Forward Pass
@@ -199,7 +201,7 @@ except AssertionError as e:
 t("Testing Model Forward Pass")
 
 # Build model
-model = build_model('simple_cnn', in_channels = 3, out_channels = 1)
+model = build_model('simple_cnn', in_channels = 3, out_channels = 3)
 model.eval()
 
 # Get a batch
@@ -216,9 +218,9 @@ p("Target shape", masks.shape)
 # Verify shapes match for loss computation
 try:
     assert preds.shape == masks.shape, f"Prediction {preds.shape} != Target {masks.shape}"
-    p("SUCCESS", "Model output matches target shape!", color1=c.GREEN, color2=c.GREEN)
+    p("SUCCESS", "Model output matches target shape!", color1 = c.GREEN, color2 = c.GREEN)
 except AssertionError as e:
-    p("ASSERTION FAILED", str(e), color1=c.RED, color2=c.RED)
+    p("ASSERTION FAILED", str(e), color1 = c.RED, color2 = c.RED)
 
 
 # %% [markdown]
@@ -237,10 +239,12 @@ criterion = BCEWithLogitsLoss()
 try:
     loss = criterion(preds, masks)
     p("Loss value", loss.item())
-    p("SUCCESS", "Loss computation works!", color1=c.GREEN, color2=c.GREEN)
+    p("SUCCESS", "Loss computation works!", color1 = c.GREEN, color2 = c.GREEN)
 except Exception as e:
-    p("ERROR", str(e), color1=c.RED, color2=c.RED)
+    p("ERROR", str(e), color1 = c.RED, color2 = c.RED)
     import traceback
+
+
     traceback.print_exc()
 
 
@@ -274,7 +278,7 @@ def verify_dataset_shapes():
     # ========================================================================
     try:
         t("Test 1: ImageMaskDataset")
-        dataset1 = ImageMaskDataset(entries[:5], config.paths.train_images, transform=train_tf)
+        dataset1 = ImageMaskDataset(entries[:5], config.paths.train_images, transform = train_tf)
         img_t, mask_t = dataset1[0]
 
         p("Image shape", img_t.shape)
@@ -284,11 +288,11 @@ def verify_dataset_shapes():
         assert mask_t.ndim == 3, f"Mask should be 3D, got {mask_t.ndim}D"
         assert mask_t.shape[0] == 1, f"Mask should have 1 channel, got {mask_t.shape[0]}"
 
-        p("Test 1", "PASS", color1=c.GREEN, color2=c.GREEN, bold=True)
+        p("Test 1", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
         test_results.append(("ImageMaskDataset", True, None))
 
     except Exception as e:
-        p("Test 1", f"FAIL: {e}", color1=c.RED, color2=c.RED, bold=True)
+        p("Test 1", f"FAIL: {e}", color1 = c.RED, color2 = c.RED, bold = True)
         test_results.append(("ImageMaskDataset", False, str(e)))
 
     # ========================================================================
@@ -297,10 +301,10 @@ def verify_dataset_shapes():
     try:
         t("Test 2: EnhancedImageMaskDataset (RGB mode)")
         dataset2 = EnhancedImageMaskDataset(
-            entries[:5],
-            config.paths.train_images,
-            mode='rgb',
-            transform=train_tf
+                entries[:5],
+                config.paths.train_images,
+                mode = 'rgb',
+                transform = train_tf
         )
         img_t, mask_t = dataset2[0]
 
@@ -311,11 +315,11 @@ def verify_dataset_shapes():
         assert mask_t.ndim == 3, f"Mask should be 3D, got {mask_t.ndim}D"
         assert mask_t.shape[0] == 1, f"Mask should have 1 channel, got {mask_t.shape[0]}"
 
-        p("Test 2", "PASS", color1=c.GREEN, color2=c.GREEN, bold=True)
+        p("Test 2", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
         test_results.append(("EnhancedImageMaskDataset (rgb)", True, None))
 
     except Exception as e:
-        p("Test 2", f"FAIL: {e}", color1=c.RED, color2=c.RED, bold=True)
+        p("Test 2", f"FAIL: {e}", color1 = c.RED, color2 = c.RED, bold = True)
         test_results.append(("EnhancedImageMaskDataset (rgb)", False, str(e)))
 
     # ========================================================================
@@ -324,10 +328,10 @@ def verify_dataset_shapes():
     try:
         t("Test 3: EnhancedImageMaskDataset (filtered mode)")
         dataset3 = EnhancedImageMaskDataset(
-            entries[:5],
-            config.paths.train_images,
-            mode='filtered',
-            transform=train_tf
+                entries[:5],
+                config.paths.train_images,
+                mode = 'filtered',
+                transform = train_tf
         )
         img_t, mask_t = dataset3[0]
 
@@ -338,11 +342,11 @@ def verify_dataset_shapes():
         assert mask_t.ndim == 3, f"Mask should be 3D, got {mask_t.ndim}D"
         assert mask_t.shape[0] == 1, f"Mask should have 1 channel, got {mask_t.shape[0]}"
 
-        p("Test 3", "PASS", color1=c.GREEN, color2=c.GREEN, bold=True)
+        p("Test 3", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
         test_results.append(("EnhancedImageMaskDataset (filtered)", True, None))
 
     except Exception as e:
-        p("Test 3", f"FAIL: {e}", color1=c.RED, color2=c.RED, bold=True)
+        p("Test 3", f"FAIL: {e}", color1 = c.RED, color2 = c.RED, bold = True)
         test_results.append(("EnhancedImageMaskDataset (filtered)", False, str(e)))
 
     # ========================================================================
@@ -351,12 +355,12 @@ def verify_dataset_shapes():
     try:
         t("Test 4: DataLoader Batching")
         dataset = EnhancedImageMaskDataset(
-            entries[:10],
-            config.paths.train_images,
-            mode='rgb',
-            transform=train_tf
+                entries[:10],
+                config.paths.train_images,
+                mode = 'rgb',
+                transform = train_tf
         )
-        loader = DataLoader(dataset, batch_size=4, shuffle=False)
+        loader = DataLoader(dataset, batch_size = 4, shuffle = False)
         images, masks = next(iter(loader))
 
         p("Batch image shape", images.shape)
@@ -366,11 +370,11 @@ def verify_dataset_shapes():
         assert masks.ndim == 4, f"Batch masks should be 4D, got {masks.ndim}D"
         assert masks.shape[1] == 1, f"Masks should have 1 channel, got {masks.shape[1]}"
 
-        p("Test 4", "PASS", color1=c.GREEN, color2=c.GREEN, bold=True)
+        p("Test 4", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
         test_results.append(("DataLoader Batching", True, None))
 
     except Exception as e:
-        p("Test 4", f"FAIL: {e}", color1=c.RED, color2=c.RED, bold=True)
+        p("Test 4", f"FAIL: {e}", color1 = c.RED, color2 = c.RED, bold = True)
         test_results.append(("DataLoader Batching", False, str(e)))
 
     # ========================================================================
@@ -378,7 +382,7 @@ def verify_dataset_shapes():
     # ========================================================================
     try:
         t("Test 5: Model Forward Pass")
-        model = build_model('simple_cnn', in_channels=3, out_channels=1)
+        model = build_model('simple_cnn', in_channels = 3, out_channels = 3)
         model.eval()
 
         with torch.no_grad():
@@ -390,11 +394,11 @@ def verify_dataset_shapes():
 
         assert preds.shape == masks.shape, f"Prediction {preds.shape} != Target {masks.shape}"
 
-        p("Test 5", "PASS", color1=c.GREEN, color2=c.GREEN, bold=True)
+        p("Test 5", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
         test_results.append(("Model Forward Pass", True, None))
 
     except Exception as e:
-        p("Test 5", f"FAIL: {e}", color1=c.RED, color2=c.RED, bold=True)
+        p("Test 5", f"FAIL: {e}", color1 = c.RED, color2 = c.RED, bold = True)
         test_results.append(("Model Forward Pass", False, str(e)))
 
     # ========================================================================
@@ -407,11 +411,11 @@ def verify_dataset_shapes():
 
         p("Loss value", loss.item())
 
-        p("Test 6", "PASS", color1=c.GREEN, color2=c.GREEN, bold=True)
+        p("Test 6", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
         test_results.append(("Loss Computation", True, None))
 
     except Exception as e:
-        p("Test 6", f"FAIL: {e}", color1=c.RED, color2=c.RED, bold=True)
+        p("Test 6", f"FAIL: {e}", color1 = c.RED, color2 = c.RED, bold = True)
         test_results.append(("Loss Computation", False, str(e)))
 
     # ========================================================================
@@ -424,22 +428,22 @@ def verify_dataset_shapes():
 
     for test_name, success, error in test_results:
         if success:
-            p(test_name, "PASS", color1=c.GREEN, color2=c.GREEN)
+            p(test_name, "PASS", color1 = c.GREEN, color2 = c.GREEN)
         else:
-            p(test_name, f"FAIL: {error}", color1=c.RED, color2=c.RED)
+            p(test_name, f"FAIL: {error}", color1 = c.RED, color2 = c.RED)
 
     p("")
     p("Total Tests", len(test_results))
-    p("Passed", passed, color1=c.GREEN)
-    p("Failed", failed, color1=c.RED if failed > 0 else c.GREEN)
+    p("Passed", passed, color1 = c.GREEN)
+    p("Failed", failed, color1 = c.RED if failed > 0 else c.GREEN)
 
     if failed == 0:
         p("")
-        p("ALL TESTS PASSED!", "Dataset shapes are correct!", color1=c.GREEN, color2=c.GREEN, bold=True)
+        p("ALL TESTS PASSED!", "Dataset shapes are correct!", color1 = c.GREEN, color2 = c.GREEN, bold = True)
         return True
     else:
         p("")
-        p("SOME TESTS FAILED!", "Check errors above", color1=c.RED, color2=c.RED, bold=True)
+        p("SOME TESTS FAILED!", "Check errors above", color1 = c.RED, color2 = c.RED, bold = True)
         return False
 
 
@@ -452,6 +456,7 @@ all_passed = verify_dataset_shapes()
 # %%
 from exploration.enhancement import clahe_enhance, to_gray
 
+
 # %%
 t("Testing CLAHE with different input types")
 
@@ -459,29 +464,29 @@ t("Testing CLAHE with different input types")
 try:
     gray = to_gray(img)
     clahe_result = clahe_enhance(gray)
-    p("✓ CLAHE on grayscale", "PASS", color1=c.GREEN)
+    p("✓ CLAHE on grayscale", "PASS", color1 = c.GREEN)
 except Exception as e:
-    p("✗ CLAHE on grayscale", str(e), color1=c.RED)
+    p("✗ CLAHE on grayscale", str(e), color1 = c.RED)
 
 # Test 2: RGB (works via to_gray)
 try:
     gray = to_gray(img)  # Convert first
     clahe_result = clahe_enhance(gray)
-    p("✓ CLAHE on RGB (converted)", "PASS", color1=c.GREEN)
+    p("✓ CLAHE on RGB (converted)", "PASS", color1 = c.GREEN)
 except Exception as e:
-    p("✗ CLAHE on RGB", str(e), color1=c.RED)
+    p("✗ CLAHE on RGB", str(e), color1 = c.RED)
 
 # Test 3: EnhancedImageMaskDataset with CLAHE filter
 try:
     dataset = EnhancedImageMaskDataset(
-        entries[:5],
-        config.paths.train_images,
-        mode='filtered',
-        filter_names=['laplacian', 'sobel', 'clahe'],
-        transform=train_tf
+            entries[:5],
+            config.paths.train_images,
+            mode = 'filtered',
+            filter_names = ['laplacian', 'sobel', 'clahe'],
+            transform = train_tf
     )
     img_t, mask_t = dataset[0]
-    p("✓ EnhancedDataset with CLAHE", "PASS", color1=c.GREEN)
+    p("✓ EnhancedDataset with CLAHE", "PASS", color1 = c.GREEN)
     p("  Shape", img_t.shape)
 except Exception as e:
-    p("✗ EnhancedDataset with CLAHE", str(e), color1=c.RED)
+    p("✗ EnhancedDataset with CLAHE", str(e), color1 = c.RED)

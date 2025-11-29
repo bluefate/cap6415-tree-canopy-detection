@@ -165,7 +165,7 @@ def check_model():
     t("Checking Model")
 
     try:
-        model = build_model('simple_cnn', in_channels = 3, out_channels = 1)
+        model = build_model('simple_cnn', in_channels = 3, out_channels = 3)
 
         p("✓ Model created", "simple_cnn", color1 = c.GREEN)
 

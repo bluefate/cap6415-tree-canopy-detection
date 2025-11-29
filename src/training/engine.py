@@ -15,13 +15,8 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 
 
 def prepare_criterion():
-    """Binary cross entropy with logits for binary segmentation."""
-    return torch.nn.BCEWithLogitsLoss()
-
-
-# def prepare_criterion():
-#     """Multiclass cross entropy + dice loss for 3-class segmentation."""
-#     return torch.nn.CrossEntropyLoss()
+    """Multiclass cross entropy + dice loss for 3-class segmentation."""
+    return torch.nn.CrossEntropyLoss()
 
 
 def run_training(
@@ -37,7 +32,7 @@ def run_training(
     image_size = config.train.image_size
     lr = config.train.learning_rate
 
-    model = build_model(model_name, in_channels=3, out_channels=1)
+    model = build_model(model_name, in_channels=3, out_channels=3)
     optimizer = prepare_optimizer(model, lr)
     criterion = prepare_criterion()
 

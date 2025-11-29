@@ -9,8 +9,8 @@ class SampleModelProvided(nn.Module):
 
     def __init__(
         self,
-        in_channels=3,
-        out_channels=1,
+        in_channels: int = 3,
+        out_channels: int = 3,
         base_features=64,
         use_batchnorm=True,
         dropout=0.0,

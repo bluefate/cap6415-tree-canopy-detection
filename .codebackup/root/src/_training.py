@@ -16,13 +16,8 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 
 
 def prepare_criterion():
-    """Binary cross entropy with logits for binary segmentation."""
-    return torch.nn.BCEWithLogitsLoss()
-
-
-# def prepare_criterion():
-#     """Multiclass cross entropy + dice loss for 3-class segmentation."""
-#     return torch.nn.CrossEntropyLoss()
+    """Multiclass cross entropy + dice loss for 3-class segmentation."""
+    return torch.nn.CrossEntropyLoss()
 
 
 def run_training(
@@ -38,7 +33,7 @@ def run_training(
     image_size = config.train.image_size
     lr = config.train.learning_rate
 
-    model = build_model(model_name, in_channels=3, out_channels=1)
+    model = build_model(model_name, in_channels=3, out_channels=3)
     optimizer = prepare_optimizer(model, lr)
     criterion = prepare_criterion()
 
@@ -411,14 +406,16 @@ class Trainer:
                 loss = self.criterion(preds, masks)
                 total_loss += loss.item()
 
-                # NEW: Use multiclass metrics
+                # Use multiclass metrics
                 m = compute_metrics_multiclass(preds, masks, num_classes=3)
-                total_iou += m["mean_iou"]
-                total_iou_individual += m["iou_individual_tree"]
-                total_iou_group += m["iou_group_of_trees"]
+
+                total_iou += m.get("iou", m.get("mean_iou", 0.0))
+                total_iou_individual += m.get("iou_individual_tree", 0.0)
+                total_iou_group += m.get("iou_group_of_trees", 0.0)
                 total_acc += m["acc"]
 
         n = max(1, len(self.val_loader))
+
         return {
             "loss": total_loss / n,
             "iou": total_iou / n,  # This is now mean_iou of tree classes
@@ -443,7 +440,11 @@ class Trainer:
             val = self.validate_epoch()
 
             self.logger.info(
-                f"Train loss {train_loss:.4f}, Val loss {val['loss']:.4f}, IoU {val['iou']:.4f}, Dice {val['dice']:.4f}, Acc {val['acc']:.4f}"
+                f"Train loss {train_loss:.4f}, "
+                f"Val loss {val['loss']:.4f}, "
+                f"IoU {val['iou']:.4f} (ind={val['iou_individual_tree']:.4f},"
+                f"grp={val['iou_group_of_trees']:.4f}), "
+                f"Acc {val['acc']:.4f}"
             )
 
             is_best = val["loss"] < self.best_val_loss

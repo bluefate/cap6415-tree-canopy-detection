@@ -21,7 +21,7 @@ from src.data.loaders import ImageMaskDataset
 from src.models.zoo import MODEL_BUILDERS
 from src.training.engine import run_training
 from src.utils.config import Config
-from src.utils.helpers import c, init_notebook, p, t, c
+from src.utils.helpers import init_notebook, p, t, c
 
 
 config = Config.load()
@@ -101,6 +101,7 @@ trainer = run_training(
 # %%
 from models.zoo import build_model
 
+
 # Verify tensor types
 t("Tensor Type Verification")
 sample_img, sample_mask = train_ds[0]
@@ -115,7 +116,7 @@ p(f"\nBatch image dtype: {batch_imgs.dtype}, shape: {batch_imgs.shape}")
 p(f"Batch mask dtype: {batch_masks.dtype}, shape: {batch_masks.shape}", color1 = c.BLUE)
 
 # Test with model
-model = build_model('simple_cnn', in_channels=3, out_channels=1)
+model = build_model('simple_cnn', in_channels = 3, out_channels = 3)
 with torch.no_grad():
     preds = model(batch_imgs[:1])
 p(f"\nModel output dtype: {preds.dtype}, shape: {preds.shape}", color1 = c.BLACK)

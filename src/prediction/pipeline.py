@@ -25,7 +25,7 @@ class Predictor:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger = Logger()
 
-        self.model = build_model(model_name, in_channels=3, out_channels=1).to(
+        self.model = build_model(model_name, in_channels=3, out_channels=3).to(
             self.device
         )
         self._load_weights()
@@ -42,14 +42,19 @@ class Predictor:
         self.logger.info(f"Loaded model weights from {self.model_path}")
 
     def predict_tensor(self, tensor: torch.Tensor) -> np.ndarray:
-        """
-        Run inference on a single tensor. Returns a numpy mask.
-        """
+        """Run inference on a single tensor. Returns a numpy mask."""
         tensor = tensor.unsqueeze(0).to(self.device)
         with torch.no_grad():
             pred = self.model(tensor)
-        pred = torch.sigmoid(pred).cpu().squeeze().numpy()
-        return (pred > 0.5).astype(np.uint8)
+
+        # Handle multi-class output
+        if pred.shape[1] == 3:  # Multi-class
+            pred_classes = torch.argmax(pred, dim=1).cpu().squeeze().numpy()
+            # Return binary mask (any tree class > 0)
+            return (pred_classes > 0).astype(np.uint8)
+        else:  # Binary
+            pred = torch.sigmoid(pred).cpu().squeeze().numpy()
+            return (pred > 0.5).astype(np.uint8)
 
     def predict_image(self, image: np.ndarray) -> np.ndarray:
         """
@@ -85,9 +90,19 @@ class Predictor:
                 base = img_t
 
             with torch.no_grad():
-                pred = self.model(img_chw.to(self.device)).cpu().squeeze().numpy()
+                # pred = self.model(img_chw.to(self.device)).cpu().squeeze().numpy()
+                pred = self.model(img_chw.to(self.device)).cpu()
 
-            pred_bin = (pred > 0.5).astype(np.uint8)
+            # Convert multi-class logits to class predictions
+            if pred.shape[1] == 3:  # Multi-class
+                # Get class with highest probability
+                pred_classes = torch.argmax(pred, dim=1).squeeze().numpy()  # [H, W]
+
+                # Convert to binary mask (any tree class = 1, background = 0)
+                pred_bin = (pred_classes > 0).astype(np.uint8)
+            else:  # Binary
+                pred = torch.sigmoid(pred).squeeze().numpy()
+                pred_bin = (pred > 0.5).astype(np.uint8)
 
             pred_u8 = pred_bin * 255
             overlay = np.zeros_like(base)

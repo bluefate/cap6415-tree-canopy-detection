@@ -118,7 +118,7 @@ sample_img = sample_img.unsqueeze(0)
 from src.models.sample_model_provided import SampleModelProvided
 
 
-model = SampleModelProvided(in_channels = 3, out_channels = 1)
+model = SampleModelProvided(in_channels = 3, out_channels = 3)
 model.eval()
 
 with torch.no_grad():
