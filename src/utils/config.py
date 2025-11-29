@@ -14,6 +14,7 @@ class PathsConfig(BaseModel):
     train_images_zip: Optional[Path] = None
     train_images: Optional[Path] = None
     train_masks: Optional[Path] = None
+    eval_images_zip: Optional[Path] = None
     eval_images: Optional[Path] = None
     eval_masks: Optional[Path] = None
     data: Optional[Path] = None

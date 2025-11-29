@@ -29,6 +29,7 @@ init_notebook(config.train.seed)
 
 root = Path(config.paths.root)
 train_zip = config.paths.train_images_zip
+eval_zip = config.paths.eval_images_zip
 
 train_dir = config.paths.train_images
 eval_dir = config.paths.eval_images
@@ -40,7 +41,12 @@ mask_dir = config.paths.train_masks
 
 # %%
 # Mapping of zip files to their extraction targets
-for zip_path, extract_to in [(train_zip, train_dir)]:
+extraction_map = [
+    (train_zip, train_dir),
+    (eval_zip, eval_dir),
+]
+
+for zip_path, extract_to in extraction_map:
     if zip_path and Path(zip_path).exists():
 
         p("Working", str(zip_path))
@@ -60,6 +66,7 @@ for zip_path, extract_to in [(train_zip, train_dir)]:
                 rel = m.resolve().relative_to(root)
                 p("Removed", str(rel))
 
+        p()
     elif zip_path:
         p("Zip path not found", str(zip_path))
 
@@ -73,7 +80,7 @@ for folder in [train_dir, eval_dir]:
     files = [f for f in folder.glob("*.tif")]
     sample = random.sample(files, min(10, len(files)))
     sample = sorted(sample, key = lambda f: f.stem)
-    plt.figure(figsize = (12, 6))
+    plt.figure(figsize = (12, 5))
     for i, path in enumerate(sample, 1):
         with Image.open(path) as img:
             plt.subplot(2, 5, i)

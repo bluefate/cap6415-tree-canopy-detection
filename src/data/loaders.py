@@ -80,9 +80,11 @@ class ImageMaskDataset(Dataset):
         else:
             mask_t = torch.from_numpy(mask).long()
 
-        # Ensure mask has shape [H, W]
-        if mask_t.ndim == 3 and mask_t.shape[0] == 1:
+        # Ensure mask has shape [H, W] for multi-class CrossEntropyLoss
+        while mask_t.ndim > 2:
             mask_t = mask_t.squeeze(0)
+
+        assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}"
 
         return img_t, mask_t
 

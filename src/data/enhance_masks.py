@@ -1,5 +1,6 @@
-import torch
 import cv2
+import numpy as np
+import torch
 
 from exploration.enhancement import clahe_enhance
 from src.data.loaders import ImageMaskDataset
@@ -75,18 +76,18 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         else:
             img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
-        # Convert mask to float tensor - CRITICAL for BCEWithLogitsLoss
+        # Convert mask to tensor - LONG for CrossEntropyLoss (multi-class)
         if isinstance(mask, torch.Tensor):
-            mask_t = mask.float()
+            mask_t = mask.long()
         else:
-            mask_t = torch.from_numpy(mask).float()
+            mask_t = torch.from_numpy(mask).long()
 
-        # Ensure mask has shape [1, H, W]
-        if mask_t.ndim == 2:
-            mask_t = mask_t.unsqueeze(0)
+        # Ensure mask is [H, W] for multi-class CrossEntropyLoss
+        while mask_t.ndim > 2:
+            mask_t = mask_t.squeeze(0)
 
-        # Ensure binary values
-        mask_t = (mask_t > 0.5).float()
+        # Verify shape is correct
+        assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}"
 
         return img_t, mask_t
 

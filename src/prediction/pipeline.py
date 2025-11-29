@@ -98,13 +98,14 @@ class Predictor:
                 # Get class with highest probability
                 pred_classes = torch.argmax(pred, dim=1).squeeze().numpy()  # [H, W]
 
-                # Convert to binary mask (any tree class = 1, background = 0)
-                pred_bin = (pred_classes > 0).astype(np.uint8)
+                # For overlay visualization, create binary mask
+                pred_bin_for_overlay = (pred_classes > 0).astype(np.uint8)
             else:  # Binary
                 pred = torch.sigmoid(pred).squeeze().numpy()
-                pred_bin = (pred > 0.5).astype(np.uint8)
+                pred_classes = (pred > 0.5).astype(np.uint8)
+                pred_bin_for_overlay = pred_classes
 
-            pred_u8 = pred_bin * 255
+            pred_u8 = pred_bin_for_overlay * 255
             overlay = np.zeros_like(base)
             overlay = overlay.copy()
             overlay[:, :, 0] = pred_u8
@@ -116,7 +117,7 @@ class Predictor:
                 {
                     "name": name,
                     "image": base,
-                    "mask": pred_bin,
+                    "mask": pred_classes,
                     "overlay": overlay,
                 }
             )

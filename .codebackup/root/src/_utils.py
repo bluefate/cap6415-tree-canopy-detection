@@ -15,6 +15,7 @@ class PathsConfig(BaseModel):
     train_images_zip: Optional[Path] = None
     train_images: Optional[Path] = None
     train_masks: Optional[Path] = None
+    eval_images_zip: Optional[Path] = None
     eval_images: Optional[Path] = None
     eval_masks: Optional[Path] = None
     data: Optional[Path] = None
@@ -391,7 +392,10 @@ class p:
 
                 # List or tuple
                 if isinstance(v, (list, tuple)):
-                    self.print_with_color(self.obj, f"{len(v)} items")
+                    if self.show > len(v):
+                        self.show = len(v)
+                    self.print_with_color(self.obj, f"{len(v)} items", value_color = c.BLACK)
+
                     for i, item in enumerate(v[: self.show]):
                         self.print_with_color(f"  {i}", item)
                     return

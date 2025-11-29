@@ -1,11 +1,20 @@
 # %% [markdown]
-# # Notebook: 10 Master Execution Plan
-# ### Purpose: Complete pipeline from data preparation to final submission
+# Notebook: 10 Master Execution Plan
+### Purpose: Complete pipeline from data preparation to final submission
 
 # %%
+import json
 import os
+import random
 import sys
+from datetime import datetime
 from pathlib import Path
+
+import cv2
+import pandas as pd
+
+from exploration.class_explorer import color_mask, load_image, mask_all
+from src.exploration.visualize import show_side_by_side
 
 
 #os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  #enable for debugging ONLY
@@ -33,13 +42,11 @@ config.show()
 
 
 # %% [markdown]
-# #### Step 1: Data Preparation
-#
+#### Step 1: Data Preparation
 # - TIFF → PNG conversion (notebook 00_preprocess_images)
-# - Annotation loading
-# - Mask generation
-# - Data augmentation
-#
+- Annotation loading
+- Mask generation
+- Data augmentation
 #
 
 # %%
@@ -47,7 +54,7 @@ t("Loading Annotations")
 entries = load_json_annotations(config.paths.annotations)
 p("Total images", len(entries))
 
-# Analyze class distribution
+Analyze class distribution
 individual_count = sum(1 for e in entries if any(item.cls == "individual_tree" for item in e.items))
 group_count = sum(1 for e in entries if any(item.cls == "group_of_trees" for item in e.items))
 
@@ -57,19 +64,16 @@ p("Images with tree groups", group_count)
 
 
 # %% [markdown]
-# #### Step 2: Filter Experimentation
-#
+#### Step 2: Filter Experimentation
 # **Action:** Run and retrieve notebook 08 to identify top 3 filters
-#
 # **Expected Output:**
-# - Filter ranking CSV
-# - Top 3 filter names
-# - Visual comparisons
-#
+- Filter ranking CSV
+- Top 3 filter names
+- Visual comparisons
 #
 
 # %% [markdown]
-# ##### Validate Available Filters
+##### Validate Available Filters
 
 # %%
 def get_available_filters():
@@ -110,18 +114,16 @@ def validate_filter_set( filter_names, available_filters ):
     return len(invalid) == 0, invalid, suggestions
 
 
-# Get available filters
+Get available filters
 t("Validating Available Filters")
 AVAILABLE_FILTERS = get_available_filters()
 p("Available filters count", len(AVAILABLE_FILTERS))
-p("Sample filters", AVAILABLE_FILTERS[:15])
+p("Sample filters", AVAILABLE_FILTERS, show = 15)
 
 # %% [markdown]
-# #### Step 3: Enhanced Dataset Creation
-#
+#### Step 3: Enhanced Dataset Creation
 # - Create training dataset with filter-enhanced inputs
-# - Apply filters as additional channels.
-#
+- Apply filters as additional channels.
 #
 
 # %%
@@ -130,7 +132,7 @@ t("Testing Enhanced Dataset")
 val_tf = get_val_augmentations(config.train.image_size)
 sample_entries = entries[:5]
 
-# Testing each mode
+Testing each mode
 for mode in ['rgb', 'filtered', 'concat']:
     try:
         dataset = EnhancedImageMaskDataset(
@@ -147,19 +149,16 @@ for mode in ['rgb', 'filtered', 'concat']:
 
 
 # %% [markdown]
-# #### Step 4: Model Training Comparison
-#
+#### Step 4: Model Training Comparison
 # **Experiment Design:**
-# Comparing model performance across input types:
-# 1. Baseline: RGB only
-# 2. Filtered: Top 3 filters as channels
-# 3. Concat: RGB + Filters (6 channels)
-#
+Comparing model performance across input types:
+1. Baseline: RGB only
+2. Filtered: Top 3 filters as channels
+3. Concat: RGB + Filters (6 channels)
 # **Models to test:**
-# - SimpleCNN (fast baseline)
-# - UNet (standard architecture)
-# - SMP UNet + ResNet34 (transfer learning)
-#
+- SimpleCNN (fast baseline)
+- UNet (standard architecture)
+- SMP UNet + ResNet34 (transfer learning)
 #
 
 # %%
@@ -272,10 +271,10 @@ p("", "Experiments configured")
 
 
 # %% [markdown]
-# ##### Experiment setup
+##### Experiment setup
 
 # %%
-# Define filter combinations to test
+Define filter combinations to test
 filter_sets = {
     'classic':        ['laplacian', 'sobel', 'clahe'],
     'gaussian':       ['gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7'],
@@ -284,7 +283,7 @@ filter_sets = {
     'combined':       ['laplacian', 'gaussian_5x5', 'clahe'],
 }
 
-# Validate all filter sets before proceeding
+Validate all filter sets before proceeding
 t("Validating Filter Sets")
 all_valid = True
 
@@ -309,30 +308,30 @@ p("filter_sets", filter_sets)
 
 # %%
 
-# TODO  - EXPLORE other methods (subtract filters maybe)
-# Define experiments
+TODO  - EXPLORE other methods (subtract filters maybe)
+Define experiments
 experiments = []
 
-# Baseline: RGB only
+Baseline: RGB only
 for model in ['simple_cnn', 'unet']:
     experiments.append((model, 'rgb', None))
 
-# Filtered mode: 3 channels from filters
+Filtered mode: 3 channels from filters
 for model in ['simple_cnn', 'unet']:
     for set_name, filters in filter_sets.items():
         experiments.append((model, 'filtered', filters))
 
-# Concat mode: 6 channels (RGB + 3 filters)
-# Note: This requires model architecture modification for 6-channel input
-# for model in ['simple_cnn', 'unet']:
-#     experiments.append((model, 'concat', filter_sets['combined']))
+Concat mode: 6 channels (RGB + 3 filters)
+Note: This requires model architecture modification for 6-channel input
+for model in ['simple_cnn', 'unet']:
+    experiments.append((model, 'concat', filter_sets['combined']))
 
-p("experiments", experiments)
+p("experiments", experiments, show = 15)
 
 # %%
 
-# TODO  - TESTING - remove
-# Minimal experiment set for initial testing
+TODO  - TESTING - remove
+Minimal experiment set for initial testing
 t("Testing")
 filter_sets = dict(list(filter_sets.items())[:1])
 p("filter_sets", filter_sets)
@@ -341,7 +340,7 @@ experiments = [
     ('unet', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance']),
     ('simple_cnn', 'rgb', None),
 ]
-p("experiments", experiments)
+p("experiments", experiments, show = 15)
 
 
 # %%
@@ -354,11 +353,6 @@ def estimate_runtime( experiments, filter_sets ):
     """
 
     t("Runtime Estimate")
-
-    # # Load config and dataset size
-    # config = Config.load()
-    # from src.data.annotations import load_json_annotations
-    # entries = load_json_annotations(config.paths.annotations)
 
     train_size = int(0.8 * len(entries))
     batch_size = config.train.batch_size
@@ -410,8 +404,8 @@ estimate_runtime(experiments, filter_sets)
 def summarize_experiments( experiments, filter_sets ):
     """
     Summarize experiment count based on:
-      experiments: list of (model, mode, filters)
-      filter_sets: dict {name: [filters]} used externally
+    -  experiments: list of (model, mode, filters)
+    -  filter_sets: dict {name: [filters]} used externally
     """
 
     t("TOTAL EXPERIMENTS")
@@ -445,15 +439,24 @@ summarize_experiments(experiments, filter_sets)
 
 
 # %%
-# Running experiments
+
+Initialize best model tracker
+best_model_tracker = {
+    "best_val_loss":    float('inf'),
+    "best_iou":         0.0,
+    "best_experiment":  None,
+    "best_model_path":  None,
+    "best_version_dir": None,
+}
+
+Running experiments
 results = { }
 
-# Pull epoch count from config
 num_epochs = config.train.epochs
 p("Using epochs from config", num_epochs)
 
 for i, (model_name, mode, filters) in enumerate(experiments, 1):
-    p("")
+    p()
     t(f"Experiment {i}/{len(experiments)}")
     p("Model", model_name)
     p("Mode", mode)
@@ -466,45 +469,47 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
         key = f"{key}_{filter_key}"
 
     try:
-        results[key] = train_experiment(
+        trainer = train_experiment(
                 model_name,
                 mode,
                 filters,
                 num_epochs = config.train.epochs
         )
 
-        # Mark successful completion
-        if results[key] is not None:
+        if trainer is not None:
+            results[key] = trainer
+
+            # Check if this is the best model
+            version_dir = trainer.version_dir
+            checkpoint_path = version_dir / "checkpoint.pth"
+
+            if checkpoint_path.exists():
+                try:
+                    ckpt = torch.load(checkpoint_path, map_location = "cpu")
+                    val_loss = ckpt.get("best_val_loss", float('inf'))
+
+                    if val_loss < best_model_tracker["best_val_loss"]:
+                        best_model_tracker["best_val_loss"] = val_loss
+                        best_model_tracker["best_experiment"] = key
+                        best_model_tracker["best_model_path"] = version_dir / "best_model.pth"
+                        best_model_tracker["best_version_dir"] = version_dir
+
+                        p("🏆 NEW BEST MODEL!", key, color1 = c.GREEN, bold = True)
+                        p("  Val Loss", f"{val_loss:.6f}", color1 = c.GREEN)
+                except Exception as e:
+                    p("Warning", f"Could not load checkpoint: {e}", color1 = c.ORANGE)
+
             p("EXPERIMENT COMPLETED", key, color1 = c.GREEN, color2 = c.GREEN)
         else:
             p("EXPERIMENT SKIPPED", key, color1 = c.ORANGE, color2 = c.ORANGE)
 
-
-    except KeyError as e:
-        # Filter name errors
-        p("EXPERIMENT FAILED", key, color1 = c.RED, color2 = c.RED)
-        p("[Filter Error]", str(e), color1 = c.RED)
-        p("Skipping to next experiment", color1 = c.BLUE)
-        results[key] = { "status": "FILTER_ERROR", "error": str(e) }
-        continue
-
-    except RuntimeError as e:
-        # Data loading or model errors
-        p("EXPERIMENT FAILED", key, color1 = c.RED, color2 = c.RED)
-        p("[Runtime Error]", str(e), color1 = c.RED)
-        p("Skipping to next experiment", color1 = c.BLUE)
-        results[key] = { "status": "RUNTIME_ERROR", "error": str(e) }
-        continue
-
     except Exception as e:
-        # Catch-all for other errors
         p("EXPERIMENT FAILED", key, color1 = c.RED, color2 = c.RED)
         p("[Error]", str(e), color1 = c.RED)
-        p("Skipping to next experiment", color1 = c.BLUE)
         results[key] = { "status": "ERROR", "error": str(e) }
         continue
 
-# Summary of experiment results
+Summary
 t("Experiment Results Summary")
 successful = sum(1 for v in results.values() if not isinstance(v, dict) or v.get("status") != "ERROR")
 failed = sum(1 for v in results.values() if isinstance(v, dict) and "status" in v)
@@ -517,22 +522,288 @@ p("Failed", failed, color1 = c.RED if failed > 0 else c.GREEN)
 
 
 
-
+# %%
 
 # %% [markdown]
-# #### Step 5: Class-Specific Training
-#
+##### Model Comparison & Best Model Selection
+
+# %%
+t("Collecting Experiment Results")
+
+experiment_results = []
+
+for model_name in ['simple_cnn', 'unet']:
+    for input_mode in ['rgb', 'filtered']:
+
+        version_root = config.paths.models / model_name / input_mode
+
+        if not version_root.exists():
+            continue
+
+        versions = sorted(version_root.glob("v*"))
+
+        for version_dir in versions:
+            checkpoint_path = version_dir / "checkpoint.pth"
+
+            if not checkpoint_path.exists():
+                continue
+
+            try:
+                # Load checkpoint to get metrics
+                ckpt = torch.load(checkpoint_path, map_location = "cpu")
+
+                best_val_loss = ckpt.get("best_val_loss", float('inf'))
+                epoch = ckpt.get("epoch", 0)
+
+                # Load config snapshot to get filter info
+                config_snapshot_path = version_dir / "config_snapshot.json"
+                filter_names = None
+
+                if config_snapshot_path.exists():
+                    with open(config_snapshot_path, 'r') as f:
+                        snapshot = json.load(f)
+                        exp_config = snapshot.get('config', { }).get('extra', { }).get('experiment', { })
+                        filter_names = exp_config.get('filter_names')
+
+                experiment_results.append(
+                        {
+                            'model':           model_name,
+                            'mode':            input_mode,
+                            'version':         version_dir.name,
+                            'filters':         str(filter_names) if filter_names else 'none',
+                            'best_val_loss':   best_val_loss,
+                            'final_epoch':     epoch,
+                            'checkpoint_path': str(checkpoint_path),
+                            'version_path':    str(version_dir),
+                        }
+                )
+
+            except Exception as e:
+                p("Warning", f"Could not load {checkpoint_path}: {e}", color1 = c.ORANGE)
+                continue
+
+Convert to DataFrame for easy analysis
+df_results = pd.DataFrame(experiment_results)
+
+if len(df_results) == 0:
+    p("No experiment results found", color1 = c.RED)
+else:
+    p("Total experiments found", len(df_results))
+
+    # Sort by validation loss (lower is better)
+    df_results = df_results.sort_values('best_val_loss')
+
+    p("")
+    p("Top 5 Experiments by Validation Loss", color1 = c.CYAN, bold = True)
+    print(df_results[['model', 'mode', 'filters', 'best_val_loss', 'final_epoch']].head(10).to_string(index = False))
+
+# %%
+
+t("Best Model Selection")
+
+if len(df_results) == 0:
+    p("ERROR", "No experiments to compare", color1 = c.RED)
+else:
+    # Get best model (lowest validation loss)
+    best_row = df_results.iloc[0]
+
+    p("=" * 80, color1 = c.CYAN, bold = True)
+    p("BEST MODEL", color1 = c.GREEN, bold = True)
+    p("=" * 80, color1 = c.CYAN, bold = True)
+    p("")
+    p("Model", best_row['model'], color1 = c.GREEN)
+    p("Input Mode", best_row['mode'], color1 = c.GREEN)
+    p("Filters", best_row['filters'], color1 = c.GREEN)
+    p("Best Val Loss", f"{best_row['best_val_loss']:.6f}", color1 = c.GREEN)
+    p("Final Epoch", best_row['final_epoch'], color1 = c.GREEN)
+    p("Version", best_row['version'], color1 = c.GREEN)
+    p("Path", best_row['version_path'], color1 = c.BLUE)
+    p("")
+
+    # Check if this is better than previous best
+    previous_best_path = config.paths.models / "BEST_MODEL.txt"
+
+    is_new_best = False
+    improvement = None
+
+    if previous_best_path.exists():
+        with open(previous_best_path, 'r') as f:
+            lines = f.readlines()
+            prev_loss = None
+            for line in lines:
+                if "best_val_loss:" in line:
+                    try:
+                        prev_loss = float(line.split(':')[1].strip())
+                        break
+                    except:
+                        pass
+
+        if prev_loss is not None:
+            improvement = prev_loss - best_row['best_val_loss']
+
+            if best_row['best_val_loss'] < prev_loss:
+                is_new_best = True
+                p("IMPROVEMENT", f"{improvement:.6f} (lower is better)", color1 = c.GREEN, bold = True)
+            else:
+                p("NO IMPROVEMENT", f"Previous best was {prev_loss:.6f}", color1 = c.ORANGE)
+    else:
+        is_new_best = True
+        p("FIRST RUN", "No previous best to compare", color1 = c.CYAN)
+
+    # Save new best model info
+    if is_new_best:
+        with open(previous_best_path, 'w') as f:
+            f.write(f"model: {best_row['model']}\n")
+            f.write(f"mode: {best_row['mode']}\n")
+            f.write(f"filters: {best_row['filters']}\n")
+            f.write(f"best_val_loss: {best_row['best_val_loss']}\n")
+            f.write(f"epoch: {best_row['final_epoch']}\n")
+            f.write(f"version: {best_row['version']}\n")
+            f.write(f"path: {best_row['version_path']}\n")
+            f.write(f"timestamp: {datetime.now().isoformat()}\n")
+
+        p("")
+        p("✓ Saved new best model info", str(previous_best_path), color1 = c.GREEN)
+
+        # Copy best model to top-level for easy access
+        best_model_src = Path(best_row['version_path']) / "best_model.pth"
+        best_model_dst = config.paths.models / "BEST_MODEL.pth"
+
+        if best_model_src.exists():
+            import shutil
+
+
+            shutil.copy2(best_model_src, best_model_dst)
+            p("✓ Copied best model", str(best_model_dst), color1 = c.GREEN)
+
+# %%
+t("Performance Comparison Visualization")
+
+if len(df_results) > 0:
+    import matplotlib.pyplot as plt
+
+
+    # Create comparison plots
+    fig, axes = plt.subplots(2, 2, figsize = (15, 10))
+    fig.suptitle('Model Performance Comparison', fontsize = 16, fontweight = 'bold')
+
+    # Plot 1: Validation Loss by Model
+    ax1 = axes[0, 0]
+    df_pivot = df_results.pivot_table(values = 'best_val_loss', index = 'model', columns = 'mode', aggfunc = 'min')
+    df_pivot.plot(kind = 'bar', ax = ax1, color = ['#3498db', '#e74c3c'])
+    ax1.set_title('Best Validation Loss by Model & Mode')
+    ax1.set_ylabel('Validation Loss')
+    ax1.set_xlabel('Model')
+    ax1.legend(title = 'Input Mode')
+    ax1.grid(True, alpha = 0.3)
+
+    # Plot 2: Loss Distribution
+    ax2 = axes[0, 1]
+    df_results.boxplot(column = 'best_val_loss', by = 'model', ax = ax2)
+    ax2.set_title('Validation Loss Distribution by Model')
+    ax2.set_ylabel('Validation Loss')
+    ax2.set_xlabel('Model')
+    plt.sca(ax2)
+    plt.xticks(rotation = 0)
+
+    # Plot 3: Mode Comparison
+    ax3 = axes[1, 0]
+    mode_stats = df_results.groupby('mode')['best_val_loss'].agg(['mean', 'min', 'max'])
+    mode_stats.plot(kind = 'bar', ax = ax3, color = ['#2ecc71', '#f39c12', '#e74c3c'])
+    ax3.set_title('Input Mode Performance')
+    ax3.set_ylabel('Validation Loss')
+    ax3.set_xlabel('Input Mode')
+    ax3.legend(['Mean', 'Min', 'Max'])
+    ax3.grid(True, alpha = 0.3)
+
+    # Plot 4: Convergence Speed
+    ax4 = axes[1, 1]
+    for _, row in df_results.head(5).iterrows():
+        label = f"{row['model']}-{row['mode']}"
+        ax4.scatter(row['final_epoch'], row['best_val_loss'], s = 100, label = label)
+
+    ax4.set_title('Convergence: Epochs vs Loss (Top 5)')
+    ax4.set_xlabel('Final Epoch')
+    ax4.set_ylabel('Best Validation Loss')
+    ax4.legend(fontsize = 8)
+    ax4.grid(True, alpha = 0.3)
+
+    plt.tight_layout()
+
+    # Save figure
+    plot_path = config.paths.models / "experiment_comparison.png"
+    plt.savefig(plot_path, dpi = 150, bbox_inches = 'tight')
+    p("✓ Saved comparison plot", str(plot_path), color1 = c.GREEN)
+
+    plt.show()
+
+# %%
+t("Exporting Results")
+
+if len(df_results) > 0:
+    # Save full results
+    csv_path = config.paths.models / "all_experiments.csv"
+    df_results.to_csv(csv_path, index = False)
+    p("✓ Saved experiment results", str(csv_path), color1 = c.GREEN)
+
+    # Create summary report
+    summary_path = config.paths.models / "EXPERIMENT_SUMMARY.txt"
+
+    with open(summary_path, 'w') as f:
+        f.write("=" * 80 + "\n")
+        f.write("EXPERIMENT SUMMARY\n")
+        f.write("=" * 80 + "\n\n")
+
+        f.write(f"Total experiments: {len(df_results)}\n")
+        f.write(f"Timestamp: {datetime.now().isoformat()}\n\n")
+
+        f.write("BEST MODEL:\n")
+        best = df_results.iloc[0]
+        f.write(f"  Model: {best['model']}\n")
+        f.write(f"  Mode: {best['mode']}\n")
+        f.write(f"  Filters: {best['filters']}\n")
+        f.write(f"  Best Val Loss: {best['best_val_loss']:.6f}\n")
+        f.write(f"  Path: {best['version_path']}\n\n")
+
+        f.write("TOP 5 MODELS:\n")
+        f.write("-" * 80 + "\n")
+        for idx, row in df_results.head(5).iterrows():
+            f.write(f"{idx + 1}. {row['model']} ({row['mode']}) - Loss: {row['best_val_loss']:.6f}\n")
+            f.write(f"   Filters: {row['filters']}\n")
+            f.write(f"   Path: {row['version_path']}\n\n")
+
+        f.write("\nSTATISTICS BY MODEL:\n")
+        f.write("-" * 80 + "\n")
+        model_stats = df_results.groupby('model')['best_val_loss'].agg(['count', 'mean', 'min', 'max'])
+        f.write(model_stats.to_string())
+        f.write("\n\n")
+
+        f.write("STATISTICS BY MODE:\n")
+        f.write("-" * 80 + "\n")
+        mode_stats = df_results.groupby('mode')['best_val_loss'].agg(['count', 'mean', 'min', 'max'])
+        f.write(mode_stats.to_string())
+
+    p("✓ Saved summary report", str(summary_path), color1 = c.GREEN)
+
+    p("")
+    p("=" * 80, color1 = c.CYAN, bold = True)
+    p("EXPERIMENT COMPARISON COMPLETE", color1 = c.GREEN, bold = True)
+    p("=" * 80, color1 = c.CYAN, bold = True)
+
+
+# %%
+
+# %% [markdown]
+#### Step 5: Class-Specific Training
 # **Strategy:**
-# Trainning separate models for:
-# 1. Individual trees
-# 2. Groups of trees
-# 3. Combined predictions
-#
+Trainning separate models for:
+1. Individual trees
+2. Groups of trees
+3. Combined predictions
 # **Rationale:**
-# - Individual trees have distinct boundaries
-# - Tree groups have larger, more diffuse edges
-# - Specialized models may perform better
-#
+- Individual trees have distinct boundaries
+- Tree groups have larger, more diffuse edges
+- Specialized models may perform better
 #
 
 # %%
@@ -607,33 +878,29 @@ p("", "Class-specific training configured")
 
 
 # %%
-# ## Train individual tree model
+## Train individual tree model
+try:
+    trainer_individual = train_class_specific_model('individual_tree', 'simple_cnn')
+except Exception as e:
+    p("Failed to train individual_tree model", str(e), color1=c.RED)
+    trainer_individual = None
 # try:
-#     trainer_individual = train_class_specific_model('individual_tree', 'simple_cnn')
-# except Exception as e:
-#     p("Failed to train individual_tree model", str(e), color1=c.RED)
-#     trainer_individual = None
-#
-# try:
-#     trainer_group = train_class_specific_model('group_of_trees', 'simple_cnn')
-# except Exception as e:
-#     p("Failed to train group_of_trees model", str(e), color1=c.RED)
-#     trainer_group = None
+    trainer_group = train_class_specific_model('group_of_trees', 'simple_cnn')
+except Exception as e:
+    p("Failed to train group_of_trees model", str(e), color1=c.RED)
+    trainer_group = None
 
 # %% [markdown]
-# #### Step 6: Ensemble Predictions
-#
+#### Step 6: Ensemble Predictions
 # **Approach:**
-# Combine predictions from multiple models:
-# 1. RGB-trained model
-# 2. Filter-enhanced model
-# 3. Class-specific models
-#
+Combine predictions from multiple models:
+1. RGB-trained model
+2. Filter-enhanced model
+3. Class-specific models
 # **Fusion methods:**
-# - Average (simple)
-# - Weighted average (based on validation IoU)
-# - Majority voting (threshold-based)
-#
+- Average (simple)
+- Weighted average (based on validation IoU)
+- Majority voting (threshold-based)
 #
 
 # %%
@@ -659,13 +926,17 @@ p("", "Ensemble prediction function ready")
 
 
 
+# %%
+
+# %%
+
+# %%
+
 # %% [markdown]
-# #### Step 7: Submission Generation
-#
+#### Step 7: Submission Generation
 # **Current Status:**
-# - Prediction pipeline exists (notebook 05)
-# - Submission export implemented (`export_submission`)
-#
+- Prediction pipeline exists (notebook 05)
+- Submission export implemented (`export_submission`)
 
 # %%
 from src.prediction.pipeline import Predictor
@@ -714,13 +985,56 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
     return output_path
 
 
+# %%
+
+# %%
+
+t("Generating Final Submission with Best Model")
+
+Load best model info
+best_model_info_path = config.paths.models / "BEST_MODEL.txt"
+
+if best_model_info_path.exists():
+    with open(best_model_info_path, 'r') as f:
+        lines = f.readlines()
+        best_model_name = None
+        best_model_path = None
+
+        for line in lines:
+            if "model:" in line:
+                best_model_name = line.split(':')[1].strip()
+            elif "path:" in line:
+                best_model_path = Path(line.split(':', 1)[1].strip())
+
+        if best_model_path and best_model_name:
+            model_weights = best_model_path / "best_model.pth"
+
+            p("Using best model", best_model_name, color1 = c.GREEN)
+            p("From", str(best_model_path), color1 = c.BLUE)
+
+            # Generate submission
+            output_file = config.paths.models / "FINAL_SUBMISSION.json"
+
+            generate_submission(
+                    model_path = model_weights,
+                    model_name = best_model_name,
+                    eval_dir = config.paths.eval_images,
+                    output_path = output_file
+            )
+
+            p("✓ Final submission generated", str(output_file), color1 = c.GREEN, bold = True)
+else:
+    p("Warning", "No best model info found, skipping final submission", color1 = c.ORANGE)
+
+# %%
+
 # %% [markdown]
-# #### Generate submissions for all trained experiments
+#### Generate submissions for all trained experiments
 
 # %%
 best_submissions = []
 
-# Generate submissions for all trained experiments
+Generate submissions for all trained experiments
 for model_name in ['simple_cnn', 'unet']:
     for input_mode in ['rgb', 'filtered']:
 
@@ -773,45 +1087,8 @@ for model_name in ['simple_cnn', 'unet']:
 
         p("")
 
-
-
-
-
 # %%
-# Build global list of all best experiment submissions
-best_submissions = []
-
-for model_name in ['simple_cnn', 'unet']:
-    for input_mode in ['rgb', 'filtered']:
-
-        version_root = config.paths.models / model_name / input_mode
-
-        if not version_root.exists():
-            continue
-
-        vm = VersionManager(version_root)
-        latest_version = vm.find_latest()
-
-        if latest_version is None:
-            continue
-
-        model_path = latest_version / "best_model.pth"
-        if not model_path.exists():
-            continue
-
-        submission_file = latest_version / "submission.json"
-
-        best_submissions.append(
-                {
-                    "model":      model_name,
-                    "mode":       input_mode,
-                    "version":    str(latest_version),
-                    "submission": str(submission_file)
-                }
-        )
-
-# ===== Find best overall experiment =====
-
+===== Find best overall experiment =====
 best_overall = None
 
 for item in best_submissions:
@@ -838,7 +1115,7 @@ for item in best_submissions:
         p("Warning", f"Could not load checkpoint {ckpt_path}: {e}", color1 = c.ORANGE)
         continue
 
-# Append overall best
+Append overall best
 if best_overall:
     best_submissions.append(
             {
@@ -851,7 +1128,7 @@ if best_overall:
             }
     )
 
-# ===== Summary =====
+===== Summary =====
 t("Best Submissions Summary")
 
 for item in best_submissions:
@@ -868,15 +1145,12 @@ for item in best_submissions:
 
 
 # %%
-import cv2
-from exploration.class_explorer import load_image, mask_all, color_mask
-from src.exploration.visualize import show_side_by_side
-import random
+
 
 
 image_dir = config.paths.train_images
 
-# sample three entries
+sample three entries
 sample_entries = random.sample(entries, 5)
 
 for e in sample_entries:

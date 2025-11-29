@@ -243,7 +243,10 @@ class p:
 
                 # List or tuple
                 if isinstance(v, (list, tuple)):
-                    self.print_with_color(self.obj, f"{len(v)} items")
+                    if self.show > len(v):
+                        self.show = len(v)
+                    self.print_with_color(self.obj, f"{len(v)} items", value_color = c.BLACK)
+
                     for i, item in enumerate(v[: self.show]):
                         self.print_with_color(f"  {i}", item)
                     return
