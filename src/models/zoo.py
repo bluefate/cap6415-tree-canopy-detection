@@ -188,11 +188,11 @@ MODEL_BUILDERS = {
 MODEL_BENCHMARKS = {
     "simple_cnn": {},
     "unet": {},
-    "smp_unet": {"encoder_name": "convnext_tiny"},
-    "smp_fpn": {"encoder_name": "convnext_tiny"},
-    "smp_linknet": {"encoder_name": "convnext_tiny"},
-    "smp_deeplabv3": {"encoder_name": "convnext_tiny"},
-    "smp_deeplabv3plus": {"encoder_name": "convnext_tiny"},
+    "smp_unet": {"encoder_name": "resnet34"},
+    "smp_fpn": {"encoder_name": "resnet34"},
+    "smp_linknet": {"encoder_name": "resnet34"},
+    "smp_deeplabv3": {"encoder_name": "resnet34"},
+    "smp_deeplabv3plus": {"encoder_name": "resnet34"},
     "segformer": {"model_name": "nvidia/segformer-b0-finetuned-ade-512-512"},
 }
 

@@ -105,7 +105,7 @@ class SimpleCNN(nn.Module):
     def __init__(
         self,
         in_channels: int = 3,
-        out_channels: int = 1,
+        out_channels: int = 3,
         features: int = 32,
         use_batchnorm: bool = True,
         dropout: float = 0.0,
@@ -171,7 +171,7 @@ class UNet(nn.Module):
     Input is RGB. Output is one channel probability mask.
     """
 
-    def __init__(self, in_channels: int = 3, out_channels: int = 1):
+    def __init__(self, in_channels: int = 3, out_channels: int = 3):
         super(UNet, self).__init__()
 
         self.enc1 = DoubleConv(in_channels, 64)
@@ -270,7 +270,7 @@ except Exception:
     HF_AVAILABLE = False
 
 
-def create_simple_cnn(in_channels: int = 3, out_channels: int = 1):
+def create_simple_cnn(in_channels: int = 3, out_channels: int = 3):
     return SimpleCNN(in_channels=in_channels, out_channels=out_channels)
 
 

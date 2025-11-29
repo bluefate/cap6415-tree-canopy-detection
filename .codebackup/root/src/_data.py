@@ -155,6 +155,9 @@ def get_val_augmentations(image_size: int):
 
 
 # From C:\github\Tree-Canopy-Detection\src\data\enhance_masks.py
+import torch
+import cv2
+
 from exploration.enhancement import clahe_enhance
 from src.data.loaders import ImageMaskDataset
 
@@ -181,6 +184,68 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         super().__init__(entries, image_dir, classes, transform)
         self.mode = mode
         self.filter_names = filter_names or ["laplacian", "sobel", "clahe"]
+
+    def __getitem__(self, idx: int):
+        """Override to ensure mask dtype is float for BCEWithLogitsLoss."""
+        entry = self.entries[idx]
+        img_path = self.image_dir / entry.image_path.name
+
+        image = cv2.imread(str(img_path))
+        if image is None:
+            raise RuntimeError(f"Failed to read {img_path}")
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        # Build mask
+        if self.classes is None:
+            from src.data.masks import build_multiclass_mask
+
+            mask = build_multiclass_mask(entry)
+        else:
+            from src.data.annotations import AnnotationEntry
+            from src.data.masks import build_multiclass_mask
+
+            filtered_items = [item for item in entry.items if item.cls in self.classes]
+            filtered_entry = AnnotationEntry(
+                entry.image_path, entry.width, entry.height, filtered_items
+            )
+            mask = build_multiclass_mask(filtered_entry)
+
+        # Apply filters based on mode
+        if self.mode == "filtered":
+            image = self.apply_filters(image)
+        elif self.mode == "concat":
+            filtered_img = self.apply_filters(image)
+            # Concatenate RGB + filtered
+            image = np.concatenate([image, filtered_img], axis=2)
+
+        # Apply transforms
+        if self.transform:
+            augmented = self.transform(image=image, mask=mask)
+            image = augmented["image"]
+            mask = augmented["mask"]
+
+        # Convert image to tensor
+        if isinstance(image, torch.Tensor):
+            img_t = image.float()
+            if img_t.ndim == 3 and img_t.shape[0] != 3:
+                img_t = img_t.permute(2, 0, 1)
+        else:
+            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
+
+        # Convert mask to float tensor - CRITICAL for BCEWithLogitsLoss
+        if isinstance(mask, torch.Tensor):
+            mask_t = mask.float()
+        else:
+            mask_t = torch.from_numpy(mask).float()
+
+        # Ensure mask has shape [1, H, W]
+        if mask_t.ndim == 2:
+            mask_t = mask_t.unsqueeze(0)
+
+        # Ensure binary values
+        mask_t = (mask_t > 0.5).float()
+
+        return img_t, mask_t
 
     def apply_filters(self, img):
         """
@@ -673,9 +738,9 @@ class ImageMaskDataset(Dataset):
 
         # Convert mask to tensor [H, W] -> [1, H, W]
         if isinstance(mask, torch.Tensor):
-            mask_t = mask.long()
+            mask_t = mask.float()
         else:
-            mask_t = torch.from_numpy(mask).long()
+            mask_t = torch.from_numpy(mask).float()
 
         # Ensure mask has shape [1, H, W]
         if mask_t.ndim == 2:

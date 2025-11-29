@@ -21,7 +21,7 @@ from src.data.loaders import ImageMaskDataset
 from src.models.zoo import MODEL_BUILDERS
 from src.training.engine import run_training
 from src.utils.config import Config
-from src.utils.helpers import init_notebook, p
+from src.utils.helpers import c, init_notebook, p, t, c
 
 
 config = Config.load()
@@ -97,3 +97,31 @@ trainer = run_training(
         version_root = version_root,
         model_name = "simple_cnn",
 )
+
+# %%
+from models.zoo import build_model
+
+# Verify tensor types
+t("Tensor Type Verification")
+sample_img, sample_mask = train_ds[0]
+p(f"Image dtype: {sample_img.dtype}, shape: {sample_img.shape}")
+p(f"Mask dtype: {sample_mask.dtype}, shape: {sample_mask.shape}", color1 = c.BLUE)
+p(f"Mask values: min={sample_mask.min()}, max={sample_mask.max()}", color1 = c.BLACK)
+p(f"Mask unique values: {torch.unique(sample_mask)}", color1 = c.BLACK)
+
+# Test a batch
+batch_imgs, batch_masks = next(iter(train_loader))
+p(f"\nBatch image dtype: {batch_imgs.dtype}, shape: {batch_imgs.shape}")
+p(f"Batch mask dtype: {batch_masks.dtype}, shape: {batch_masks.shape}", color1 = c.BLUE)
+
+# Test with model
+model = build_model('simple_cnn', in_channels=3, out_channels=1)
+with torch.no_grad():
+    preds = model(batch_imgs[:1])
+p(f"\nModel output dtype: {preds.dtype}, shape: {preds.shape}", color1 = c.BLACK)
+
+# Test loss
+criterion = torch.nn.BCEWithLogitsLoss()
+loss = criterion(preds, batch_masks[:1])
+p(f"Loss computed successfully: {loss.item()}", color1 = c.BLACK)
+

@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import torch.nn.functional as F
 
 
 def _to_numpy(pred: torch.Tensor, true: torch.Tensor):
@@ -32,6 +33,7 @@ def compute_metrics(pred: torch.Tensor, true: torch.Tensor):
     """
     Compute IoU, Dice, Accuracy for one batch of predictions.
     Accepts torch tensors. Returns dict of floats.
+    Handles special output formats if needed (SegFormer) and spatial size mismatches.
     """
 
     ## Replaced current compute_metrics:
@@ -54,7 +56,28 @@ def compute_metrics(pred: torch.Tensor, true: torch.Tensor):
     #     "precision": float(prec),
     #     "recall": float(rec),
     # }
-    ## with a batched, vectorized version:
+
+    # Handle SegFormer output format
+    if hasattr(pred, "logits"):
+        pred = pred.logits
+
+    # Convert to tensor if needed
+    if not isinstance(pred, torch.Tensor):
+        pred = torch.tensor(pred)
+
+    # Get target spatial size
+    if isinstance(true, torch.Tensor):
+        target_size = true.shape[-2:]  # (H, W)
+    else:
+        target_size = true.shape[-2:]
+
+    # Resize prediction to match target size if needed
+    if pred.shape[-2:] != target_size:
+        pred = F.interpolate(
+            pred, size=target_size, mode="bilinear", align_corners=False
+        )
+
+    # Apply sigmoid for binary segmentation
     if isinstance(pred, torch.Tensor):
         pred = torch.sigmoid(pred).detach().cpu().numpy()
 
