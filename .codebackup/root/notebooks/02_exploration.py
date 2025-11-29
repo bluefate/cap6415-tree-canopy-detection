@@ -20,9 +20,10 @@ import numpy as np
 
 from src.exploration.enhancement import enhance_image_for_segmentation
 from src.exploration.filters import cv2_apply_gaussian, cv2_apply_laplacian, cv2_apply_sobel
-from src.exploration.kernels import (apply_custom_kernel, apply_kernel_using_convolution, get_kernels, laplacian_kernel,
-                                     make_directional_edge_kernel, make_gaussian_kernel, make_motion_kernel,
-                                     )
+from src.exploration.kernels import (
+    apply_custom_kernel, apply_kernel_using_convolution, get_kernels, laplacian_kernel,
+    make_directional_edge_kernel, make_gaussian_kernel, make_motion_kernel,
+)
 from src.exploration.visualize import show_image, show_side_by_side, show_stages
 from src.utils.config import Config
 from src.utils.helpers import c, init_notebook, p, t
@@ -232,7 +233,8 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
                 gray, result,
                 titles = ["Gray", f"Motion Blur {angle}°"],
                 cmaps = ["gray", "seismic"],
-                kernel = kernel
+                kernel = kernel,
+                figsize = 6
         )
     p("\n")
     t("=== === === === === === === === ===  Gaussian blur tests === === === === === === === === ===")
@@ -245,7 +247,8 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
                 image, result,
                 titles = ["Orignal", f"Gaussian σ={sigma}"],
                 cmaps = [None, "seismic"],
-                kernel = kernel
+                kernel = kernel,
+                figsize = 6
         )
     p("\n")
     t("=== === === === === === === === === Directional edge tests === === === === === === === === ===")
@@ -258,7 +261,8 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
                 image, result,
                 titles = ["Orignal", f"Edge {direction}"],
                 cmaps = [None, "seismic"],
-                kernel = kernel
+                kernel = kernel,
+                figsize = 6
         )
 
 
@@ -292,7 +296,8 @@ def demo_kernels( image, names = ("Sobel_X", "Sobel_Y", "Laplacian_3x3") ):
                 titles = ("gray", name),
                 cmaps = ("gray", "seismic"),
                 kernel = kernel,
-                kernel_title = name
+                kernel_title = name,
+                figsize = 6
         )
 
 

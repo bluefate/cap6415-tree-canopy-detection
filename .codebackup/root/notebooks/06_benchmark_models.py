@@ -11,11 +11,9 @@ sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
 
 import time
-
 import matplotlib.pyplot as plt
 import pandas as pd
 import torch
-
 from src.data.annotations import load_json_annotations
 from src.data.augmentations import get_val_augmentations
 from src.data.loaders import ImageMaskDataset
@@ -160,3 +158,5 @@ plt.show()
 out_path = config.paths.models / "benchmark_results.csv"
 df.to_csv(out_path, index = False)
 p("Saved", out_path)
+
+# %%

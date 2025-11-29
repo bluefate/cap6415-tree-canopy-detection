@@ -120,7 +120,7 @@ if config.paths.eval_images and config.paths.eval_images.exists():
 # %% [markdown]
 # #### Restore Annotations from Backup (if needed)
 #
-# If something went wrong, you can restore the original annotations
+# If something went wrong, restore the original annotations
 #
 
 # %%

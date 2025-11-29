@@ -31,32 +31,8 @@ def compute_confusion(pred_bin: np.ndarray, true_bin: np.ndarray):
 
 def compute_metrics(pred: torch.Tensor, true: torch.Tensor):
     """
-    Compute IoU, Dice, Accuracy for one batch of predictions.
-    Accepts torch tensors. Returns dict of floats.
-    Handles special output formats if needed (SegFormer) and spatial size mismatches.
+    Compute IoU, Dice, Accuracy for binary segmentation.
     """
-
-    ## Replaced current compute_metrics:
-    # pred_bin, true_bin = _to_numpy(pred, true)
-    # tp, fp, fn, tn = compute_confusion(pred_bin, true_bin)
-    #
-    # inter = float(tp)
-    # union = float(tp + fp + fn)
-    # iou = inter / union if union > 0 else 0.0
-    #
-    # dice = (2.0 * tp) / (2.0 * tp + fp + fn + 1e-8)
-    # acc = (tp + tn) / (tp + tn + fp + fn + 1e-8)
-    # prec = tp / (tp + fp + 1e-8)
-    # rec = tp / (tp + fn + 1e-8)
-    #
-    # return {
-    #     "iou": float(iou),
-    #     "dice": float(dice),
-    #     "acc": float(acc),
-    #     "precision": float(prec),
-    #     "recall": float(rec),
-    # }
-
     # Handle SegFormer output format
     if hasattr(pred, "logits"):
         pred = pred.logits
@@ -110,6 +86,65 @@ def compute_metrics_multiclass(
     """
     Compute per-class IoU and mean IoU for multi-class segmentation.
     """
+    # Handle SegFormer output format
+    if hasattr(pred, "logits"):
+        pred = pred.logits
+
+    # Convert to tensor if needed
+    if not isinstance(pred, torch.Tensor):
+        pred = torch.tensor(pred)
+
+    # Get target spatial size
+    if isinstance(true, torch.Tensor):
+        target_size = true.shape[-2:]
+    else:
+        target_size = true.shape[-2:]
+
+    # Resize prediction to match target size if needed
+    if pred.shape[-2:] != target_size:
+        pred = F.interpolate(
+            pred, size=target_size, mode="bilinear", align_corners=False
+        )
+
+    # BINARY MODE: If pred has 1 channel, use binary metrics
+    if pred.shape[1] == 1:
+        # Squeeze channel dimension from true if present
+        if isinstance(true, torch.Tensor) and true.ndim == 4 and true.shape[1] == 1:
+            true_binary = true.squeeze(1)  # [B, H, W]
+        else:
+            true_binary = true
+
+        # Apply sigmoid and threshold
+        pred_binary = torch.sigmoid(pred).squeeze(1) > 0.5  # [B, H, W]
+
+        if isinstance(true_binary, torch.Tensor):
+            true_binary = true_binary > 0.5
+
+            # Convert to numpy
+            pred_np = pred_binary.detach().cpu().numpy()
+            true_np = true_binary.detach().cpu().numpy()
+        else:
+            pred_np = pred_binary.detach().cpu().numpy()
+            true_np = true_binary > 0.5
+
+        # Compute binary metrics
+        tp = (pred_np & true_np).sum()
+        fp = (pred_np & ~true_np).sum()
+        fn = (~pred_np & true_np).sum()
+        tn = (~pred_np & ~true_np).sum()
+
+        inter = float(tp)
+        union = float(tp + fp + fn)
+
+        return {
+            "iou": inter / union if union > 0 else 0,
+            "dice": (2 * tp) / (2 * tp + fp + fn + 1e-8),
+            "acc": (tp + tn) / (tp + tn + fp + fn + 1e-8),
+            "precision": tp / (tp + fp + 1e-8),
+            "recall": tp / (tp + fn + 1e-8),
+        }
+
+    # MULTI-CLASS MODE: If pred has C > 1 channels
     # Convert logits to class predictions
     if isinstance(pred, torch.Tensor):
         pred_classes = torch.argmax(pred, dim=1).detach().cpu().numpy()  # [B, H, W]
@@ -117,6 +152,9 @@ def compute_metrics_multiclass(
         pred_classes = np.argmax(pred, axis=1)
 
     if isinstance(true, torch.Tensor):
+        # Squeeze channel dimension if present
+        if true.ndim == 4 and true.shape[1] == 1:
+            true = true.squeeze(1)
         true_classes = true.detach().cpu().numpy()  # [B, H, W]
     else:
         true_classes = true
@@ -133,19 +171,22 @@ def compute_metrics_multiclass(
         union = np.logical_or(pred_mask, true_mask).sum()
 
         iou = float(intersection) / float(union + 1e-8)
-        ious[f"iou_{class_names[cls_id]}"] = iou
+        ious[f"iou_{class_names.get(cls_id, f"class_{cls_id}")}"] = iou
 
     # Mean IoU (excluding background class 0)
-    tree_ious = [ious["iou_individual_tree"], ious["iou_group_of_trees"]]
-    ious["mean_iou"] = sum(tree_ious) / len(tree_ious)
+    if num_classes > 1:
+        tree_ious = [ious[f"iou_{class_names[i]}"] for i in range(1, num_classes)]
+        ious["mean_iou"] = sum(tree_ious) / len(tree_ious)
+    else:
+        ious["mean_iou"] = ious.get("iou_background", 0.0)
 
-    # Also compute overall pixel accuracy
+    # Overall pixel accuracy
     correct = (pred_classes == true_classes).sum()
     total = pred_classes.size
     ious["acc"] = float(correct) / float(total)
 
-    # For compatibility with existing code, also add these
-    ious["iou"] = ious["mean_iou"]  # Alias
-    ious["dice"] = 0.0  # Placeholder - can compute per-class dice if needed
+    # Aliases for compatibility
+    ious["iou"] = ious["mean_iou"]
+    ious["dice"] = 0.0  # Placeholder
 
     return ious
