@@ -96,12 +96,12 @@ def init_notebook( seed: int = 42 ) -> None:
 
     random.seed(seed)
     np.random.seed(seed)
-    try:
-        import tensorflow as tf
-
-        tf.random.set_seed(seed)
-    except Exception:
-        pass
+    # try:
+    #     import tensorflow as tf
+    #
+    #     tf.random.set_seed(seed)
+    # except Exception:
+    #     pass
     p("", "Done")
 
 

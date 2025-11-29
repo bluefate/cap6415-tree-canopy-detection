@@ -59,7 +59,6 @@ class Trainer:
             mode="min",
             factor=config.train.scheduler_factor,
             patience=config.train.scheduler_patience,
-            verbose=True,
         )
 
         # AMP scaler

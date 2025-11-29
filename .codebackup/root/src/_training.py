@@ -17,10 +17,9 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 
 def prepare_criterion():
     """
-    Binary cross entropy loss for segmentation.
+    Multiclass cross entropy + dice loss for 3-class segmentation.
     """
-    # return torch.nn.BCELoss()
-    return torch.nn.BCEWithLogitsLoss()
+    return torch.nn.CrossEntropyLoss()
 
 
 def run_training(
@@ -138,6 +137,53 @@ def compute_metrics(pred: torch.Tensor, true: torch.Tensor):
     }
 
 
+def compute_metrics_multiclass(
+    pred: torch.Tensor, true: torch.Tensor, num_classes: int = 3
+):
+    """
+    Compute per-class IoU and mean IoU for multi-class segmentation.
+    """
+    # Convert logits to class predictions
+    if isinstance(pred, torch.Tensor):
+        pred_classes = torch.argmax(pred, dim=1).detach().cpu().numpy()  # [B, H, W]
+    else:
+        pred_classes = np.argmax(pred, axis=1)
+
+    if isinstance(true, torch.Tensor):
+        true_classes = true.detach().cpu().numpy()  # [B, H, W]
+    else:
+        true_classes = true
+
+    # Compute IoU for each class
+    ious = {}
+    class_names = {0: "background", 1: "individual_tree", 2: "group_of_trees"}
+
+    for cls_id in range(num_classes):
+        pred_mask = pred_classes == cls_id
+        true_mask = true_classes == cls_id
+
+        intersection = np.logical_and(pred_mask, true_mask).sum()
+        union = np.logical_or(pred_mask, true_mask).sum()
+
+        iou = float(intersection) / float(union + 1e-8)
+        ious[f"iou_{class_names[cls_id]}"] = iou
+
+    # Mean IoU (excluding background class 0)
+    tree_ious = [ious["iou_individual_tree"], ious["iou_group_of_trees"]]
+    ious["mean_iou"] = sum(tree_ious) / len(tree_ious)
+
+    # Also compute overall pixel accuracy
+    correct = (pred_classes == true_classes).sum()
+    total = pred_classes.size
+    ious["acc"] = float(correct) / float(total)
+
+    # For compatibility with existing code, also add these
+    ious["iou"] = ious["mean_iou"]  # Alias
+    ious["dice"] = 0.0  # Placeholder - can compute per-class dice if needed
+
+    return ious
+
+
 # From C:\github\Tree-Canopy-Detection\src\training\trainer.py
 from pathlib import Path
 from typing import Any, Dict
@@ -145,7 +191,7 @@ from typing import Any, Dict
 import torch
 from torch.utils.data import DataLoader
 
-from src.training.metrics import compute_metrics
+from src.training.metrics import compute_metrics_multiclass
 from src.utils.logging import Logger
 from src.utils.versioning import VersionManager
 
@@ -157,14 +203,14 @@ class Trainer:
     """
 
     def __init__(
-            self,
-            model: torch.nn.Module,
-            optimizer: torch.optim.Optimizer,
-            criterion,
-            train_loader: DataLoader,
-            val_loader: DataLoader,
-            config: Any,
-            version_root: Path,
+        self,
+        model: torch.nn.Module,
+        optimizer: torch.optim.Optimizer,
+        criterion,
+        train_loader: DataLoader,
+        val_loader: DataLoader,
+        config: Any,
+        version_root: Path,
     ):
         # define device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -191,10 +237,19 @@ class Trainer:
             torch.cuda.empty_cache()
             torch.backends.cudnn.benchmark = True  # Speed up training
             self.logger.info(f"GPU: {torch.cuda.get_device_name(0)}")
-            self.logger.info(f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB")
+            self.logger.info(
+                f"GPU Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.2f} GB"
+            )
+
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer,
+            mode="min",
+            factor=config.train.scheduler_factor,
+            patience=config.train.scheduler_patience,
+        )
 
         # AMP scaler
-        self.scaler = torch.cuda.amp.GradScaler(enabled = (self.device.type == "cuda"))
+        self.scaler = torch.cuda.amp.GradScaler(enabled=(self.device.type == "cuda"))
 
         # checkpointing
         self.best_val_loss = float("inf")
@@ -203,9 +258,7 @@ class Trainer:
         if self.paths["checkpoint"].exists():
             self._load_checkpoint()
 
-
-
-    def _extract_cfg( self ) -> Dict[str, Any]:
+    def _extract_cfg(self) -> Dict[str, Any]:
         """
         Convert the config object into a dictionary.
         """
@@ -215,7 +268,7 @@ class Trainer:
             "extra": self.cfg.extra,
         }
 
-    def _save_checkpoint( self, epoch: int, is_best: bool ) -> None:
+    def _save_checkpoint(self, epoch: int, is_best: bool) -> None:
         """
         Save model, optimizer, scaler, and metrics.
         """
@@ -230,11 +283,11 @@ class Trainer:
         if is_best:
             torch.save(state, self.paths["best"])
 
-    def _load_checkpoint( self ) -> None:
+    def _load_checkpoint(self) -> None:
         """
         Resume training from the latest checkpoint.
         """
-        data = torch.load(self.paths["checkpoint"], map_location = self.device)
+        data = torch.load(self.paths["checkpoint"], map_location=self.device)
         self.model.load_state_dict(data["model"])
         self.optimizer.load_state_dict(data["optimizer"])
         self.scaler.load_state_dict(data["scaler"])
@@ -242,7 +295,7 @@ class Trainer:
         self.start_epoch = data.get("epoch", 0) + 1
         self.logger.info(f"Resuming from epoch {self.start_epoch}")
 
-    def train_epoch( self ) -> float:
+    def train_epoch(self) -> float:
         """
         Train one epoch and return the average loss.
         """
@@ -255,7 +308,7 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-            with torch.cuda.amp.autocast(enabled = (self.device.type == "cuda")):
+            with torch.cuda.amp.autocast(enabled=(self.device.type == "cuda")):
                 preds = self.model(images)
                 loss = self.criterion(preds, masks)
 
@@ -271,14 +324,15 @@ class Trainer:
 
         return total_loss / max(1, len(self.train_loader))
 
-    def validate_epoch( self ) -> Dict[str, float]:
+    def validate_epoch(self) -> Dict[str, float]:
         """
         Validate one epoch and return metrics.
         """
         self.model.eval()
         total_loss = 0.0
         total_iou = 0.0
-        total_dice = 0.0
+        total_iou_individual = 0.0
+        total_iou_group = 0.0
         total_acc = 0.0
 
         with torch.no_grad():
@@ -290,20 +344,24 @@ class Trainer:
                 loss = self.criterion(preds, masks)
                 total_loss += loss.item()
 
-                m = compute_metrics(preds, masks)
-                total_iou += m["iou"]
-                total_dice += m["dice"]
+                # NEW: Use multiclass metrics
+                m = compute_metrics_multiclass(preds, masks, num_classes=3)
+                total_iou += m["mean_iou"]
+                total_iou_individual += m["iou_individual_tree"]
+                total_iou_group += m["iou_group_of_trees"]
                 total_acc += m["acc"]
 
         n = max(1, len(self.val_loader))
         return {
             "loss": total_loss / n,
-            "iou": total_iou / n,
-            "dice": total_dice / n,
+            "iou": total_iou / n,  # This is now mean_iou of tree classes
+            "iou_individual_tree": total_iou_individual / n,
+            "iou_group_of_trees": total_iou_group / n,
+            "dice": 0.0,  # Placeholder
             "acc": total_acc / n,
         }
 
-    def run( self ) -> None:
+    def run(self) -> None:
         """
         Run full training loop using configuration settings.
         """
@@ -317,7 +375,9 @@ class Trainer:
             train_loss = self.train_epoch()
             val = self.validate_epoch()
 
-            self.logger.info(f"Train loss {train_loss:.4f}, Val loss {val['loss']:.4f}, IoU {val['iou']:.4f}, Dice {val['dice']:.4f}, Acc {val['acc']:.4f}")
+            self.logger.info(
+                f"Train loss {train_loss:.4f}, Val loss {val['loss']:.4f}, IoU {val['iou']:.4f}, Dice {val['dice']:.4f}, Acc {val['acc']:.4f}"
+            )
 
             is_best = val["loss"] < self.best_val_loss
             if is_best:
@@ -332,6 +392,8 @@ class Trainer:
             if no_improve >= patience:
                 self.logger.info("Early stop triggered")
                 break
+
+            self.scheduler.step(val["loss"])
 
         self.logger.warn("Training complete")
 

@@ -14,7 +14,7 @@ from src.models.unet import UNet
 # Variant	        Params	Use Case
 # convnext_tiny	    ~28M	Lightweight, fast training, good for smaller datasets or limited GPU
 # convnext_base	    ~89M	Balanced accuracy vs compute, strong general-purpose backbone
-# convnext_large	~198M	High accuracy, but heavy — requires strong GPUs
+# convnext_large	~198M	High accuracy, but heavy â€” requires strong GPUs
 # convnext_xlarge	~350M	State-of-the-art accuracy, but very resource-intensive
 
 

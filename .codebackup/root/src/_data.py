@@ -13,14 +13,14 @@ class AnnotationItem:
     Stores class name, segmentation polygon, confidence score, and the computed bounding box.
     """
 
-    def __init__( self, cls: str, segmentation: List[float], confidence: float = 1.0 ):
+    def __init__(self, cls: str, segmentation: List[float], confidence: float = 1.0):
         self.cls = cls
         self.segmentation = segmentation
         self.confidence = confidence
         self.bbox = self.compute_bbox(segmentation)
 
     @staticmethod
-    def compute_bbox( seg: List[float] ) -> List[int]:
+    def compute_bbox(seg: List[float]) -> List[int]:
         """
         Convert a flat segmentation list into a bounding box.
         Returns [x1, y1, x2, y2].
@@ -38,27 +38,29 @@ class AnnotationEntry:
     Includes path, width, height, and a list of AnnotationItem objects.
     """
 
-    def __init__( self, image_path: Path, width: int, height: int, items: List[AnnotationItem] ):
+    def __init__(
+        self, image_path: Path, width: int, height: int, items: List[AnnotationItem]
+    ):
         self.image_path = image_path
         self.width = width
         self.height = height
         self.items = items
 
-    def to_mask( self ) -> np.ndarray:
+    def to_mask(self) -> np.ndarray:
         """
         Build a binary mask from all polygons in this entry.
         """
-        mask = np.zeros((self.height, self.width), dtype = np.uint8)
+        mask = np.zeros((self.height, self.width), dtype=np.uint8)
         for item in self.items:
             seg = item.segmentation
             if seg is None or len(seg) < 4:
                 continue
-            poly = np.array(seg, dtype = np.int32).reshape(-1, 2)
+            poly = np.array(seg, dtype=np.int32).reshape(-1, 2)
             cv2.fillPoly(mask, [poly], 1)
         return mask
 
 
-def load_json_annotations( json_path: Path ) -> List[AnnotationEntry]:
+def load_json_annotations(json_path: Path) -> List[AnnotationEntry]:
     """
     Load annotation entries from a JSON file that contains images and annotations.
     Returns a list of AnnotationEntry objects.
@@ -67,7 +69,7 @@ def load_json_annotations( json_path: Path ) -> List[AnnotationEntry]:
     if not json_path.exists():
         raise FileNotFoundError(f"Missing annotation file {json_path}")
 
-    with open(json_path, "r", encoding = "utf8") as f:
+    with open(json_path, "r", encoding="utf8") as f:
         data = json.load(f)
 
     entries = []
@@ -91,7 +93,7 @@ def load_json_annotations( json_path: Path ) -> List[AnnotationEntry]:
     return entries
 
 
-def get_unique_classes( entries: List[AnnotationEntry] ) -> List[str]:
+def get_unique_classes(entries: List[AnnotationEntry]) -> List[str]:
     """
     Return a sorted list of unique classes across all entries.
     """
@@ -107,48 +109,48 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
 
-def get_train_augmentations( image_size: int ):
+def get_train_augmentations(image_size: int):
     """
     Build augmentation pipeline for training.
     Includes flips, brightness changes, distortions, and resizing.
     """
     return A.Compose(
-            [
-                A.Resize(image_size, image_size),
-                A.HorizontalFlip(p = 0.5),
-                A.VerticalFlip(p = 0.5),
-                # A.ShiftScaleRotate(
-                #         shift_limit = 0.1,
-                #         scale_limit = 0.1,
-                #         rotate_limit = 15,
-                #         p = 0.5,
-                # ),
-                A.Affine(
-                        scale = (0.9, 1.1),
-                        rotate = (-15, 15),
-                        shear = (-10, 10),
-                        p = 0.5,
-                ),
-                A.RandomBrightnessContrast(p = 0.5),
-                A.CLAHE(p = 0.5),
-                A.ElasticTransform(alpha = 0.1, p = 0.1),
-                A.GridDistortion(p = 0.1),
-                A.OpticalDistortion(p = 0.1),
-                ToTensorV2(),
-            ],
+        [
+            A.Resize(image_size, image_size),
+            A.HorizontalFlip(p=0.5),
+            A.VerticalFlip(p=0.5),
+            # A.ShiftScaleRotate(
+            #         shift_limit = 0.1,
+            #         scale_limit = 0.1,
+            #         rotate_limit = 15,
+            #         p = 0.5,
+            # ),
+            A.Affine(
+                scale=(0.9, 1.1),
+                rotate=(-15, 15),
+                shear=(-10, 10),
+                p=0.5,
+            ),
+            A.RandomBrightnessContrast(p=0.5),
+            A.CLAHE(p=0.5),
+            A.ElasticTransform(alpha=0.1, p=0.1),
+            A.GridDistortion(p=0.1),
+            A.OpticalDistortion(p=0.1),
+            ToTensorV2(),
+        ],
     )
 
 
-def get_val_augmentations( image_size: int ):
+def get_val_augmentations(image_size: int):
     """
     Build validation and inference augmentation pipeline.
     Only resize and tensor conversion.
     """
     return A.Compose(
-            [
-                A.Resize(image_size, image_size),
-                ToTensorV2(),
-            ],
+        [
+            A.Resize(image_size, image_size),
+            ToTensorV2(),
+        ],
     )
 
 
@@ -167,12 +169,18 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
     3. 'concat' - 6-channel (RGB + 3 filters)
     """
 
-    def __init__( self, entries, image_dir, mode = 'rgb', filter_names = None, classes = None, transform = None ):
+    def __init__(
+        self,
+        entries,
+        image_dir,
+        mode="rgb",
+        filter_names=None,
+        classes=None,
+        transform=None,
+    ):
         super().__init__(entries, image_dir, classes, transform)
         self.mode = mode
-        self.filter_names = filter_names or ['laplacian', 'sobel', 'clahe']
-
-
+        self.filter_names = filter_names or ["laplacian", "sobel", "clahe"]
 
     def apply_filters(self, img):
         """
@@ -197,38 +205,42 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             for name, kernel in kernel_bank.items()
         }
 
-        dynamic_kernels.update({
-            # Edge detection
-            "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
-            "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0) + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
-            "sobel_x_cv": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0),
-            "sobel_y_cv": lambda: cv2.Sobel(gray, cv2.CV_64F, 0, 1),
-            "canny": lambda: cv2.Canny(gray, 50, 150),
-
-            # Enhancement
-            "clahe": lambda: clahe_enhance(gray),
-            "histogram_eq": lambda: cv2.equalizeHist(gray),
-
-            # Gaussian blur variants - THIS FIXES THE gaussian_3x3 issue
-            "gaussian_3x3": lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
-            "gaussian_5x5": lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
-            "gaussian_7x7": lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
-            "gaussian_9x9": lambda: cv2.GaussianBlur(gray, (9, 9), 2.5),
-
-            # Other useful filters
-            "bilateral": lambda: cv2.bilateralFilter(gray, 9, 75, 75),
-            "median_3x3": lambda: cv2.medianBlur(gray, 3),
-            "median_5x5": lambda: cv2.medianBlur(gray, 5),
-        })
+        dynamic_kernels.update(
+            {
+                # Edge detection
+                "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
+                "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0)
+                + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+                "sobel_x_cv": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0),
+                "sobel_y_cv": lambda: cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+                "canny": lambda: cv2.Canny(gray, 50, 150),
+                # Enhancement
+                "clahe": lambda: clahe_enhance(gray),
+                "histogram_eq": lambda: cv2.equalizeHist(gray),
+                # Gaussian blur variants - THIS FIXES THE gaussian_3x3 issue
+                "gaussian_3x3": lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
+                "gaussian_5x5": lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
+                "gaussian_7x7": lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
+                "gaussian_9x9": lambda: cv2.GaussianBlur(gray, (9, 9), 2.5),
+                # Other useful filters
+                "bilateral": lambda: cv2.bilateralFilter(gray, 9, 75, 75),
+                "median_3x3": lambda: cv2.medianBlur(gray, 3),
+                "median_5x5": lambda: cv2.medianBlur(gray, 5),
+            }
+        )
 
         channels = []
         for fname in self.filter_names:
             key = fname.lower()
             if key not in dynamic_kernels:
-                raise KeyError(f"Unknown filter '{fname}'. Available: {list(dynamic_kernels.keys())}")
+                raise KeyError(
+                    f"Unknown filter '{fname}'. Available: {list(dynamic_kernels.keys())}"
+                )
 
             filtered = dynamic_kernels[key]()
-            filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(
+                np.uint8
+            )
             channels.append(filtered)
 
         # Ensure at least 3 channels
@@ -239,8 +251,6 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             channels.append(channels[-1])
 
         return np.stack(channels[:3], axis=2)
-
-
 
     @classmethod
     def get_available_filters(cls):
@@ -255,11 +265,20 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
 
         # Algorithmic filters (always available)
         algorithmic = [
-            'laplacian', 'sobel', 'clahe',
-            'gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7', 'gaussian_9x9',
-            'sobel_x_cv', 'sobel_y_cv', 'canny',
-            'histogram_eq', 'bilateral',
-            'median_3x3', 'median_5x5',
+            "laplacian",
+            "sobel",
+            "clahe",
+            "gaussian_3x3",
+            "gaussian_5x5",
+            "gaussian_7x7",
+            "gaussian_9x9",
+            "sobel_x_cv",
+            "sobel_y_cv",
+            "canny",
+            "histogram_eq",
+            "bilateral",
+            "median_3x3",
+            "median_5x5",
         ]
 
         return sorted(set(kernel_names + algorithmic))
@@ -269,6 +288,7 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
 """
 Image loading utilities that handle multiple formats.
 """
+
 from pathlib import Path
 from typing import Union
 
@@ -291,7 +311,7 @@ def load_image(image_path: Union[str, Path]) -> np.ndarray:
         raise FileNotFoundError(f"Image not found: {image_path}")
 
     # Check for PNG version first (more reliable than TIFF)
-    png_path = image_path.with_suffix('.png')
+    png_path = image_path.with_suffix(".png")
     if png_path.exists() and png_path != image_path:
         image_path = png_path
 
@@ -330,15 +350,15 @@ def validate_image_directory(image_dir: Path) -> dict:
 
     # Find all image files
     image_files = []
-    for ext in ['*.tif']:
-    # for ext in ['*.png', '*.jpg', '*.jpeg', '*.tif', '*.tiff']:
+    for ext in ["*.tif"]:
+        # for ext in ['*.png', '*.jpg', '*.jpeg', '*.tif', '*.tiff']:
         image_files.extend(image_dir.glob(ext))
 
     results = {
         "total": len(image_files),
         "valid": 0,
         "invalid": 0,
-        "problematic_files": []
+        "problematic_files": [],
     }
 
     p("Validating images", f"{len(image_files)} files")
@@ -359,9 +379,10 @@ def validate_image_directory(image_dir: Path) -> dict:
     if results["problematic_files"]:
         p("Problematic files", "")
         for path in results["problematic_files"][:10]:
-            p("", f"  {path}", color1 = c.SALMON)
+            p("", f"  {path}", color1=c.SALMON)
 
     return results
+
 
 def apply_all_filters(img):
     """
@@ -381,17 +402,22 @@ def apply_all_filters(img):
 
     # Add kernel-based filters
     for kname, kernel in kernel_bank.items():
-        filter_registry[kname.lower()] = (lambda k=kernel: apply_kernel_using_convolution(gray, k))
+        filter_registry[kname.lower()] = (
+            lambda k=kernel: apply_kernel_using_convolution(gray, k)
+        )
 
     # Add algorithmic filters
-    filter_registry.update({
-        'laplacian': lambda: cv2.Laplacian(gray, cv2.CV_64F),
-        'sobel': lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0) + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
-        'clahe': lambda: clahe_enhance(gray, clip=2.0, tile=8),
-        'gaussian_3x3': lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
-        'gaussian_5x5': lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
-        'gaussian_7x7': lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
-    })
+    filter_registry.update(
+        {
+            "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
+            "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0)
+            + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+            "clahe": lambda: clahe_enhance(gray, clip=2.0, tile=8),
+            "gaussian_3x3": lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
+            "gaussian_5x5": lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
+            "gaussian_7x7": lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
+        }
+    )
 
     # Apply all filters
     results = {}
@@ -403,9 +429,13 @@ def apply_all_filters(img):
             if filtered.ndim == 3:
                 filtered = cv2.cvtColor(filtered, cv2.COLOR_RGB2GRAY)
             if filtered.shape != (target_h, target_w):
-                filtered = cv2.resize(filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+                filtered = cv2.resize(
+                    filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR
+                )
             if filtered.dtype != np.uint8:
-                filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                filtered = cv2.normalize(
+                    filtered, None, 0, 255, cv2.NORM_MINMAX
+                ).astype(np.uint8)
 
             results[fname] = filtered
         except Exception as e:
@@ -415,7 +445,7 @@ def apply_all_filters(img):
     return results
 
 
-def apply_filters( self, img ):
+def apply_filters(self, img):
     """
     Apply specified filters and return as 3-channel image.
     Handles both kernel-based and algorithmic filters.
@@ -438,17 +468,22 @@ def apply_filters( self, img ):
     # Add kernel-based filters
     for kname, kernel in kernel_bank.items():
         # Use closure to capture kernel value
-        filter_registry[kname.lower()] = (lambda k=kernel: apply_kernel_using_convolution(gray, k))
+        filter_registry[kname.lower()] = (
+            lambda k=kernel: apply_kernel_using_convolution(gray, k)
+        )
 
     # Add algorithmic filters
-    filter_registry.update({
-        'laplacian': lambda: cv2.Laplacian(gray, cv2.CV_64F),
-        'sobel': lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0) + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
-        'clahe': lambda: clahe_enhance(gray, clip=2.0, tile=8),
-        'gaussian_3x3': lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
-        'gaussian_5x5': lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
-        'gaussian_7x7': lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
-    })
+    filter_registry.update(
+        {
+            "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
+            "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0)
+            + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+            "clahe": lambda: clahe_enhance(gray, clip=2.0, tile=8),
+            "gaussian_3x3": lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
+            "gaussian_5x5": lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
+            "gaussian_7x7": lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
+        }
+    )
 
     # Apply requested filters
     channels = []
@@ -458,8 +493,8 @@ def apply_filters( self, img ):
         if key not in filter_registry:
             available = sorted(filter_registry.keys())
             raise KeyError(
-                    f"Unknown filter '{fname}'. "
-                    f"Available filters ({len(available)}): {available[:10]}..."
+                f"Unknown filter '{fname}'. "
+                f"Available filters ({len(available)}): {available[:10]}..."
             )
 
         try:
@@ -472,11 +507,15 @@ def apply_filters( self, img ):
 
             # Resize if needed
             if filtered.shape != (target_h, target_w):
-                filtered = cv2.resize(filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+                filtered = cv2.resize(
+                    filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR
+                )
 
             # Normalize to uint8
             if filtered.dtype != np.uint8:
-                filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+                filtered = cv2.normalize(
+                    filtered, None, 0, 255, cv2.NORM_MINMAX
+                ).astype(np.uint8)
 
             channels.append(filtered)
 
@@ -516,11 +555,15 @@ def create_enhanced_image(img, filter_names):
 
         # Resize to match target dimensions if needed
         if filtered.shape != (target_h, target_w):
-            filtered = cv2.resize(filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR)
+            filtered = cv2.resize(
+                filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR
+            )
 
         # Normalize to 0-255
         if filtered.dtype != np.uint8:
-            filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(
+                np.uint8
+            )
 
         channels.append(filtered)
 
@@ -539,6 +582,7 @@ def create_enhanced_image(img, filter_names):
     # Stack into 3-channel image
     enhanced = np.stack(channels[:3], axis=2)
     return enhanced
+
 
 # From C:\github\Tree-Canopy-Detection\src\data\loaders.py
 from pathlib import Path
@@ -601,50 +645,41 @@ class ImageMaskDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         H, W = image.shape[:2]
 
+        # Build mask - handle class filtering
         if self.classes is None:
-            polys = [item.segmentation for item in entry.items]
+            mask = build_multiclass_mask(entry)
         else:
-            polys = [
-                item.segmentation for item in entry.items if item.cls in self.classes
-            ]
+            # Create filtered entry with only specified classes
+            from src.data.annotations import AnnotationEntry
 
-        mask = build_multiclass_mask(polys, W, H)
+            filtered_items = [item for item in entry.items if item.cls in self.classes]
+            filtered_entry = AnnotationEntry(
+                entry.image_path, entry.width, entry.height, filtered_items
+            )
+            mask = build_multiclass_mask(filtered_entry)
 
         if self.transform:
             augmented = self.transform(image=image, mask=mask)
             image = augmented["image"]
             mask = augmented["mask"]
 
-        # img_t = torch.tensor(image.transpose(2,0,1)).float() / 255.0
-        # produces an error
-        # augmented["image"] is sometimes a NumPy array and sometimes a PyTorch tensor, depending on your augmentation pipeline
-        # Convert image
+        # Convert image to tensor
         if isinstance(image, torch.Tensor):
-            # already CHW float Tensor from ToTensorV2
             img_t = image.float()
             if img_t.ndim == 3 and img_t.shape[0] != 3:
                 img_t = img_t.permute(2, 0, 1)
         else:
-            # numpy HWC array
             img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
-        # eliminates all shape variance
-        # if isinstance(mask, torch.Tensor):
-        #     mask_t = mask.float()
-        #     if mask_t.ndim == 2:
-        #         mask_t = mask_t.unsqueeze(0)
-        # else:
-        #     mask = mask.astype("float32")
-        #     if mask.ndim == 2:
-        #         mask = mask[None, ...]
-        #     mask_t = torch.from_numpy(mask)
-
-        # since multiclass was fixed
-        # mask should be [H, W] with class indices (long tensor)
+        # Convert mask to tensor [H, W] -> [1, H, W]
         if isinstance(mask, torch.Tensor):
             mask_t = mask.long()
         else:
             mask_t = torch.from_numpy(mask).long()
+
+        # Ensure mask has shape [1, H, W]
+        if mask_t.ndim == 2:
+            mask_t = mask_t.unsqueeze(0)
 
         return img_t, mask_t
 
@@ -673,11 +708,7 @@ class ImageOnlyDataset(Dataset):
         self.image_dir = Path(image_dir)
         self.transform = transform
         self.files = sorted(
-            [
-                f
-                for f in self.image_dir.glob("*.*")
-                if f.suffix.lower() in [".png"]
-            ],
+            [f for f in self.image_dir.glob("*.*") if f.suffix.lower() in [".png"]],
         )
 
     def __len__(self) -> int:
@@ -744,30 +775,19 @@ CLASS_TO_ID = {
 
 ID_TO_CLASS = {v: k for k, v in CLASS_TO_ID.items()}
 
-def build_binary_mask( segmentation: List[float], width: int, height: int ) -> np.ndarray:
+
+def build_binary_mask(segmentation: List[float], width: int, height: int) -> np.ndarray:
     """
     Convert one segmentation polygon into a binary mask.
     segmentation is a flat list of coordinates.
     """
-    mask = np.zeros((height, width), dtype = np.uint8)
+    mask = np.zeros((height, width), dtype=np.uint8)
     if segmentation is None or len(segmentation) < 4:
         return mask
-    poly = np.array(segmentation, dtype = np.int32).reshape(-1, 2)
+    poly = np.array(segmentation, dtype=np.int32).reshape(-1, 2)
     cv2.fillPoly(mask, [poly], 1)
     return mask
 
-
-# def build_multiclass_mask( polygons: List[List[float]], width: int, height: int ) -> np.ndarray:
-#     """
-#     Convert multiple segmentation polygons into one mask.
-#     """
-#     mask = np.zeros((height, width), dtype = np.uint8)
-#     for seg in polygons:
-#         if seg is None or len(seg) < 4:
-#             continue
-#         poly = np.array(seg, dtype = np.int32).reshape(-1, 2)
-#         cv2.fillPoly(mask, [poly], 1)
-#     return mask
 
 def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
     """
@@ -776,7 +796,7 @@ def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
     if class_to_id is None:
         class_to_id = CLASS_TO_ID
 
-    mask = np.zeros((entry.height, entry.width), dtype=np.int64)
+    mask = np.zeros((entry.height, entry.width), dtype=np.uint8)
 
     for item in entry.items:
         seg = item.segmentation
@@ -791,17 +811,18 @@ def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
 
     return mask
 
-def save_mask( mask: np.ndarray, path: Path ) -> None:
+
+def save_mask(mask: np.ndarray, path: Path) -> None:
     """
     Save a binary mask. Values are written as 0 or 255.
     """
     path = Path(path)
-    path.parent.mkdir(parents = True, exist_ok = True)
+    path.parent.mkdir(parents=True, exist_ok=True)
     out = (mask * 255).astype(np.uint8)
     cv2.imwrite(str(path), out)
 
 
-def load_mask( path: Path ) -> np.ndarray:
+def load_mask(path: Path) -> np.ndarray:
     """
     Load a binary mask from disk. Converts 255 to 1.
     """
@@ -812,7 +833,9 @@ def load_mask( path: Path ) -> np.ndarray:
     return (img > 127).astype(np.uint8)
 
 
-def mask_to_overlay( image: np.ndarray, mask: np.ndarray, alpha: float = 0.4 ) -> np.ndarray:
+def mask_to_overlay(
+    image: np.ndarray, mask: np.ndarray, alpha: float = 0.4
+) -> np.ndarray:
     """
     Overlay a binary mask on an RGB image. Mask is shown in red.
     """

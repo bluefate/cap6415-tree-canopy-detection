@@ -58,50 +58,41 @@ class ImageMaskDataset(Dataset):
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         H, W = image.shape[:2]
 
+        # Build mask - handle class filtering
         if self.classes is None:
-            polys = [item.segmentation for item in entry.items]
+            mask = build_multiclass_mask(entry)
         else:
-            polys = [
-                item.segmentation for item in entry.items if item.cls in self.classes
-            ]
+            # Create filtered entry with only specified classes
+            from src.data.annotations import AnnotationEntry
 
-        mask = build_multiclass_mask(entry)
+            filtered_items = [item for item in entry.items if item.cls in self.classes]
+            filtered_entry = AnnotationEntry(
+                entry.image_path, entry.width, entry.height, filtered_items
+            )
+            mask = build_multiclass_mask(filtered_entry)
 
         if self.transform:
             augmented = self.transform(image=image, mask=mask)
             image = augmented["image"]
             mask = augmented["mask"]
 
-        # img_t = torch.tensor(image.transpose(2,0,1)).float() / 255.0
-        # produces an error
-        # augmented["image"] is sometimes a NumPy array and sometimes a PyTorch tensor, depending on your augmentation pipeline
-        # Convert image
+        # Convert image to tensor
         if isinstance(image, torch.Tensor):
-            # already CHW float Tensor from ToTensorV2
             img_t = image.float()
             if img_t.ndim == 3 and img_t.shape[0] != 3:
                 img_t = img_t.permute(2, 0, 1)
         else:
-            # numpy HWC array
             img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
-        # eliminates all shape variance
-        # if isinstance(mask, torch.Tensor):
-        #     mask_t = mask.float()
-        #     if mask_t.ndim == 2:
-        #         mask_t = mask_t.unsqueeze(0)
-        # else:
-        #     mask = mask.astype("float32")
-        #     if mask.ndim == 2:
-        #         mask = mask[None, ...]
-        #     mask_t = torch.from_numpy(mask)
-
-        # since multiclass was fixed
-        # mask should be [H, W] with class indices (long tensor)
+        # Convert mask to tensor [H, W] -> [1, H, W]
         if isinstance(mask, torch.Tensor):
             mask_t = mask.long()
         else:
             mask_t = torch.from_numpy(mask).long()
+
+        # Ensure mask has shape [1, H, W]
+        if mask_t.ndim == 2:
+            mask_t = mask_t.unsqueeze(0)
 
         return img_t, mask_t
 

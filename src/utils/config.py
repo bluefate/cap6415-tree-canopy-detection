@@ -46,8 +46,6 @@ class TrainConfig(BaseModel):
     seed: int = Field(default = 42)
     best_val_loss: float = Field(default = 1e9)
 
-
-
 def in_notebook() -> bool:
     """Detect if running inside a Jupyter notebook."""
     try:

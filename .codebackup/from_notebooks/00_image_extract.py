@@ -14,11 +14,9 @@ import random
 import shutil
 import zipfile
 from pathlib import Path
-
 import cv2
 import matplotlib.pyplot as plt
 from PIL import Image
-
 from src.data.annotations import load_json_annotations
 from src.data.masks import save_mask
 from src.utils.config import Config

@@ -91,7 +91,7 @@ def show_side_by_side(
         elif isinstance(img, np.ndarray):
             # Handle raw image arrays
             if not preserve_values:
-                # Default: clip to 0–255 and cast to uint8
+                # Default: clip to 0â€“255 and cast to uint8
                 img = np.clip(img, 0, 255).astype(np.uint8)
             # else: keep raw values (signed floats/ints)
 

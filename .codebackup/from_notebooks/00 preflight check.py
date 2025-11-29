@@ -5,13 +5,24 @@
 
 # %%
 import os
+import shutil
 import sys
+import traceback
 from pathlib import Path
+
+import cv2
+
+from src.data.augmentations import get_val_augmentations
+from src.data.loaders import ImageMaskDataset
+
+
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
 import torch
 from src.utils.config import Config
 from src.utils.helpers import c, p, t
+from src.models.zoo import build_model
+from src.data.annotations import load_json_annotations
 
 
 # %%
@@ -75,7 +86,7 @@ def check_data():
     t("Checking Data")
 
     try:
-        from src.data.annotations import load_json_annotations
+
 
         config = Config.load()
         entries = load_json_annotations(config.paths.annotations)
@@ -88,9 +99,6 @@ def check_data():
 
         if img_path.exists():
             p("✓ Sample image", "found", color1 = c.GREEN)
-
-            # Try to load
-            import cv2
 
             img = cv2.imread(str(img_path))
             if img is not None:
@@ -112,9 +120,7 @@ def check_dataset():
     t("Checking Dataset")
 
     try:
-        from src.data.annotations import load_json_annotations
-        from src.data.augmentations import get_val_augmentations
-        from src.data.loaders import ImageMaskDataset
+
 
         config = Config.load()
         entries = load_json_annotations(config.paths.annotations)
@@ -149,7 +155,6 @@ def check_dataset():
 
     except Exception as e:
         p("✗ Dataset check failed", str(e), color1 = c.RED)
-        import traceback
 
         traceback.print_exc()
         return False
@@ -160,8 +165,6 @@ def check_model():
     t("Checking Model")
 
     try:
-        from src.models.zoo import build_model
-
         model = build_model('simple_cnn', in_channels = 3, out_channels = 1)
 
         p("✓ Model created", "simple_cnn", color1 = c.GREEN)
@@ -190,7 +193,6 @@ def check_model():
 
     except Exception as e:
         p("✗ Model check failed", str(e), color1 = c.RED)
-        import traceback
 
         traceback.print_exc()
         return False
@@ -201,7 +203,7 @@ def check_disk_space():
     t("Checking Disk Space")
 
     try:
-        import shutil
+
 
         config = Config.load()
         total, used, free = shutil.disk_usage(config.paths.root)
@@ -230,7 +232,6 @@ def estimate_runtime():
     t("Runtime Estimate")
 
     config = Config.load()
-    from src.data.annotations import load_json_annotations
 
     entries = load_json_annotations(config.paths.annotations)
     train_size = int(0.8 * len(entries))
@@ -280,8 +281,6 @@ for name, func in checks:
     except Exception as e:
         results[name] = False
         p(f"✗ {name} check crashed", str(e), color1 = c.RED)
-        import traceback
-
 
         traceback.print_exc()
 
@@ -311,9 +310,9 @@ if passed == total:
     p("")
     t("ALL CHECKS PASSED! ✓")
     p(
-        "You're ready to run:", "python 09_master_execution_robust.py",
-        color1 = c.GREEN, color2 = c.CYAN, bold = True
-        )
+            "You're ready to run:", "python 09_master_execution_robust.py",
+            color1 = c.GREEN, color2 = c.CYAN, bold = True
+    )
 else:
     p("")
     t("SOME CHECKS FAILED!")

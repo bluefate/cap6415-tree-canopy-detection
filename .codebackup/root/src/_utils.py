@@ -35,7 +35,6 @@ class PathsConfig(BaseModel):
             return (root / value).resolve()
         return value.resolve()
 
-
 class TrainConfig(BaseModel):
     image_size: int = Field(default = 256)
     batch_size: int = Field(default = 8)
@@ -47,7 +46,6 @@ class TrainConfig(BaseModel):
     scheduler_patience: int = Field(default = 3)
     seed: int = Field(default = 42)
     best_val_loss: float = Field(default = 1e9)
-
 
 def in_notebook() -> bool:
     """Detect if running inside a Jupyter notebook."""
@@ -246,12 +244,12 @@ def init_notebook( seed: int = 42 ) -> None:
 
     random.seed(seed)
     np.random.seed(seed)
-    try:
-        import tensorflow as tf
-
-        tf.random.set_seed(seed)
-    except Exception:
-        pass
+    # try:
+    #     import tensorflow as tf
+    #
+    #     tf.random.set_seed(seed)
+    # except Exception:
+    #     pass
     p("", "Done")
 
 
@@ -430,11 +428,9 @@ class p:
         except Exception as e:
             p.print_exception(e, self.obj, self.value)
 
-
     def _title( self, obj ):
         self.print_with_color(f"=== {obj} ===", bold = True)
         return
-
 
     # -----------------------
     # Color helper
@@ -871,7 +867,6 @@ class Logger:
     #     self.write(text)
     #     p("[Info]", text, color1 = c.BLUE, color2 = c.BLACK)
 
-
     def info(self, text):
         """
         Write informational output. If 'text' is a PyTorch model,
@@ -1015,7 +1010,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
 
-
 class VersionManager:
     """
     Handle automatic version numbering for training runs.
@@ -1050,7 +1044,6 @@ class VersionManager:
         clean = self._normalize_for_json(cfg)
         cfg_json = json.dumps(clean, sort_keys = True)
         return hashlib.md5(cfg_json.encode("utf8")).hexdigest()
-
 
     def find_latest( self ) -> Optional[Path]:
         """
