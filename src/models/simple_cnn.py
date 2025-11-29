@@ -11,7 +11,7 @@ class SimpleCNN(nn.Module):
     def __init__(
         self,
         in_channels: int = 3,
-        out_channels: int = 1,
+        out_channels: int = 3,
         features: int = 32,
         use_batchnorm: bool = True,
         dropout: float = 0.0,

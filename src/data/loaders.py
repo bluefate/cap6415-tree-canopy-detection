@@ -86,9 +86,9 @@ class ImageMaskDataset(Dataset):
 
         # Convert mask to tensor [H, W] -> [1, H, W]
         if isinstance(mask, torch.Tensor):
-            mask_t = mask.long()
+            mask_t = mask.float()
         else:
-            mask_t = torch.from_numpy(mask).long()
+            mask_t = torch.from_numpy(mask).float()
 
         # Ensure mask has shape [1, H, W]
         if mask_t.ndim == 2:

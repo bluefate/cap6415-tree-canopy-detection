@@ -29,7 +29,7 @@ class UNet(nn.Module):
     Input is RGB. Output is one channel probability mask.
     """
 
-    def __init__(self, in_channels: int = 3, out_channels: int = 1):
+    def __init__(self, in_channels: int = 3, out_channels: int = 3):
         super(UNet, self).__init__()
 
         self.enc1 = DoubleConv(in_channels, 64)

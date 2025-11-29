@@ -42,7 +42,7 @@ except Exception:
     HF_AVAILABLE = False
 
 
-def create_simple_cnn(in_channels: int = 3, out_channels: int = 1):
+def create_simple_cnn(in_channels: int = 3, out_channels: int = 3):
     return SimpleCNN(in_channels=in_channels, out_channels=out_channels)
 
 
