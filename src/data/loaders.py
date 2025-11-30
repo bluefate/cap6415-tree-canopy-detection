@@ -116,6 +116,25 @@ class ImageOnlyDataset(Dataset):
             [f for f in self.image_dir.glob("*.*") if f.suffix.lower() in [".png"]],
         )
 
+        # supported_extensions = [".png", ".tif", ".tiff"]
+        # all_files = [
+        #     f
+        #     for f in self.image_dir.glob("*.*")
+        #     if f.suffix.lower() in supported_extensions
+        # ]
+        #
+        # # Deduplicate: prefer PNG over TIFF if both exist
+        # seen_stems = {}
+        # for f in all_files:
+        #     stem = f.stem
+        #     ext = f.suffix.lower()
+        #     if stem not in seen_stems:
+        #         seen_stems[stem] = f
+        #     elif ext == ".png":
+        #         seen_stems[stem] = f
+        #
+        # self.files = sorted(seen_stems.values())
+
     def __len__(self) -> int:
         return len(self.files)
 

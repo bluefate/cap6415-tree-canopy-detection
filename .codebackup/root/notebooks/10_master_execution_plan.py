@@ -1,8 +1,10 @@
 # %% [markdown]
-# Notebook: 10 Master Execution Plan
-### Purpose: Complete pipeline from data preparation to final submission
+# # Notebook: 10 Master Execution Plan
+# ### Purpose: Complete pipeline from data preparation to final submission
 
 # %%
+
+import copy
 import json
 import os
 import random
@@ -42,11 +44,13 @@ config.show()
 
 
 # %% [markdown]
-#### Step 1: Data Preparation
+# #### Step 1: Data Preparation
+#
 # - TIFF → PNG conversion (notebook 00_preprocess_images)
-- Annotation loading
-- Mask generation
-- Data augmentation
+# - Annotation loading
+# - Mask generation
+# - Data augmentation
+#
 #
 
 # %%
@@ -54,7 +58,7 @@ t("Loading Annotations")
 entries = load_json_annotations(config.paths.annotations)
 p("Total images", len(entries))
 
-Analyze class distribution
+# Analyze class distribution
 individual_count = sum(1 for e in entries if any(item.cls == "individual_tree" for item in e.items))
 group_count = sum(1 for e in entries if any(item.cls == "group_of_trees" for item in e.items))
 
@@ -64,16 +68,19 @@ p("Images with tree groups", group_count)
 
 
 # %% [markdown]
-#### Step 2: Filter Experimentation
+# #### Step 2: Filter Experimentation
+#
 # **Action:** Run and retrieve notebook 08 to identify top 3 filters
+#
 # **Expected Output:**
-- Filter ranking CSV
-- Top 3 filter names
-- Visual comparisons
+# - Filter ranking CSV
+# - Top 3 filter names
+# - Visual comparisons
+#
 #
 
 # %% [markdown]
-##### Validate Available Filters
+# ##### Validate Available Filters
 
 # %%
 def get_available_filters():
@@ -114,32 +121,34 @@ def validate_filter_set( filter_names, available_filters ):
     return len(invalid) == 0, invalid, suggestions
 
 
-Get available filters
+# Get available filters
 t("Validating Available Filters")
 AVAILABLE_FILTERS = get_available_filters()
 p("Available filters count", len(AVAILABLE_FILTERS))
 p("Sample filters", AVAILABLE_FILTERS, show = 15)
 
 # %% [markdown]
-#### Step 3: Enhanced Dataset Creation
+# #### Step 3: Enhanced Dataset Creation
+#
 # - Create training dataset with filter-enhanced inputs
-- Apply filters as additional channels.
+# - Apply filters as additional channels.
+#
 #
 
 # %%
 t("Testing Enhanced Dataset")
 
-val_tf = get_val_augmentations(config.train.image_size)
+val_transform = get_val_augmentations(config.train.image_size)
 sample_entries = entries[:5]
 
-Testing each mode
+# Testing each mode
 for mode in ['rgb', 'filtered', 'concat']:
     try:
         dataset = EnhancedImageMaskDataset(
                 sample_entries,
                 config.paths.train_images,
                 mode = mode,
-                transform = val_tf
+                transform = val_transform
         )
 
         img_t, mask_t = dataset[0]
@@ -149,16 +158,19 @@ for mode in ['rgb', 'filtered', 'concat']:
 
 
 # %% [markdown]
-#### Step 4: Model Training Comparison
+# #### Step 4: Model Training Comparison
+#
 # **Experiment Design:**
-Comparing model performance across input types:
-1. Baseline: RGB only
-2. Filtered: Top 3 filters as channels
-3. Concat: RGB + Filters (6 channels)
+# Comparing model performance across input types:
+# 1. Baseline: RGB only
+# 2. Filtered: Top 3 filters as channels
+# 3. Concat: RGB + Filters (6 channels)
+#
 # **Models to test:**
-- SimpleCNN (fast baseline)
-- UNet (standard architecture)
-- SMP UNet + ResNet34 (transfer learning)
+# - SimpleCNN (fast baseline)
+# - UNet (standard architecture)
+# - SMP UNet + ResNet34 (transfer learning)
+#
 #
 
 # %%
@@ -230,9 +242,6 @@ def train_experiment( model_name, input_mode, filter_names = None, num_epochs = 
             pin_memory = True if torch.cuda.is_available() else False
     )
 
-    # Configure training
-    import copy
-
     exp_config = copy.deepcopy(config)
     exp_config.train.epochs = num_epochs
 
@@ -266,15 +275,15 @@ def train_experiment( model_name, input_mode, filter_names = None, num_epochs = 
     return trainer
 
 
-p("", "Experiments configured")
+t("Experiments configured")
 
 
 
 # %% [markdown]
-##### Experiment setup
+# ##### Experiment setup
 
 # %%
-Define filter combinations to test
+# Define filter combinations to test
 filter_sets = {
     'classic':        ['laplacian', 'sobel', 'clahe'],
     'gaussian':       ['gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7'],
@@ -283,7 +292,7 @@ filter_sets = {
     'combined':       ['laplacian', 'gaussian_5x5', 'clahe'],
 }
 
-Validate all filter sets before proceeding
+# Validate all filter sets before proceeding
 t("Validating Filter Sets")
 all_valid = True
 
@@ -308,39 +317,39 @@ p("filter_sets", filter_sets)
 
 # %%
 
-TODO  - EXPLORE other methods (subtract filters maybe)
-Define experiments
+# TODO  - EXPLORE other methods (subtract filters maybe)
+# Define experiments
 experiments = []
 
-Baseline: RGB only
+# Baseline: RGB only
 for model in ['simple_cnn', 'unet']:
     experiments.append((model, 'rgb', None))
 
-Filtered mode: 3 channels from filters
+# Filtered mode: 3 channels from filters
 for model in ['simple_cnn', 'unet']:
     for set_name, filters in filter_sets.items():
         experiments.append((model, 'filtered', filters))
 
-Concat mode: 6 channels (RGB + 3 filters)
-Note: This requires model architecture modification for 6-channel input
-for model in ['simple_cnn', 'unet']:
-    experiments.append((model, 'concat', filter_sets['combined']))
+# Concat mode: 6 channels (RGB + 3 filters)
+# Note: This requires model architecture modification for 6-channel input
+# for model in ['simple_cnn', 'unet']:
+#     experiments.append((model, 'concat', filter_sets['combined']))
 
 p("experiments", experiments, show = 15)
 
 # %%
 
-TODO  - TESTING - remove
-Minimal experiment set for initial testing
-t("Testing")
-filter_sets = dict(list(filter_sets.items())[:1])
-p("filter_sets", filter_sets)
-
-experiments = [
-    ('unet', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance']),
-    ('simple_cnn', 'rgb', None),
-]
-p("experiments", experiments, show = 15)
+# # TODO  - TESTING - remove
+# # Minimal experiment set for initial testing
+# t("Testing")
+# filter_sets = dict(list(filter_sets.items())[:1])
+# p("filter_sets", filter_sets)
+#
+# experiments = [
+#     ('unet', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance']),
+#     ('simple_cnn', 'rgb', None),
+# ]
+# p("experiments", experiments, show = 15)
 
 
 # %%
@@ -440,7 +449,7 @@ summarize_experiments(experiments, filter_sets)
 
 # %%
 
-Initialize best model tracker
+# Initialize best model tracker
 best_model_tracker = {
     "best_val_loss":    float('inf'),
     "best_iou":         0.0,
@@ -449,14 +458,14 @@ best_model_tracker = {
     "best_version_dir": None,
 }
 
-Running experiments
+# Running experiments
 results = { }
 
 num_epochs = config.train.epochs
 p("Using epochs from config", num_epochs)
 
 for i, (model_name, mode, filters) in enumerate(experiments, 1):
-    p()
+    p("\n\n")
     t(f"Experiment {i}/{len(experiments)}")
     p("Model", model_name)
     p("Mode", mode)
@@ -509,7 +518,7 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
         results[key] = { "status": "ERROR", "error": str(e) }
         continue
 
-Summary
+# Summary
 t("Experiment Results Summary")
 successful = sum(1 for v in results.values() if not isinstance(v, dict) or v.get("status") != "ERROR")
 failed = sum(1 for v in results.values() if isinstance(v, dict) and "status" in v)
@@ -522,10 +531,8 @@ p("Failed", failed, color1 = c.RED if failed > 0 else c.GREEN)
 
 
 
-# %%
-
 # %% [markdown]
-##### Model Comparison & Best Model Selection
+# ##### Model Comparison & Best Model Selection
 
 # %%
 t("Collecting Experiment Results")
@@ -582,7 +589,7 @@ for model_name in ['simple_cnn', 'unet']:
                 p("Warning", f"Could not load {checkpoint_path}: {e}", color1 = c.ORANGE)
                 continue
 
-Convert to DataFrame for easy analysis
+# Convert to DataFrame for easy analysis
 df_results = pd.DataFrame(experiment_results)
 
 if len(df_results) == 0:
@@ -794,16 +801,19 @@ if len(df_results) > 0:
 # %%
 
 # %% [markdown]
-#### Step 5: Class-Specific Training
+# #### Step 5: Class-Specific Training
+#
 # **Strategy:**
-Trainning separate models for:
-1. Individual trees
-2. Groups of trees
-3. Combined predictions
+# Trainning separate models for:
+# 1. Individual trees
+# 2. Groups of trees
+# 3. Combined predictions
+#
 # **Rationale:**
-- Individual trees have distinct boundaries
-- Tree groups have larger, more diffuse edges
-- Specialized models may perform better
+# - Individual trees have distinct boundaries
+# - Tree groups have larger, more diffuse edges
+# - Specialized models may perform better
+#
 #
 
 # %%
@@ -878,29 +888,33 @@ p("", "Class-specific training configured")
 
 
 # %%
-## Train individual tree model
-try:
-    trainer_individual = train_class_specific_model('individual_tree', 'simple_cnn')
-except Exception as e:
-    p("Failed to train individual_tree model", str(e), color1=c.RED)
-    trainer_individual = None
+# ## Train individual tree model
 # try:
-    trainer_group = train_class_specific_model('group_of_trees', 'simple_cnn')
-except Exception as e:
-    p("Failed to train group_of_trees model", str(e), color1=c.RED)
-    trainer_group = None
+#     trainer_individual = train_class_specific_model('individual_tree', 'simple_cnn')
+# except Exception as e:
+#     p("Failed to train individual_tree model", str(e), color1=c.RED)
+#     trainer_individual = None
+#
+# try:
+#     trainer_group = train_class_specific_model('group_of_trees', 'simple_cnn')
+# except Exception as e:
+#     p("Failed to train group_of_trees model", str(e), color1=c.RED)
+#     trainer_group = None
 
 # %% [markdown]
-#### Step 6: Ensemble Predictions
+# #### Step 6: Ensemble Predictions
+#
 # **Approach:**
-Combine predictions from multiple models:
-1. RGB-trained model
-2. Filter-enhanced model
-3. Class-specific models
+# Combine predictions from multiple models:
+# 1. RGB-trained model
+# 2. Filter-enhanced model
+# 3. Class-specific models
+#
 # **Fusion methods:**
-- Average (simple)
-- Weighted average (based on validation IoU)
-- Majority voting (threshold-based)
+# - Average (simple)
+# - Weighted average (based on validation IoU)
+# - Majority voting (threshold-based)
+#
 #
 
 # %%
@@ -933,10 +947,15 @@ p("", "Ensemble prediction function ready")
 # %%
 
 # %% [markdown]
-#### Step 7: Submission Generation
+# #### Step 7: Submission Generation
+#
 # **Current Status:**
-- Prediction pipeline exists (notebook 05)
-- Submission export implemented (`export_submission`)
+# - Prediction pipeline exists (notebook 05)
+# - Submission export implemented (`export_submission`)
+#
+
+# %%
+p("eval_images", config.paths.eval_images)
 
 # %%
 from src.prediction.pipeline import Predictor
@@ -958,6 +977,8 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
 
     # Run predictions
     val_tf = get_val_augmentations(config.train.image_size)
+
+    p(val_tf, color1 = c.RED)
     results = predictor.run_on_folder(eval_dir, transform = val_tf)
 
     p("Predictions generated", len(results))
@@ -965,9 +986,6 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
     # Export submission
     export_submission(results, output_path)
     p("Submission saved", output_path)
-
-    # Validate JSON structure
-    import json
 
     with open(output_path, 'r') as f:
         data = json.load(f)
@@ -991,7 +1009,7 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
 
 t("Generating Final Submission with Best Model")
 
-Load best model info
+# Load best model info
 best_model_info_path = config.paths.models / "BEST_MODEL.txt"
 
 if best_model_info_path.exists():
@@ -1029,66 +1047,114 @@ else:
 # %%
 
 # %% [markdown]
-#### Generate submissions for all trained experiments
+# #### Generate submissions for all trained experiments
 
 # %%
 best_submissions = []
 
-Generate submissions for all trained experiments
-for model_name in ['simple_cnn', 'unet']:
-    for input_mode in ['rgb', 'filtered']:
+# Get all possible model names from MODEL_BUILDERS
+all_model_names = ['simple_cnn', 'unet', 'smp_unet', 'smp_fpn', 'smp_linknet',
+                   'smp_deeplabv3', 'smp_deeplabv3plus', 'segformer']
 
-        version_root = config.paths.models / model_name / input_mode
+# All possible input modes
+all_input_modes = ['rgb', 'filtered', 'concat']
 
-        if not version_root.exists():
-            p("Skipping", f"{model_name}/{input_mode} (not trained yet)")
+for model_name in all_model_names:
+    for input_mode in all_input_modes:
+
+        base_path = config.paths.models / model_name / input_mode
+
+        if not base_path.exists():
             continue
 
-        vm = VersionManager(version_root)
+        # Check for direct versions (no filter subdirectory)
+        # e.g., models/simple_cnn/rgb/v001/
+        vm = VersionManager(base_path)
         latest_version = vm.find_latest()
 
-        if latest_version is None:
-            p("No versions found for", f"{model_name}/{input_mode}")
-            continue
+        if latest_version is not None:
+            model_path = latest_version / "best_model.pth"
+            if model_path.exists():
+                output_file = latest_version / "submission.json"
 
-        model_path = latest_version / "best_model.pth"
+                t(f"eval_images path: {config.paths.eval_images}")
 
-        if not model_path.exists():
-            p("Model not found", model_path)
-            continue
+                p("\nGenerating submission", f"{model_name}/{input_mode}", color1 = c.MAGENTA)
 
-        p("\nGenerating submission", f"{model_name}/{input_mode}", color1 = c.MAGENTA, color2 = c.MAGENTA)
+                try:
+                    generate_submission(
+                            model_path = model_path,
+                            model_name = model_name,
+                            eval_dir = config.paths.eval_images,
+                            output_path = output_file
+                    )
 
-        output_file = latest_version / "submission.json"
+                    best_submissions.append(
+                            {
+                                "model":      model_name,
+                                "mode":       input_mode,
+                                "filters":    None,
+                                "version":    str(latest_version),
+                                "submission": str(output_file)
+                            }
+                    )
+                    p("Saved submission", output_file)
 
-        try:
-            submission_path = generate_submission(
-                    model_path = model_path,
-                    model_name = model_name,
-                    eval_dir = config.paths.eval_images,
-                    output_path = output_file
-            )
+                except Exception as e:
+                    p("Failed", str(e), color1 = c.RED)
 
-            # Track best submission file per experiment
-            best_submissions.append(
-                    {
-                        "model":      model_name,
-                        "mode":       input_mode,
-                        "version":    str(latest_version),
-                        "submission": str(output_file)
-                    }
-            )
+        # Check for filter subdirectories (for 'filtered' mode)
+        # e.g., models/simple_cnn/filtered/laplacian_sobel_clahe/v001/
+        if input_mode == 'filtered':
+            for filter_subdir in base_path.iterdir():
+                if not filter_subdir.is_dir():
+                    continue
+                if filter_subdir.name.startswith('v'):  # Skip version dirs
+                    continue
 
-            p("Saved submission", submission_path)
+                vm_filter = VersionManager(filter_subdir)
+                latest_filter_version = vm_filter.find_latest()
 
-        except Exception as e:
-            p("Failed to generate submission", str(e), color1 = c.RED)
-            continue
+                if latest_filter_version is None:
+                    continue
 
-        p("")
+                model_path = latest_filter_version / "best_model.pth"
+                if not model_path.exists():
+                    continue
+
+                output_file = latest_filter_version / "submission.json"
+                filter_name = filter_subdir.name
+
+                p("\nGenerating submission", f"{model_name}/{input_mode}/{filter_name}", color1 = c.MAGENTA)
+
+                try:
+                    generate_submission(
+                            model_path = model_path,
+                            model_name = model_name,
+                            eval_dir = config.paths.eval_images,
+                            output_path = output_file
+                    )
+
+                    best_submissions.append(
+                            {
+                                "model":      model_name,
+                                "mode":       input_mode,
+                                "filters":    filter_name,
+                                "version":    str(latest_filter_version),
+                                "submission": str(output_file)
+                            }
+                    )
+                    p("Saved submission", output_file)
+
+                except Exception as e:
+                    p("Failed", str(e), color1 = c.RED)
+
+p("")
+t("Submission Generation Complete")
+p("Total submissions generated", len(best_submissions))
 
 # %%
-===== Find best overall experiment =====
+# Build global list of all best experiment submissions
 best_overall = None
 
 for item in best_submissions:
@@ -1115,7 +1181,7 @@ for item in best_submissions:
         p("Warning", f"Could not load checkpoint {ckpt_path}: {e}", color1 = c.ORANGE)
         continue
 
-Append overall best
+#Append overall best
 if best_overall:
     best_submissions.append(
             {
@@ -1128,7 +1194,7 @@ if best_overall:
             }
     )
 
-===== Summary =====
+# ===== Summary =====
 t("Best Submissions Summary")
 
 for item in best_submissions:
@@ -1144,13 +1210,15 @@ for item in best_submissions:
     p("")
 
 
+
 # %%
 
 
 
 image_dir = config.paths.train_images
+t(image_dir)
 
-sample three entries
+# sample three entries
 sample_entries = random.sample(entries, 5)
 
 for e in sample_entries:
@@ -1163,15 +1231,130 @@ for e in sample_entries:
         overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
 
         show_side_by_side(
-                img,
-                mask,
-                mask_rgb,
-                overlay,
+                img, mask, mask_rgb, overlay,
                 titles = ("Original", "Mask", "Color Mask", "Overlay"),
-                maxcolumns = 6
+                maxcolumns = 4
         )
     except Exception as e_viz:
         p("Failed to visualize", str(e_viz), color1 = c.ORANGE)
 
 
 # %%
+t("Visualizing sample predictions")
+
+image_dir = config.paths.eval_images
+t(image_dir)
+
+try:
+    # Use the best model that was selected earlier
+    predictor = Predictor(
+            model_path = model_weights,
+            model_name = best_model_name,
+            image_size = config.train.image_size,
+    )
+
+    val_tf = get_val_augmentations(config.train.image_size)
+
+    # Run prediction on a small subset of eval images
+    results = predictor.run_on_folder(
+            image_dir,
+            transform = val_tf,
+            num_samples = 5,
+    )
+
+    for r in results:
+        name = r["name"]
+        img = r["image"]
+        pred_mask = r["mask"]
+        overlay = r["overlay"]
+
+        p("Eval image", name)
+
+        show_side_by_side(
+                img, pred_mask, overlay,
+                titles = ("Original", "Pred mask", "Overlay"),
+                maxcolumns = 3,
+        )
+
+
+except Exception as e_viz:
+    p("Failed to visualize predictions", str(e_viz), color1 = c.ORANGE)
+
+# %%
+import numpy as np
+
+
+t("Visualizing predictions from submission")
+
+submission_path = config.paths.models / "FINAL_SUBMISSION.json"
+p("Submission file", submission_path)
+
+try:
+    with open(submission_path, "r", encoding = "utf8") as f:
+        data = json.load(f)
+
+    images = data.get("images", [])
+    if not images:
+        p("No images found in submission", color1 = c.ORANGE)
+    else:
+        num_samples = min(5, len(images))
+        sample_entries = random.sample(images, num_samples)
+
+        for entry in sample_entries:
+            fname = entry["file_name"]
+            img_path = config.paths.eval_images / fname
+
+            # Optional: fallback to .png if only converted files exist
+            if not img_path.exists():
+                alt_png = img_path.with_suffix(".png")
+                if alt_png.exists():
+                    img_path = alt_png
+
+            p("Eval image from submission", fname)
+
+            img_bgr = cv2.imread(str(img_path), cv2.IMREAD_COLOR)
+            if img_bgr is None:
+                p("Could not read image", str(img_path), color1 = c.ORANGE)
+                continue
+
+            img = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+
+            h = entry.get("height", img.shape[0])
+            w = entry.get("width", img.shape[1])
+            mask = np.zeros((h, w), dtype = np.uint8)
+
+            # Rebuild multi class mask from polygons
+            for ann in entry.get("annotations", []):
+                seg = ann.get("segmentation", [])
+                if not seg:
+                    continue
+
+                pts = np.array(seg, dtype = np.float32).reshape(-1, 2)
+                pts = np.round(pts).astype(np.int32)
+                cls = ann.get("class", "individual_tree")
+
+                if cls == "individual_tree":
+                    class_id = 1
+                elif cls == "group_of_trees":
+                    class_id = 2
+                else:
+                    class_id = 1
+
+                cv2.fillPoly(mask, [pts], color = class_id)
+
+            # Simple color mask for display
+            mask_rgb = np.zeros_like(img)
+            mask_rgb[mask == 1] = (0, 255, 0)  # individual trees
+            mask_rgb[mask == 2] = (255, 255, 0)  # groups
+
+            overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
+
+            show_side_by_side(
+                    img, mask, mask_rgb, overlay,
+                    titles = ("Original", "Pred mask (ids)", "Color mask", "Overlay"),
+                    maxcolumns = 4,
+            )
+
+except Exception as e_viz:
+    p("Failed to visualize submission predictions", str(e_viz), color1 = c.ORANGE)
+

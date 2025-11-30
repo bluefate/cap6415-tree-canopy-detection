@@ -30,6 +30,10 @@ init_notebook(config.train.seed)
 t("Validating train images")
 train_results = validate_image_directory(config.paths.train_images)
 
+if config.paths.eval_images and config.paths.eval_images.exists():
+    t("Validating eval images")
+    eval_results = validate_image_directory(config.paths.eval_images)
+
 
 # %%
 if config.paths.eval_images and config.paths.eval_images.exists():
@@ -57,6 +61,17 @@ converter = ImageConverter(
 
 stats = converter.convert_batch(overwrite = False)
 
+
+# %%
+if config.paths.eval_images and config.paths.eval_images.exists():
+    t("Converting eval images")
+
+    eval_converter = ImageConverter(
+            source_dir = config.paths.eval_images,
+            target_dir = config.paths.eval_images
+    )
+
+    eval_stats = eval_converter.convert_batch(overwrite = False)
 
 # %% [markdown]
 # #### Step 3: Update Annotations
@@ -99,6 +114,14 @@ if stats["failed"] > 0:
     t("Failed Conversions")
     for err in stats["errors"]:
         p(err["file"], err["error"])
+
+
+# %%
+if config.paths.eval_images and config.paths.eval_images.exists():
+    t("Validating converted eval images")
+    final_eval_results = validate_image_directory(config.paths.eval_images)
+    p("Eval final valid", final_eval_results["valid"])
+    p("Eval final invalid", final_eval_results["invalid"])
 
 
 # %% [markdown]

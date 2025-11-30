@@ -283,6 +283,11 @@ class Trainer:
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.cfg = config
+        self.history = {
+            "train_loss": [],
+            "val_loss": [],
+            "lr": [],
+        }
 
         # versioning paths
         self.version_mgr = VersionManager(version_root)
@@ -434,6 +439,7 @@ class Trainer:
         no_improve = 0
 
         for epoch in range(self.start_epoch, epochs):
+            print()
             self.logger.warn(f"Epoch {epoch + 1}")
 
             train_loss = self.train_epoch()
@@ -446,6 +452,13 @@ class Trainer:
                 f"grp={val['iou_group_of_trees']:.4f}), "
                 f"Acc {val['acc']:.4f}"
             )
+
+            # #TODO IMPLEMENT
+            # self.history = {
+            #     "train_loss": [],
+            #     "val_loss": [],
+            #     "lr": [],
+            # }
 
             is_best = val["loss"] < self.best_val_loss
             if is_best:

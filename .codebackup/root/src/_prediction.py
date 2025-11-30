@@ -99,13 +99,14 @@ class Predictor:
                 # Get class with highest probability
                 pred_classes = torch.argmax(pred, dim=1).squeeze().numpy()  # [H, W]
 
-                # Convert to binary mask (any tree class = 1, background = 0)
-                pred_bin = (pred_classes > 0).astype(np.uint8)
+                # For overlay visualization, create binary mask
+                pred_bin_for_overlay = (pred_classes > 0).astype(np.uint8)
             else:  # Binary
                 pred = torch.sigmoid(pred).squeeze().numpy()
-                pred_bin = (pred > 0.5).astype(np.uint8)
+                pred_classes = (pred > 0.5).astype(np.uint8)
+                pred_bin_for_overlay = pred_classes
 
-            pred_u8 = pred_bin * 255
+            pred_u8 = pred_bin_for_overlay * 255
             overlay = np.zeros_like(base)
             overlay = overlay.copy()
             overlay[:, :, 0] = pred_u8
@@ -117,7 +118,7 @@ class Predictor:
                 {
                     "name": name,
                     "image": base,
-                    "mask": pred_bin,
+                    "mask": pred_classes,
                     "overlay": overlay,
                 }
             )
@@ -180,7 +181,7 @@ from typing import Any, Dict, List
 import cv2
 import numpy as np
 
-from src.utils.helpers import p, t
+from src.utils.helpers import c, p, t
 
 
 def mask_to_polygons_multiclass(
@@ -188,6 +189,11 @@ def mask_to_polygons_multiclass(
 ) -> List[dict]:
     """
     Convert a multi-class mask to list of annotation dicts with correct class names.
+
+    Expected mask values:
+        0 = background
+        1 = individual_tree
+        2 = group_of_trees
     """
     if id_to_class is None:
         id_to_class = {1: "individual_tree", 2: "group_of_trees"}
@@ -267,9 +273,9 @@ def export_submission(
             "file_name": fname,
             "width": w,
             "height": h,
-            "scene_type": r.get("scene_type", "unknown"),
             "cm_resolution": extract_cm_resolution(fname),
-            "annotations": annotations,  # ← Already has correct class names!
+            "scene_type": r.get("scene_type", "unknown"),
+            "annotations": annotations,
         }
 
         images.append(entry)
@@ -301,8 +307,8 @@ def export_submission(
         for ann in img["annotations"]
         if ann["class"] == "group_of_trees"
     )
-    p("✔ individual_tree annotations", individual_count)
-    p("✔ group_of_trees annotations", group_count)
+    p("✓ individual_tree annotations", individual_count)
+    p("✓ group_of_trees annotations", group_count)
 
     # Show sample
     if images:
