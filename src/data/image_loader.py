@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from utils.helpers import p
+from utils.helpers import c, p
 
 
 def load_image(image_path: Union[str, Path]) -> np.ndarray:
@@ -74,7 +74,7 @@ def validate_image_directory(image_dir: Path) -> dict:
         "problematic_files": [],
     }
 
-    p("Validating images", f"{len(image_files)} files")
+    p("Validating images", f"{len(image_files)} files", color1=c.BLACK)
 
     for img_path in image_files:
         try:
@@ -86,8 +86,8 @@ def validate_image_directory(image_dir: Path) -> dict:
             results["invalid"] += 1
             results["problematic_files"].append(str(img_path))
 
-    p("Valid images", results["valid"])
-    p("Invalid images", results["invalid"])
+    p("Valid images", results["valid"], color1=c.BLACK)
+    p("Invalid images", results["invalid"], color1=c.BLACK)
 
     if results["problematic_files"]:
         p("Problematic files", "")
