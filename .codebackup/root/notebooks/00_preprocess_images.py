@@ -35,11 +35,6 @@ if config.paths.eval_images and config.paths.eval_images.exists():
     eval_results = validate_image_directory(config.paths.eval_images)
 
 
-# %%
-if config.paths.eval_images and config.paths.eval_images.exists():
-    t("Validating eval images")
-    eval_results = validate_image_directory(config.paths.eval_images)
-
 
 # %% [markdown]
 # #### Step 2: Convert TIFF to PNG

@@ -174,6 +174,21 @@ import torch
 #         return arr.permute(1,2,0)
 #     raise ValueError("Unsupported type")
 
+def format_time(seconds: float) -> str:
+    # Break down into hours, minutes, seconds
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+
+    parts = []
+    if hours > 0:
+        parts.append(f"{hours} hr")
+    if minutes > 0:
+        parts.append(f"{minutes} min")
+    if secs > 0 and hours == 0:  # only show seconds if < 1 hr
+        parts.append(f"{secs} sec")
+
+    return " ".join(parts)
 
 
 def make_json_safe( obj: Any ) -> Any:
@@ -593,6 +608,7 @@ t = p()._title
 #                 print()
 #                 return
 #
+
 
 
 # From C:\github\Tree-Canopy-Detection\src\utils\image_converter.py

@@ -181,7 +181,7 @@ from typing import Any, Dict, List
 import cv2
 import numpy as np
 
-from src.utils.helpers import c, p, t
+from src.utils.helpers import p, t
 
 
 def mask_to_polygons_multiclass(
@@ -239,94 +239,81 @@ def export_submission(
 ) -> None:
     """
     Convert prediction results into expected submission JSON structure.
-    Now handles multi-class predictions properly.
+    Uses sample_answer.json as template to preserve cm_resolution and scene_type.
+
+    IMPORTANT: Per admin guidance, only annotations should be modified.
+    cm_resolution and scene_type come from the template.
     """
-    images = []
+    # Load template - use raw string (r"...") for Windows paths
+    template_path = Path(
+        r"C:\github\Tree-Canopy-Detection\src\data\data1\sample_answer.json"
+    )
 
+    if not template_path.exists():
+        raise FileNotFoundError(f"Template not found: {template_path}")
+
+    # Load template
+    with open(template_path, "r", encoding="utf8") as f:
+        submission = json.load(f)
+
+    # Build lookup from results by filename
+    results_lookup = {}
     for r in results:
-        image = r.get("image", None)
-        mask = r.get("mask", None)
         fname = r.get("name", "")
+        # Normalize to .tif extension
+        fname_key = Path(fname).stem + ".tif"
+        results_lookup[fname_key] = r
 
-        # Enforce .tif extension
-        fname = Path(fname).stem + ".tif"
+    # Update only the annotations in template
+    for img_entry in submission.get("images", []):
+        fname = img_entry.get("file_name", "")
 
-        # Dimensions
-        if image is not None:
-            h, w = image.shape[:2]
-        elif mask is not None:
-            h, w = mask.shape[:2] if mask.ndim >= 2 else (0, 0)
-        else:
-            raise ValueError(f"Missing image/mask for result entry: {r}")
+        if fname in results_lookup:
+            r = results_lookup[fname]
+            mask = r.get("mask", None)
 
-        try:
             if mask is not None:
                 annotations = mask_to_polygons_multiclass(mask)
             else:
                 annotations = []
-        except Exception as e:
-            p("Warning", f"Polygon conversion failed for {fname}: {e}", color1=c.ORANGE)
-            annotations = []
 
-        # Build entry directly (no longer using build_submission_entry for polygons)
-        entry = {
-            "file_name": fname,
-            "width": w,
-            "height": h,
-            "cm_resolution": extract_cm_resolution(fname),
-            "scene_type": r.get("scene_type", "unknown"),
-            "annotations": annotations,
-        }
-
-        images.append(entry)
+            # Replace ONLY annotations, keep cm_resolution and scene_type from template
+            img_entry["annotations"] = annotations
+        else:
+            # Image not in predictions - clear annotations
+            img_entry["annotations"] = []
 
     # Save JSON
     output_path = Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    submission = {"images": images}
     with output_path.open("w", encoding="utf8") as f:
-        json.dump(submission, f, indent=2)
+        json.dump(submission, f, indent=4)
 
     # Logging
     t("Submission Export Complete")
     p("✓ Submission saved", output_path)
-    p("✓ Total images", len(images))
-    p("✓ Total annotations", sum(len(img["annotations"]) for img in images))
+    p("✓ Total images", len(submission.get("images", [])))
+    p(
+        "✓ Total annotations",
+        sum(len(img["annotations"]) for img in submission.get("images", [])),
+    )
 
     # Count by class
     individual_count = sum(
         1
-        for img in images
-        for ann in img["annotations"]
-        if ann["class"] == "individual_tree"
+        for img in submission.get("images", [])
+        for ann in img.get("annotations", [])
+        if ann.get("class") == "individual_tree"
     )
     group_count = sum(
         1
-        for img in images
-        for ann in img["annotations"]
-        if ann["class"] == "group_of_trees"
+        for img in submission.get("images", [])
+        for ann in img.get("annotations", [])
+        if ann.get("class") == "group_of_trees"
     )
     p("✓ individual_tree annotations", individual_count)
     p("✓ group_of_trees annotations", group_count)
-
-    # Show sample
-    if images:
-        t("Sample")
-        sample = images[0]
-
-        p("file_name", sample["file_name"])
-        p("width", sample["width"])
-        p("height", sample["height"])
-        p("scene_type", sample["scene_type"])
-        p("cm_resolution", sample["cm_resolution"])
-        p("annotations", f"{len(sample['annotations'])} polygons")
-
-        if sample["annotations"]:
-            ann = sample["annotations"][0]
-            p("  class", ann["class"])
-            p("  confidence", ann["confidence_score"])
-            p("  segmentation points", len(ann["segmentation"]))
 
 
 def extract_cm_resolution(fname: str) -> int:

@@ -109,7 +109,12 @@ import albumentations as A
 from albumentations.pytorch import ToTensorV2
 
 
-def get_train_augmentations(image_size: int):
+# Histogram Equalization (HE): A traditional method that redistributes pixel intensities based on the global histogram of the image. It often makes the whole image brighter or darker uniformly.
+# Adaptive Histogram Equalization (AHE): Instead of one global histogram, the image is divided into smaller regions (tiles), and each region gets its own histogram equalization. This enhances local contrast.
+# CLAHE (Contrast Limited AHE): Improves on AHE by limiting contrast amplification. This prevents noise in uniform areas (like sky or skin) from being exaggerated
+
+
+def get_train_augmentations(image_size: int = 64):
     """
     Build augmentation pipeline for training.
     Includes flips, brightness changes, distortions, and resizing.
@@ -132,7 +137,7 @@ def get_train_augmentations(image_size: int):
                 p=0.5,
             ),
             A.RandomBrightnessContrast(p=0.5),
-            A.CLAHE(p=0.5),
+            # A.CLAHE(p=0.5), #alrady used as a filter
             A.ElasticTransform(alpha=0.1, p=0.1),
             A.GridDistortion(p=0.1),
             A.OpticalDistortion(p=0.1),
@@ -362,7 +367,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from utils.helpers import p
+from utils.helpers import c, p
 
 
 def load_image(image_path: Union[str, Path]) -> np.ndarray:
@@ -427,7 +432,7 @@ def validate_image_directory(image_dir: Path) -> dict:
         "problematic_files": [],
     }
 
-    p("Validating images", f"{len(image_files)} files")
+    p("Validating images", f"{len(image_files)} files", color1=c.BLACK)
 
     for img_path in image_files:
         try:
@@ -439,8 +444,8 @@ def validate_image_directory(image_dir: Path) -> dict:
             results["invalid"] += 1
             results["problematic_files"].append(str(img_path))
 
-    p("Valid images", results["valid"])
-    p("Invalid images", results["invalid"])
+    p("Valid images", results["valid"], color1=c.BLACK)
+    p("Invalid images", results["invalid"], color1=c.BLACK)
 
     if results["problematic_files"]:
         p("Problematic files", "")
@@ -727,6 +732,22 @@ class ImageMaskDataset(Dataset):
         else:
             img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
+            # Specific handling for 6-channel concat mode
+        if self.mode == "concat":
+            # Ensure the shape is [C, H, W]
+            if img_t.shape[0] == 6:
+                # Rearrange to [C, H, W]
+                img_t = img_t.permute(1, 0, 2)
+
+            # If models need 3 channels, you might need to select specific channels
+            if img_t.shape[0] > 3:
+                # Option 1: Take first 3 channels
+                img_t = img_t[:3]
+
+                self.logger.warn(
+                    "Reduced 6-channel input to first 3 channels for compatibility"
+                )
+
         # Convert mask to tensor [H, W] -> [1, H, W]
         if isinstance(mask, torch.Tensor):
             mask_t = mask.long()
@@ -768,6 +789,25 @@ class ImageOnlyDataset(Dataset):
         self.files = sorted(
             [f for f in self.image_dir.glob("*.*") if f.suffix.lower() in [".png"]],
         )
+
+        # supported_extensions = [".png", ".tif", ".tiff"]
+        # all_files = [
+        #     f
+        #     for f in self.image_dir.glob("*.*")
+        #     if f.suffix.lower() in supported_extensions
+        # ]
+        #
+        # # Deduplicate: prefer PNG over TIFF if both exist
+        # seen_stems = {}
+        # for f in all_files:
+        #     stem = f.stem
+        #     ext = f.suffix.lower()
+        #     if stem not in seen_stems:
+        #         seen_stems[stem] = f
+        #     elif ext == ".png":
+        #         seen_stems[stem] = f
+        #
+        # self.files = sorted(seen_stems.values())
 
     def __len__(self) -> int:
         return len(self.files)

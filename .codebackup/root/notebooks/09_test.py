@@ -21,9 +21,9 @@ p_test()
 # %%
 
 import cv2
-import torch
 from src.data.image_loader import apply_all_filters, create_enhanced_image
-
+import torch
+from src.models.zoo import list_available_models
 from src.data.annotations import load_json_annotations
 from src.data.augmentations import get_train_augmentations
 from src.data.loaders import ImageMaskDataset
@@ -478,3 +478,29 @@ try:
     p("  Shape", img_t.shape)
 except Exception as e:
     p("✗ EnhancedDataset with CLAHE", str(e), color1 = c.RED)
+
+# %%
+
+
+# List all models
+list_available_models()
+
+# Build YOLOv8 small
+model = build_model('yolov8s', in_channels = 3, out_channels = 3)
+
+# Count parameters
+params = sum(p.numel() for p in model.parameters())
+print(f"Parameters: {params / 1e6:.2f}M")
+
+# Test forward pass
+x = torch.randn(2, 3, 256, 256)
+with torch.no_grad():
+    y = model(x)
+
+print(f"Input shape: {x.shape}")
+print(f"Output shape: {y.shape}")
+
+# Verify output
+assert y.shape == (2, 3, 256, 256), "Output shape mismatch!"
+print("✓ YOLOv8 model test passed!")
+
