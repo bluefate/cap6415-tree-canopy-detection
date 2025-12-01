@@ -220,26 +220,74 @@ p("All experiments", all_experiments, show = 100, color1 = c.ORANGE)
 # %%
 t("Setup experiments to run ")
 
-#experiments = [all_experiments[48], all_experiments[52]]
-experiments = all_experiments
+#experiments = [all_experiments[81]]  # 81: ('yolov8l', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
+experiments = [all_experiments[67]]  # 67: ('yolov8s', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
+#experiments = all_experiments
 
 p("Experiments to Run", experiments, show = 50, color1 = c.RED)
 
 
 # %%
 
+# t("Runtime Estimate")
 
 
+# def estimate_runtime( experiments, filter_sets ):
+#     """
+#     Estimate training runtime using:
+#       - experiments list
+#       - filter_sets dict
+#     Adjusts time for rgb vs filtered vs concat.
+#     """
+#
+#     train_size = int(0.8 * len(entries))
+#     batch_size = config.train.batch_size
+#     batches_per_epoch = max(1, train_size // batch_size)
+#     epochs = config.train.epochs
+#
+#     # Baseline timing assumption (seconds per batch)
+#     base_seconds = 1.0
+#
+#     total_seconds = 0.0
+#
+#     p("Experiments", len(experiments), color1 = c.BLACK, color2 = c.ORANGE)
+#     p("Filter sets", len(filter_sets), color1 = c.BLACK, color2 = c.ORANGE)
+#     p("Number of Epochs", epochs, color1 = c.BLACK, color2 = c.ORANGE)
+#
+#     # def count_params(model):
+#     #     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+#
+#     # Mode timing multipliers
+#     mode_multiplier = { "rgb": 1.0, "filtered": 1.5, "concat": 2.0 }
+#     p("Models:", color1 = c.BLACK)
+#     for model_name, mode, filters in experiments:
+#
+#         ## params = count_params(models[model_name])
+#         ## p(count_params(model_name))
+#         # base seconds per batch
+#         sec_per_batch = base_seconds * mode_multiplier.get(mode, 1.0)
+#
+#         exp_seconds = epochs * batches_per_epoch * sec_per_batch
+#         total_seconds += exp_seconds
+#
+#         p(f"\t{model_name} | {mode}", format_time(exp_seconds), color1 = c.BLUE)
+#
+#     p()
+#     t("Totals")
+#     p("Training samples", train_size)
+#     p("Batches per epoch", batches_per_epoch)
+#     p("Estimated total time", f"~{format_time(total_seconds)}", color1 = c.BLACK, color2 = c.RED)
+#
+#
+# estimate_runtime(experiments, filter_sets)
 
-t("Runtime Estimate")
 
-
+# %%
 def estimate_runtime( experiments, filter_sets ):
     """
-    Estimate training runtime using:
-      - experiments list
-      - filter_sets dict
-    Adjusts time for rgb vs filtered vs concat.
+    Estimate training runtime with GPU/CPU awareness and model complexity.
+
+    Uses actual parameter counts and device-specific multipliers for accuracy.
     """
 
     train_size = int(0.8 * len(entries))
@@ -247,42 +295,121 @@ def estimate_runtime( experiments, filter_sets ):
     batches_per_epoch = max(1, train_size // batch_size)
     epochs = config.train.epochs
 
-    # Baseline timing assumption (seconds per batch)
-    base_seconds = 1.0
+    # Device detection
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device_name = torch.cuda.get_device_name(0) if device.type == 'cuda' else 'CPU'
+
+    # Baseline timing (seconds per batch on reference GPU)
+    # Adjust based on your GPU: RTX 3090 = 0.5, GTX 1660 = 1.5, CPU = 5.0
+    if device.type == 'cuda':
+        gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
+        if gpu_memory < 4:  # Low-end GPU (like MX350)
+            base_seconds = 2.0
+        elif gpu_memory < 8:  # Mid-range GPU
+            base_seconds = 1.0
+        else:  # High-end GPU
+            base_seconds = 0.5
+    else:
+        base_seconds = 5.0  # CPU is much slower
 
     total_seconds = 0.0
 
-    p("Experiments", len(experiments), color1 = c.BLACK, color2 = c.ORANGE)
-    p("Filter sets", len(filter_sets), color1 = c.BLACK, color2 = c.ORANGE)
-    p("Number of Epochs", epochs, color1 = c.BLACK, color2 = c.ORANGE)
+    # Header
+    p("=" * 70, color1 = c.ORANGE)
+    p("Runtime Estimation", color1 = c.ORANGE, bold = True)
+    p("=" * 70, color1 = c.ORANGE)
+    p("")
+    p("Device", device_name, color1 = c.GREEN)
+    p("Training samples", train_size, color1 = c.BLACK)
+    p("Batches per epoch", batches_per_epoch, color1 = c.BLACK)
+    p("Epochs per experiment", epochs, color1 = c.BLACK)
+    p("Batch size", batch_size, color1 = c.BLACK)
+    p("")
 
-    # def count_params(model):
-    #     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+    # Mode timing multipliers (relative overhead)
+    mode_multiplier = {
+        "rgb":      1.0,  # Standard 3-channel input
+        "filtered": 1.3,  # Filter computation overhead
+        "concat":   1.8  # 6-channel input + filter overhead
+    }
 
-    # Mode timing multipliers
-    mode_multiplier = { "rgb": 1.0, "filtered": 1.5, "concat": 2.0 }
-    p("Models:", color1 = c.BLACK)
+    # Model complexity multipliers (relative to simple_cnn)
+    model_complexity = {
+        "simple_cnn":        1.0,
+        "unet":              2.5,
+        "smp_unet":          3.0,
+        "smp_fpn":           2.8,
+        "smp_linknet":       2.2,
+        "smp_deeplabv3":     4.0,
+        "smp_deeplabv3plus": 4.5,
+        "segformer":         3.5,
+        "yolov8n":           1.8,
+        "yolov8s":           2.5,
+        "yolov8m":           4.0,
+        "yolov8l":           6.0,
+    }
+
+    p("Per-Experiment Estimates:", color1 = c.CYAN, bold = True)
+    p("-" * 70, color1 = c.CYAN)
+
     for model_name, mode, filters in experiments:
+        # Calculate time for this experiment
+        mode_mult = mode_multiplier.get(mode, 1.0)
+        complexity_mult = model_complexity.get(model_name, 1.0)
 
-        ## params = count_params(models[model_name])
-        ## p(count_params(model_name))
-        # base seconds per batch
-        sec_per_batch = base_seconds * mode_multiplier.get(mode, 1.0)
+        # Total multiplier
+        total_mult = mode_mult * complexity_mult
 
+        # Time calculation
+        sec_per_batch = base_seconds * total_mult
         exp_seconds = epochs * batches_per_epoch * sec_per_batch
         total_seconds += exp_seconds
 
-        p(f"\t{model_name} | {mode}", format_time(exp_seconds), color1 = c.BLUE)
+        # Format filter string
+        filter_str = f"[{', '.join(filters[:2])}...]" if filters else "none"
 
-    p()
-    t("Totals")
-    p("Training samples", train_size)
-    p("Batches per epoch", batches_per_epoch)
-    p("Estimated total time", f"~{format_time(total_seconds)}", color1 = c.BLACK, color2 = c.RED)
+        # Display
+        exp_label = f"{model_name:20s} | {mode:8s} | {filter_str:20s}"
+        p(exp_label, format_time(exp_seconds), color1 = c.BLUE, color2 = c.BLACK)
+
+    # Summary
+    p("")
+    p("=" * 70, color1 = c.ORANGE)
+    p("Total Estimates", color1 = c.ORANGE, bold = True)
+    p("=" * 70, color1 = c.ORANGE)
+
+    total_minutes = total_seconds / 60
+    total_hours = total_minutes / 60
+
+    p("Total experiments", len(experiments), color1 = c.BLACK)
+    p("Total batches", batches_per_epoch * epochs * len(experiments), color1 = c.BLACK)
+    p("Estimated total time", format_time(total_seconds), color1 = c.GREEN, bold = True)
+
+    # Time breakdown
+    if total_hours > 12:
+        p("Estimated completion", f"~{total_hours / 24:.1f} days", color1 = c.ORANGE)
+    elif total_hours > 2:
+        p("Estimated completion", f"~{total_hours:.1f} hours", color1 = c.ORANGE)
+    else:
+        p("Estimated completion", f"~{total_minutes:.0f} minutes", color1 = c.GREEN)
+
+    p("")
+
+    # Warnings
+    if total_hours > 24:
+        p("⚠ WARNING", "Training will take over 24 hours!", color1 = c.ORANGE, bold = True)
+        p("Consider", "Reducing epochs or selecting fewer models", color1 = c.ORANGE)
+    elif total_hours > 8:
+        p("⚠ NOTE", "Long training session - consider running overnight", color1 = c.ORANGE)
+
+    if device.type == 'cpu':
+        p("⚠ CPU DETECTED", "Training on CPU is 10-20x slower than GPU", color1 = c.RED, bold = True)
+
+    p("")
+    #return total_seconds
 
 
 estimate_runtime(experiments, filter_sets)
-
 
 # %%
 t("Train Experiments")
@@ -467,245 +594,333 @@ p("Failed", failed, color1 = c.RED if failed > 0 else c.RED)
 # %%
 # List of metrics to extract
 metrics_to_extract = [
-    'model',
-    'mode',
-    'filters',
     'best_val_loss',
     'epoch',
     'final_epoch',
+    'train_loss',
+    'val_loss',
     'val_accuracy',
+    'val_iou',
+    'iou',
+    'accuracy',
     'f1_score',
     'precision',
     'recall',
-    'train_loss'
 ]
 
 # %%
+
+# %%
+# ### TO REMOVE
+# #
+# t("Collecting Experiment Results")
+#
+# experiment_results = []
+#
+# for i, (model_name, mode, filters) in enumerate(experiments, 1):
+#     version_root = config.paths.models / model_name / mode
+#
+#     # If filters are specified, add filter subdirectory
+#     if filters:
+#         filter_str = "_".join(filters)[:30]
+#         version_root = version_root / filter_str
+#
+#     if not version_root.exists():
+#         p(f"No results found for {model_name} - {mode}", color1 = c.ORANGE)
+#         continue
+#
+#     # Look for checkpoint
+#     checkpoint_path = version_root / "checkpoint.pth"
+#
+#     versions = sorted(version_root.glob("v*"))
+#
+#     if not checkpoint_path.exists():
+#         p(f"{i} No checkpoint found", f"{model_name} - {mode}", color1 = c.ORANGE)
+#         continue
+#
+#     try:
+#         # Load checkpoint to get metrics
+#         ckpt = torch.load(checkpoint_path, map_location = "cpu")
+#
+#         # Prepare base metrics
+#         experiment_result = {
+#             'model':           model_name,
+#             'mode':            mode,
+#             'filters':         str(filters) if filters else 'none',
+#             'checkpoint_path': str(checkpoint_path),
+#             'version_path':    str(version_root),
+#         }
+#
+#         # Extract metrics from checkpoint
+#         for metric in metrics_to_extract:
+#             # Try multiple ways of extracting the metric
+#             value = (
+#                     ckpt.get(metric) or  # Direct key
+#                     (ckpt.get('metrics', { }).get(metric)) or  # Nested in 'metrics'
+#                     None
+#             )
+#
+#             # Only add non-None values
+#             if value is not None:
+#                 experiment_result[metric] = value
+#
+#         # Print extracted metrics for debugging
+#         p(f"Metrics for {model_name} - {mode}:", color1 = c.CYAN)
+#         for metric, value in experiment_result.items():
+#             if metric not in ['model', 'mode', 'filters', 'checkpoint_path', 'version_path']:
+#                 p(f"  {metric}: {value}", color1 = c.CYAN)
+#
+#         experiment_results.append(experiment_result)
+#
+#     except Exception as e:
+#         p("Warning", f"Could not load {checkpoint_path}: {e}", color1 = c.ORANGE)
+#         continue
+#
+# # Convert to DataFrame for easy analysis
+# df_results = pd.DataFrame(experiment_results)
+#
+# if len(df_results) == 0:
+#     p("No experiment results found", color1 = c.RED)
+# else:
+#     p("Total experiments found", len(df_results))
+#
+#     # Sort by validation loss (lower is better)
+#     df_results = df_results.sort_values('best_val_loss')
+#
+#     p("")
+#     p("Top 5 Experiments by Validation Loss", color1 = c.CYAN, bold = True)
+#
+#     display_columns = ['model', 'mode', 'filters', 'best_val_loss']
+#
+#     # Add additional columns that have non-None values
+#     additional_cols = ['epoch', 'final_epoch', 'val_accuracy', 'f1_score', 'precision', 'recall', 'train_loss']
+#
+#     display_columns.extend([col for col in additional_cols if col in df_results.columns])
+#
+#     p(df_results[display_columns].head(10).to_string(index = False))
+#
+#     # Create a more detailed summary
+#     p("\nDetailed Summary:", color1 = c.CYAN)
+#
+#     # Dynamically create aggregation dictionary
+#     agg_dict = {
+#         'best_val_loss': ['min', 'mean', 'count'],
+#     }
+#
+#     # Add aggregations for additional metrics that are present
+#     for col in additional_cols:
+#         if col in df_results.columns:
+#             agg_dict[col] = ['min', 'mean']
+#
+#     summary = df_results.groupby(['model', 'mode']).agg(agg_dict).reset_index()
+#     p(summary.to_string(index = False))
+
+# %%
 t("Collecting Experiment Results")
 
 experiment_results = []
 
-for i, (model_name, mode, filters) in enumerate(experiments, 1):
-    version_root = config.paths.models / model_name / mode
-
-    # If filters are specified, add filter subdirectory
-    if filters:
-        filter_str = "_".join(filters)[:30]
-        version_root = version_root / filter_str
-
-    if not version_root.exists():
-        p(f"No results found for {model_name} - {mode}", color1 = c.ORANGE)
-        continue
-
-    # Look for checkpoint
-    checkpoint_path = version_root / "checkpoint.pth"
-
-    versions = sorted(version_root.glob("v*"))
-
-    if not checkpoint_path.exists():
-        p(f"{i} No checkpoint found", f"{model_name} - {mode}", color1 = c.ORANGE)
-        continue
-
-    try:
-        # Load checkpoint to get metrics
-        ckpt = torch.load(checkpoint_path, map_location = "cpu")
-
-        # Prepare base metrics
-        experiment_result = {
-            'model':           model_name,
-            'mode':            mode,
-            'filters':         str(filters) if filters else 'none',
-            'checkpoint_path': str(checkpoint_path),
-            'version_path':    str(version_root),
-        }
-
-        # Extract metrics from checkpoint
-        for metric in metrics_to_extract:
-            # Try multiple ways of extracting the metric
-            value = (
-                    ckpt.get(metric) or  # Direct key
-                    (ckpt.get('metrics', { }).get(metric)) or  # Nested in 'metrics'
-                    None
-            )
-
-            # Only add non-None values
-            if value is not None:
-                experiment_result[metric] = value
-
-        # Print extracted metrics for debugging
-        p(f"Metrics for {model_name} - {mode}:", color1 = c.CYAN)
-        for metric, value in experiment_result.items():
-            if metric not in ['model', 'mode', 'filters', 'checkpoint_path', 'version_path']:
-                p(f"  {metric}: {value}", color1 = c.CYAN)
-
-        experiment_results.append(experiment_result)
-
-    except Exception as e:
-        p("Warning", f"Could not load {checkpoint_path}: {e}", color1 = c.ORANGE)
-        continue
-
-# Convert to DataFrame for easy analysis
-df_results = pd.DataFrame(experiment_results)
-
-if len(df_results) == 0:
-    p("No experiment results found", color1 = c.RED)
-else:
-    p("Total experiments found", len(df_results))
-
-    # Sort by validation loss (lower is better)
-    df_results = df_results.sort_values('best_val_loss')
-
-    p("")
-    p("Top 5 Experiments by Validation Loss", color1 = c.CYAN, bold = True)
-
-    display_columns = ['model', 'mode', 'filters', 'best_val_loss']
-
-    # Add additional columns that have non-None values
-    additional_cols = ['epoch', 'final_epoch', 'val_accuracy', 'f1_score', 'precision', 'recall', 'train_loss']
-
-    display_columns.extend([col for col in additional_cols if col in df_results.columns])
-
-    p(df_results[display_columns].head(10).to_string(index = False))
-
-    # Create a more detailed summary
-    p("\nDetailed Summary:", color1 = c.CYAN)
-
-    # Dynamically create aggregation dictionary
-    agg_dict = {
-        'best_val_loss': ['min', 'mean', 'count'],
-    }
-
-    # Add aggregations for additional metrics that are present
-    for col in additional_cols:
-        if col in df_results.columns:
-            agg_dict[col] = ['min', 'mean']
-
-    summary = df_results.groupby(['model', 'mode']).agg(agg_dict).reset_index()
-    p(summary.to_string(index = False))
-
-# %%
-
-# %%
-t("Collecting Experiment Results")
-
-experiment_results = []
-
-# Print out experiments to process
-p("Total experiments to process:", len(experiments))
-
+# Iterate through all experiments
 for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p()
-    p(f"Experiment {i}: {model_name}, {mode}, {filters}", color1 = c.RED, bold = True)
+    p(f"Experiment {i}: {model_name}, {mode}, {filters}", color1 = c.MAGENTA, bold = True)
 
     # Construct version root path
     version_root = config.paths.models / model_name / mode
 
-    # If filters are specified, add filter subdirectory
+    # Add filter subdirectory if specified
     if filters:
         filter_str = "_".join(filters)[:30]
         version_root = version_root / filter_str
 
     p_version_root = str(version_root).replace(str(config.paths.root), "")
-
-    p("Checking path", p_version_root, color1 = c.BLUE, color2 = c.BLUE)
+    p("Checking path", p_version_root, color1 = c.BLUE)
 
     # Check if directory exists
     if not version_root.exists():
         p(f"Directory does not exist: {p_version_root}", color1 = c.ORANGE)
         continue
 
-    # Find version subdirectories
-    version_dirs = list(version_root.glob("v*"))
-
-    if not version_dirs:
-        # Try searching in the parent directory if no version dirs found
-        version_root = config.paths.models / model_name / mode
-        version_dirs = list(version_root.glob("v*"))
+    # Find ALL version subdirectories
+    version_dirs = sorted(list(version_root.glob("v*")))
 
     if not version_dirs:
         p(f"No version directories found in {p_version_root}", color1 = c.ORANGE)
         continue
 
-    # Process each version directory
-    found_checkpoint = False
-    for version_dir in version_dirs:
-        p_version_root = str(version_dir).replace(str(config.paths.root), "")
+    # Use LATEST version
+    latest_version_dir = version_dirs[-1]
+    p(f"Found {len(version_dirs)} versions, using latest: {latest_version_dir.name}", color1 = c.GREEN)
 
-        # Multiple possible checkpoint file names
-        checkpoint_patterns = [
-            "*checkpoint.pth",
-            "best_model.pth"
-        ]
+    # Look for checkpoint files
+    checkpoint_files = []
+    for pattern in ["checkpoint.pth", "best_model.pth"]:
+        found = list(latest_version_dir.glob(pattern))
+        checkpoint_files.extend(found)
 
-        checkpoint_paths = []
-        for pattern in checkpoint_patterns:
-            checkpoint_paths.extend(version_dir.glob(pattern))
+    if not checkpoint_files:
+        p(f"No checkpoint files in {latest_version_dir.name}", color1 = c.ORANGE)
+        continue
 
-        if not checkpoint_paths:
-            p(f"No checkpoint files found in {p_version_root}", color1 = c.ORANGE)
-            continue
+    # Prefer checkpoint.pth over best_model.pth
+    checkpoint_files.sort(key = lambda x: 0 if x.name == "checkpoint.pth" else 1)
+    checkpoint_path = checkpoint_files[0]
 
-        found_checkpoint = True
-        for checkpoint_path in checkpoint_paths:
-            p_version_root = str(checkpoint_path).replace(str(config.paths.root), "")
+    p(f"Loading: {checkpoint_path.name}", color1 = c.CYAN)
+
+    try:
+        # Load checkpoint
+        ckpt = torch.load(checkpoint_path, map_location = "cpu")
+
+        # Extract metrics with fallbacks
+        metrics_dict = { }
+
+        for metric in metrics_to_extract:
+            value = None
+
+            # Try direct key
+            if metric in ckpt:
+                value = ckpt[metric]
+
+            # Try nested in 'metrics'
+            elif 'metrics' in ckpt and metric in ckpt['metrics']:
+                value = ckpt['metrics'][metric]
+
+            # Handle epoch/final_epoch aliases
+            elif metric == 'final_epoch' and 'epoch' in ckpt:
+                value = ckpt['epoch']
+            elif metric == 'epoch' and 'final_epoch' in ckpt:
+                value = ckpt['final_epoch']
+
+            # Handle other aliases
+            elif metric == 'iou' and 'val_iou' in ckpt:
+                value = ckpt['val_iou']
+            elif metric == 'accuracy' and 'val_accuracy' in ckpt:
+                value = ckpt['val_accuracy']
+
+            if value is not None:
+                metrics_dict[metric] = value
+
+        # Get filter string
+        filters_str = str(filters) if filters else 'none'
+
+        # Try to load config snapshot for extra info
+        config_snapshot_path = latest_version_dir / "config_snapshot.json"
+        additional_info = { }
+        if config_snapshot_path.exists():
             try:
-                p()
-                p("Attempting to load", p_version_root)
+                with open(config_snapshot_path, 'r') as f:
+                    snapshot = json.load(f)
+                    additional_info = snapshot.get('config', { }).get('extra', { }).get('experiment', { })
+            except Exception:
+                pass
 
-                # Load checkpoint to get metrics
-                ckpt = torch.load(checkpoint_path, map_location = "cpu")
+        # Build result entry
+        result_entry = {
+            'model':           model_name,
+            'mode':            mode,
+            'filters':         filters_str,
+            'version':         latest_version_dir.name,
+            'checkpoint_path': str(checkpoint_path),
+            'version_path':    str(latest_version_dir),
+            **additional_info,
+            **metrics_dict
+        }
 
-                # Metrics extraction
-                metrics_to_add = {
-                    metric: (
-                            ckpt.get(metric) or  # Direct key
-                            (ckpt.get('metrics', { }).get(metric)) or  # Nested in 'metrics'
-                            (float('inf') if metric == 'best_val_loss' else None)  # Special handling for best_val_loss
-                    ) for metric in metrics_to_extract
-                }
+        experiment_results.append(result_entry)
 
-                # Remove None values
-                metrics_to_add = { k: v for k, v in metrics_to_add.items() if v is not None }
+        p(f"✓ Loaded successfully - Metrics: {len(metrics_dict)}/{len(metrics_to_extract)}", color1 = c.GREEN)
 
-                # Prepare filter names string
-                filters_str = str(filters) if filters else 'none'
+        # Show missing metrics
+        missing = [m for m in metrics_to_extract if m not in metrics_dict]
+        if missing and len(missing) < 5:
+            p(f"  Missing: {', '.join(missing)}", color1 = c.ORANGE)
 
-                # Try to load additional config information
-                config_snapshot_path = version_dir / "config_snapshot.json"
-                additional_info = { }
-                if config_snapshot_path.exists():
-                    try:
-                        with open(config_snapshot_path, 'r') as f:
-                            snapshot = json.load(f)
-                            additional_info = snapshot.get('config', { }).get('extra', { }).get('experiment', { })
-                    except Exception as config_e:
-                        p(f"Could not load config snapshot: {config_e}", color1 = c.ORANGE)
+    except Exception as e:
+        p("ERROR loading checkpoint", str(e), color1 = c.RED)
+        continue
 
-                experiment_results.append(
-                        {
-                            'model':           model_name,
-                            'mode':            mode,
-                            'filters':         filters_str,
-                            'checkpoint_path': str(checkpoint_path),
-                            'version_path':    str(version_dir),
-                            **additional_info,  # Unpack any additional experiment info
-                            **metrics_to_add  # Unpack additional metrics
-                        }
-                )
-
-                p(f"Successfully loaded checkpoint for {model_name} - {mode} - {version_dir.name}", color1 = c.GREEN)
-
-            except Exception as e:
-                p("Warning", f"Could not load {p_version_root}: {e}", color1 = c.ORANGE)
-                continue
-
-        if found_checkpoint:
-            break
-
-# Convert to DataFrame for easy analysis
+# Convert to DataFrame
 df_results = pd.DataFrame(experiment_results)
 
 # %%
+# Display results
+p()
+t("Results Summary")
+p("Total experiments found", len(df_results))
+
+if len(df_results) > 0:
+    p("Available columns:", list(df_results.columns), show = 50, color1 = c.CYAN)
+
+    # Select columns for display
+    display_columns = ['model', 'mode', 'filters', 'version']
+    for col in ['best_val_loss', 'final_epoch', 'val_accuracy', 'val_iou', 'iou']:
+        if col in df_results.columns:
+            display_columns.append(col)
+
+    p("Displaying columns:", display_columns, color1 = c.CYAN)
+
+    # Sort by best_val_loss if available
+    sort_column = 'best_val_loss' if 'best_val_loss' in df_results.columns else display_columns[0]
+
+    try:
+        df_sorted = df_results.sort_values(by = sort_column, ascending = True)
+
+        p()
+        p("Top 10 Experiments", color1 = c.BLUE, bold = True)
+
+        # Format display
+        display_df = df_sorted[display_columns].head(10).copy()
+        for col in display_df.columns:
+            if display_df[col].dtype == float:
+                display_df[col] = display_df[col].apply(lambda x: f"{x:.4f}" if pd.notnull(x) else "N/A")
+
+        print(display_df.to_string(index = False))
+
+    except Exception as e:
+        p(f"Error displaying results: {e}", color1 = c.RED)
+
+else:
+    p("No experiment results found!", color1 = c.RED, bold = True)
+
+# %%
+# Aggregation summary
+agg_dict = { }
+for col in metrics_to_extract:
+    if col in df_results.columns:
+        agg_dict[col] = ['min', 'mean', 'count']
+
+if agg_dict and len(df_results) > 0:
+    p()
+    p("Detailed Summary:", color1 = c.BLUE, bold = True)
+
+    summary = df_results.groupby(['model', 'mode']).agg(agg_dict).reset_index()
+    summary.columns = [' '.join(col).strip() for col in summary.columns.values]
+
+    # Format floats
+    float_cols = [col for col in summary.columns if 'min' in col or 'mean' in col]
+    for col in float_cols:
+        summary[col] = summary[col].apply(lambda x: f"{x:.4f}" if pd.notnull(x) else "N/A")
+
+    try:
+        summary = summary.sort_values('best_val_loss min', ascending = True)
+    except:
+        pass
+
+    print(summary.to_string(index = False))
+else:
+    p("No aggregatable data", color1 = c.ORANGE)
+
+
+
+
+# %%
+summary
+
+# %%
+# Convert to DataFrame for easy analysis
+df_results = pd.DataFrame(experiment_results)
+
 p("Total experiments found", len(df_results))
 
 # Print available columns for debugging
@@ -724,6 +939,8 @@ p("Columns to display:", display_columns, color1 = c.CYAN)
 
 
 # %%
+t("Top 10 Experiments")
+
 # Check if we have any sortable columns
 sort_column = 'best_val_loss' if 'best_val_loss' in df_results.columns else display_columns[0]
 
@@ -732,9 +949,6 @@ try:
     sorted_results = df_results[display_columns].sort_values(
             by = sort_column, ascending = True
     )
-
-    p("")
-    p("Top 10 Experiments", color1 = c.BLUE, bold = True)
 
     # Format float columns to limit decimal places
     float_cols = [col for col in display_columns if df_results[col].dtype == float]
@@ -746,6 +960,9 @@ try:
 except Exception as e:
     p(f"Error sorting results: {e}", color1 = c.RED)
     p(sorted_results.head(10).to_string(index = False), color1 = c.BLACK)
+
+# %%
+sorted_results
 
 # %%
 # Prepare aggregation dictionary dynamically
@@ -775,8 +992,12 @@ if agg_dict:
         pass
 
     p(summary.to_string(index = False), color1 = c.BLACK)
+
 else:
     p("No aggregatable columns found", color1 = c.RED)
+
+# %%
+summary
 
 # %%
 
@@ -1232,6 +1453,10 @@ else:
 # %%
 best_submissions = []
 
+# Extract unique model names and modes from experiments
+all_model_names = set(exp[0] for exp in experiments)
+all_input_modes = set(exp[1] for exp in experiments)
+
 for model_name in all_model_names:
     for input_mode in all_input_modes:
 
@@ -1241,7 +1466,6 @@ for model_name in all_model_names:
             continue
 
         # Check for direct versions (no filter subdirectory)
-        # e.g., models/simple_cnn/rgb/v001/
         vm = VersionManager(base_path)
         latest_version = vm.find_latest()
 
@@ -1250,9 +1474,7 @@ for model_name in all_model_names:
             if model_path.exists():
                 output_file = latest_version / "submission.json"
 
-                t(f"eval_images path: {config.paths.eval_images}")
-
-                p("\nGenerating submission", f"{model_name}/{input_mode}", color1 = c.MAGENTA)
+                p("Generating submission", f"{model_name}/{input_mode}", color1 = c.MAGENTA)
 
                 try:
                     generate_submission(
@@ -1271,18 +1493,17 @@ for model_name in all_model_names:
                                 "submission": str(output_file)
                             }
                     )
-                    p("Saved submission", output_file)
+                    p("Saved submission", str(output_file), color1 = c.GREEN)
 
                 except Exception as e:
                     p("Failed", str(e), color1 = c.RED)
 
         # Check for filter subdirectories (for 'filtered' mode)
-        # e.g., models/simple_cnn/filtered/laplacian_sobel_clahe/v001/
         if input_mode == 'filtered':
             for filter_subdir in base_path.iterdir():
                 if not filter_subdir.is_dir():
                     continue
-                if filter_subdir.name.startswith('v'):  # Skip version dirs
+                if filter_subdir.name.startswith('v'):
                     continue
 
                 vm_filter = VersionManager(filter_subdir)
@@ -1298,7 +1519,7 @@ for model_name in all_model_names:
                 output_file = latest_filter_version / "submission.json"
                 filter_name = filter_subdir.name
 
-                p("\nGenerating submission", f"{model_name}/{input_mode}/{filter_name}", color1 = c.MAGENTA)
+                p("Generating submission", f"{model_name}/{input_mode}/{filter_name}", color1 = c.MAGENTA)
 
                 try:
                     generate_submission(
@@ -1317,7 +1538,7 @@ for model_name in all_model_names:
                                 "submission": str(output_file)
                             }
                     )
-                    p("Saved submission", output_file)
+                    p("Saved submission", str(output_file), color1 = c.GREEN)
 
                 except Exception as e:
                     p("Failed", str(e), color1 = c.RED)
@@ -1354,18 +1575,25 @@ for item in best_submissions:
         p("Warning", f"Could not load checkpoint {ckpt_path}: {e}", color1 = c.ORANGE)
         continue
 
-#Append overall best
+# Append overall best only if not already present
 if best_overall:
-    best_submissions.append(
-            {
-                "model":         best_overall["model"],
-                "mode":          best_overall["mode"],
-                "version":       best_overall["version"],
-                "submission":    best_overall["submission"],
-                "best_val_loss": best_overall["best_val_loss"],
-                "overall_best":  True
-            }
+    already_present = any(
+            s.get("version") == best_overall["version"] and s.get("overall_best")
+            for s in best_submissions
     )
+    if not already_present:
+        best_submissions.append(
+                {
+                    "model":         best_overall["model"],
+                    "mode":          best_overall["mode"],
+                    "version":       best_overall["version"],
+                    "submission":    best_overall["submission"],
+                    "best_val_loss": best_overall["best_val_loss"],
+                    "overall_best":  True
+                }
+        )
+    else:
+        p("best already in list")
 
 # ===== Summary =====
 t("Best Submissions Summary")
@@ -1392,7 +1620,7 @@ image_dir = config.paths.train_images
 p("Train images dir", image_dir)
 
 # sample three entries
-sample_entries = random.sample(entries, 5)
+sample_entries = random.sample(entries, 2)
 
 for e in sample_entries:
     p("Image", e.image_path.name)
@@ -1414,15 +1642,18 @@ for e in sample_entries:
 
 # %%
 t("Visualizing sample predictions")
-
+test_model_weights = model_weights
+test_best_model_name = best_model_name
 image_dir = config.paths.eval_images
-t(image_dir)
+
+test_model_weights = r"C:\github\Tree-Canopy-Detection\checkpoints\yolov8s\filtered\sobel_x_sobel_y_laplacian_3x3\v001\checkpoint.pth"
+test_best_model_name = "yolov8s"
 
 try:
     # Use the best model that was selected earlier
     predictor = Predictor(
-            model_path = model_weights,
-            model_name = best_model_name,
+            model_path = test_model_weights,
+            model_name = test_best_model_name,
             image_size = config.train.image_size,
     )
 
@@ -1432,7 +1663,7 @@ try:
     results = predictor.run_on_folder(
             image_dir,
             transform = val_tf,
-            num_samples = 5,
+            num_samples = 15,
     )
 
     for r in results:

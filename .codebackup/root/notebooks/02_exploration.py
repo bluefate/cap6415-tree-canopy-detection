@@ -222,7 +222,7 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
     Show how parameterized kernels affect an image.
     """
 
-    t("=== === === === === === === === === Motion blur tests === === === === === === === === ===")
+    t("Motion blur tests")
     for angle in [0, 45, 90]:
         kernel = make_motion_kernel(size = 15, angle = angle)
         p("Motion Kernel", f"Angle {angle}", color1 = c.BLUE, color2 = c.BLACK)
@@ -237,7 +237,7 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
                 figsize = 6
         )
     p("\n")
-    t("=== === === === === === === === ===  Gaussian blur tests === === === === === === === === ===")
+    t("Gaussian blur tests")
     for sigma in [0.5, 1.5, 3]:
         kernel = make_gaussian_kernel(size = 9, sigma = sigma)
         p("Gaussian Kernel", f"sigma={sigma}", color1 = c.BLUE, color2 = c.BLACK)
@@ -251,7 +251,7 @@ def demo_parameterized_kernels( image: np.ndarray ) -> None:
                 figsize = 6
         )
     p("\n")
-    t("=== === === === === === === === === Directional edge tests === === === === === === === === ===")
+    t("Directional edge tests")
     for direction in ["horizontal", "vertical", "diag_pos", "diag_neg"]:
         kernel = make_directional_edge_kernel(size = 7, direction = direction)
         p("Directional Edge", direction, color1 = c.BLUE, color2 = c.BLACK)

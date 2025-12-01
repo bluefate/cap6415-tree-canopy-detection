@@ -48,7 +48,7 @@ class Trainer:
         # Initialize logger
         self.logger = Logger(self.paths["log"], cfg=config)
         self.logger.header("Training started")
-        # self.logger.info(self.model)
+        self.logger.info(self.model)
         # LOG MODEL
 
         # GPU memory optimization

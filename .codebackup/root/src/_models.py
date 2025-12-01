@@ -723,6 +723,7 @@ if __name__ == "__main__":
 # From C:\github\Tree-Canopy-Detection\src\models\zoo.py
 from src.models.simple_cnn import SimpleCNN
 from src.models.unet import UNet
+from utils.helpers import p, t
 
 
 # Model	            Year	Key Idea	            Strengths	                        Weaknesses
@@ -991,8 +992,8 @@ def build_model(name: str, **kwargs):
 
 def list_available_models():
     """List all available models."""
-    print("Available models:")
-    print("-" * 50)
+    t("Available models:")
+    p("-" * 50)
 
     for name in MODEL_BUILDERS.keys():
         # Check availability
@@ -1010,7 +1011,7 @@ def list_available_models():
         except:
             print(f"  {name}: ?")
 
-    print("-" * 50)
+    p("-" * 50)
 
 
 if __name__ == "__main__":

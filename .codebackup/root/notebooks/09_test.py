@@ -83,11 +83,15 @@ p("Mask dtype", mask_t.dtype)
 # Mask: [1, H, W]
 
 if mask_t.ndim == 2:
-    p("WARNING", "Mask is missing channel dimension! Should be [1, H, W]", color1 = c.ORANGE, color2 = c.ORANGE)
-elif mask_t.shape[0] != 1:
-    p("WARNING", f"Mask has wrong channel count: {mask_t.shape[0]} (should be 1)", color1 = c.ORANGE, color2 = c.ORANGE)
+    p("✓ SUCCESS", f"Mask shape is correct [H, W] for multi-class = {mask_t.shape}", color1 = c.BLACK, color2 = c.BLUE)
+    # Verify class values
+    unique_vals = torch.unique(mask_t)
+    p("Mask unique values", unique_vals.tolist(), color1 = c.ORANGE)
+elif mask_t.ndim == 3 and mask_t.shape[0] == 1:
+    p("WARNING", "Mask has [1, H, W] - should be [H, W] for CrossEntropyLoss", color1 = c.ORANGE)
 else:
-    p("✓ SUCCESS", "Mask shape is correct [1, H, W]", color1 = c.CYAN, color2 = c.CYAN)
+    p("ERROR", f"Unexpected mask shape: {mask_t.shape}", color1 = c.RED)
+
 
 
 # %% [markdown]
@@ -146,9 +150,8 @@ for mode in ['rgb', 'filtered']:
     # Verify shapes
     try:
         assert img_t.ndim == 3, f"Image should be 3D, got {img_t.ndim}D"
-        assert mask_t.ndim == 3, f"Mask should be 3D, got {mask_t.ndim}D"
-        assert mask_t.shape[0] == 1, f"Mask should have 1 channel, got {mask_t.shape[0]}"
-        p(f"Mode {mode}", "Shapes are correct!", color1 = c.GREEN, color2 = c.GREEN)
+        assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}D"
+        p(f"Mode {mode}", "Shapes are correct!", color1 = c.BLACK, color2 = c.BLUE)
     except AssertionError as e:
         p("ASSERTION FAILED", str(e), color1 = c.RED, color2 = c.RED)
 
@@ -184,11 +187,12 @@ p("Batch mask shape", masks.shape)
 
 try:
     assert images.ndim == 4, f"Batch images should be 4D, got {images.ndim}D"
-    assert masks.ndim == 4, f"Batch masks should be 4D, got {masks.ndim}D"
-    assert masks.shape[1] == 1, f"Masks should have 1 channel, got {masks.shape[1]}"
-    p("SUCCESS", "DataLoader produces correct batch shapes!", color1 = c.GREEN, color2 = c.GREEN)
+    assert masks.ndim == 3, f"Batch masks should be 3D [B, H, W], got {masks.ndim}D"
+    assert masks.shape[0] == images.shape[0], f"Batch sizes don't match"
+    p("SUCCESS", "DataLoader produces correct batch shapes!", color1 = c.BLACK, color2 = c.BLUE)
 except AssertionError as e:
     p("ASSERTION FAILED", str(e), color1 = c.RED, color2 = c.RED)
+
 
 # %% [markdown]
 # #### Test 4: Model Forward Pass
@@ -216,12 +220,14 @@ p("Output shape", preds.shape)
 p("Target shape", masks.shape)
 
 # Verify shapes match for loss computation
+# CrossEntropyLoss expects: predictions=[B, C, H, W], targets=[B, H, W]
 try:
-    assert preds.shape == masks.shape, f"Prediction {preds.shape} != Target {masks.shape}"
-    p("SUCCESS", "Model output matches target shape!", color1 = c.GREEN, color2 = c.GREEN)
+    expected_pred_shape = (masks.shape[0], 3, masks.shape[1], masks.shape[2])
+    assert preds.shape == expected_pred_shape, \
+        f"Prediction {preds.shape} should be {expected_pred_shape} for target {masks.shape}"
+    p("SUCCESS", "Model output shape correct for CrossEntropyLoss!", color1 = c.BLACK, color2 = c.BLUE)
 except AssertionError as e:
     p("ASSERTION FAILED", str(e), color1 = c.RED, color2 = c.RED)
-
 
 # %% [markdown]
 # #### Test 5: Loss Computation
@@ -236,7 +242,7 @@ criterion = CrossEntropyLoss()
 try:
     loss = criterion(preds, masks)
     p("Loss value", loss.item())
-    p("SUCCESS", "Loss computation works!", color1 = c.GREEN, color2 = c.GREEN)
+    p("SUCCESS", "Loss computation works!", color1 = c.BLACK, color2 = c.BLUE)
 except Exception as e:
     p("ERROR", str(e), color1 = c.RED, color2 = c.RED)
     import traceback
@@ -273,10 +279,9 @@ def verify_dataset_shapes():
         p("Mask shape", mask_t.shape)
 
         assert img_t.ndim == 3, f"Image should be 3D, got {img_t.ndim}D"
-        assert mask_t.ndim == 3, f"Mask should be 3D, got {mask_t.ndim}D"
-        assert mask_t.shape[0] == 1, f"Mask should have 1 channel, got {mask_t.shape[0]}"
+        assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}D"
 
-        p("Test 1", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
+        p("Test 1", "PASS", color1 = c.BLACK, color2 = c.BLUE, bold = True)
         test_results.append(("ImageMaskDataset", True, None))
 
     except Exception as e:
@@ -300,10 +305,9 @@ def verify_dataset_shapes():
         p("Mask shape", mask_t.shape)
 
         assert img_t.ndim == 3, f"Image should be 3D, got {img_t.ndim}D"
-        assert mask_t.ndim == 3, f"Mask should be 3D, got {mask_t.ndim}D"
-        assert mask_t.shape[0] == 1, f"Mask should have 1 channel, got {mask_t.shape[0]}"
+        assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}D"
 
-        p("Test 2", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
+        p("Test 2", "PASS", color1 = c.BLACK, color2 = c.BLUE, bold = True)
         test_results.append(("EnhancedImageMaskDataset (rgb)", True, None))
 
     except Exception as e:
@@ -327,10 +331,9 @@ def verify_dataset_shapes():
         p("Mask shape", mask_t.shape)
 
         assert img_t.ndim == 3, f"Image should be 3D, got {img_t.ndim}D"
-        assert mask_t.ndim == 3, f"Mask should be 3D, got {mask_t.ndim}D"
-        assert mask_t.shape[0] == 1, f"Mask should have 1 channel, got {mask_t.shape[0]}"
+        assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}D"
 
-        p("Test 3", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
+        p("Test 3", "PASS", color1 = c.BLACK, color2 = c.BLUE, bold = True)
         test_results.append(("EnhancedImageMaskDataset (filtered)", True, None))
 
     except Exception as e:
@@ -355,10 +358,10 @@ def verify_dataset_shapes():
         p("Batch mask shape", masks.shape)
 
         assert images.ndim == 4, f"Batch images should be 4D, got {images.ndim}D"
-        assert masks.ndim == 4, f"Batch masks should be 4D, got {masks.ndim}D"
-        assert masks.shape[1] == 1, f"Masks should have 1 channel, got {masks.shape[1]}"
+        assert masks.ndim == 3, f"Batch masks should be 3D, got {masks.ndim}D"
+        # assert masks.shape[1] == 1, f"Masks should have 1 channel, got {masks.shape[1]}"
 
-        p("Test 4", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
+        p("Test 4", "PASS", color1 = c.BLACK, color2 = c.BLUE, bold = True)
         test_results.append(("DataLoader Batching", True, None))
 
     except Exception as e:
@@ -380,9 +383,10 @@ def verify_dataset_shapes():
         p("Output shape", preds.shape)
         p("Target shape", masks.shape)
 
-        assert preds.shape == masks.shape, f"Prediction {preds.shape} != Target {masks.shape}"
+        assert preds.shape == (masks.shape[0], 3, masks.shape[1], masks.shape[
+            2]), f"Prediction {preds.shape} should be [B, 3, H, W] for target {masks.shape} [B, H, W]"
 
-        p("Test 5", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
+        p("Test 5", "PASS", color1 = c.BLACK, color2 = c.BLUE, bold = True)
         test_results.append(("Model Forward Pass", True, None))
 
     except Exception as e:
@@ -394,12 +398,12 @@ def verify_dataset_shapes():
     # ========================================================================
     try:
         t("Test 6: Loss Computation")
-        criterion = BCEWithLogitsLoss()
+        criterion = CrossEntropyLoss()
         loss = criterion(preds, masks)
 
         p("Loss value", loss.item())
 
-        p("Test 6", "PASS", color1 = c.GREEN, color2 = c.GREEN, bold = True)
+        p("Test 6", "PASS", color1 = c.BLACK, color2 = c.BLUE, bold = True)
         test_results.append(("Loss Computation", True, None))
 
     except Exception as e:
@@ -416,7 +420,7 @@ def verify_dataset_shapes():
 
     for test_name, success, error in test_results:
         if success:
-            p(test_name, "PASS", color1 = c.GREEN, color2 = c.GREEN)
+            p(test_name, "PASS", color1 = c.BLACK, color2 = c.BLUE)
         else:
             p(test_name, f"FAIL: {error}", color1 = c.RED, color2 = c.RED)
 
@@ -427,7 +431,7 @@ def verify_dataset_shapes():
 
     if failed == 0:
         p("")
-        p("ALL TESTS PASSED!", "Dataset shapes are correct!", color1 = c.GREEN, color2 = c.GREEN, bold = True)
+        p("ALL TESTS PASSED!", "Dataset shapes are correct!", color1 = c.BLACK, color2 = c.BLUE, bold = True)
         return True
     else:
         p("")
@@ -490,17 +494,17 @@ model = build_model('yolov8s', in_channels = 3, out_channels = 3)
 
 # Count parameters
 params = sum(p.numel() for p in model.parameters())
-print(f"Parameters: {params / 1e6:.2f}M")
+p(f"Parameters: {params / 1e6:.2f}M")
 
 # Test forward pass
 x = torch.randn(2, 3, 256, 256)
 with torch.no_grad():
     y = model(x)
 
-print(f"Input shape: {x.shape}")
-print(f"Output shape: {y.shape}")
+p(f"Input shape: {x.shape}")
+p(f"Output shape: {y.shape}")
 
 # Verify output
 assert y.shape == (2, 3, 256, 256), "Output shape mismatch!"
-print("✓ YOLOv8 model test passed!")
+p("✓ YOLOv8 model test passed!")
 

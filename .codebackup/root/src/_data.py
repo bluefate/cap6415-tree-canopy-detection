@@ -732,21 +732,21 @@ class ImageMaskDataset(Dataset):
         else:
             img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
-            # Specific handling for 6-channel concat mode
-        if self.mode == "concat":
-            # Ensure the shape is [C, H, W]
-            if img_t.shape[0] == 6:
-                # Rearrange to [C, H, W]
-                img_t = img_t.permute(1, 0, 2)
-
-            # If models need 3 channels, you might need to select specific channels
-            if img_t.shape[0] > 3:
-                # Option 1: Take first 3 channels
-                img_t = img_t[:3]
-
-                self.logger.warn(
-                    "Reduced 6-channel input to first 3 channels for compatibility"
-                )
+        # # Specific handling for 6-channel concat mode
+        # if self.mode == "concat":
+        #     # Ensure the shape is [C, H, W]
+        #     if img_t.shape[0] == 6:
+        #         # Rearrange to [C, H, W]
+        #         img_t = img_t.permute(1, 0, 2)
+        #
+        #     # If models need 3 channels, you might need to select specific channels
+        #     if img_t.shape[0] > 3:
+        #         # Option 1: Take first 3 channels
+        #         img_t = img_t[:3]
+        #
+        #         self.logger.warn(
+        #             "Reduced 6-channel input to first 3 channels for compatibility"
+        #         )
 
         # Convert mask to tensor [H, W] -> [1, H, W]
         if isinstance(mask, torch.Tensor):

@@ -40,7 +40,7 @@ train:
   image_size: 1024
   num_workers: 2 # ✓ 2 CPU threads pre-load data
   seed: 42
-  batch_size: 8 # 2Critical for 2GB GPU
+  batch_size: 2 # 2Critical for 2GB GPU
   epochs: 50
   learning_rate: 1e-5
   early_stop_patience: 10 # Stops training entirely if validation loss doesn't improve for N epochs [10-15 (gives more chances)]

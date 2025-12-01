@@ -9,6 +9,8 @@
 import os
 import sys
 
+import torch
+
 
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
@@ -27,7 +29,7 @@ from src.exploration.visualize import show_side_by_side
 from src.prediction.pipeline import Predictor
 from src.training.engine import run_training
 from src.utils.config import Config
-from src.utils.helpers import init_notebook, p, t
+from src.utils.helpers import init_notebook, p, t, c
 from src.utils.versioning import VersionManager
 
 # %%
@@ -522,6 +524,10 @@ p("all_groups", len(all_groups))
 # #### Step 8: Final combined training
 
 # %%
+import copy
+import time
+
+
 combined_entries = single_individual + single_group
 
 train_ds_comb = ImageMaskDataset(combined_entries, image_dir, transform = train_tf)
@@ -530,11 +536,50 @@ val_ds_comb = ImageMaskDataset(combined_entries[:40], image_dir, transform = val
 train_loader_final = DataLoader(train_ds_comb, batch_size = config.train.batch_size, shuffle = True)
 val_loader_final = DataLoader(val_ds_comb, batch_size = config.train.batch_size, shuffle = False)
 
+config_copy = copy.deepcopy(config)
+config_copy.extra['force_retrain'] = time.time()
+
 trainer_final = run_training(
-        config,
+        config_copy,
         train_loader_final,
         val_loader_final,
         config.paths.models,
         model_name = "simple_cnn"
 )
 
+
+# %%
+
+
+if trainer_final is not None:
+    t("Final Combined Trainer Metrics")
+
+    # Load checkpoint to get metrics
+    checkpoint_path = trainer_final.paths["checkpoint"]
+    if checkpoint_path.exists():
+        ckpt = torch.load(checkpoint_path, map_location = "cpu")
+
+        p("")
+
+        p("Model", "simple_cnn (combined)", color1 = c.GREEN)
+        p("Best Val Loss", f"{ckpt.get('best_val_loss', 0):.6f}", color1 = c.GREEN)
+        p("Final Epoch", ckpt.get('final_epoch', ckpt.get('epoch', 0)), color1 = c.GREEN)
+        p("Train Loss", f"{ckpt.get('train_loss', 0):.6f}", color1 = c.GREEN)
+        p("")
+
+        p("Validation Metrics", color1 = c.CYAN, bold = True)
+        p("Val Loss", f"{ckpt.get('val_loss', 0):.6f}", color1 = c.BLUE)
+        p("Val IoU", f"{ckpt.get('val_iou', ckpt.get('iou', 0)):.4f}", color1 = c.BLUE)
+        p("Val Accuracy", f"{ckpt.get('val_accuracy', ckpt.get('accuracy', 0)):.4f}", color1 = c.BLUE)
+        p("Individual Tree IoU", f"{ckpt.get('val_iou_individual', 0):.4f}", color1 = c.BLUE)
+        p("Group Tree IoU", f"{ckpt.get('val_iou_group', 0):.4f}", color1 = c.BLUE)
+        p("")
+
+        p("Version", trainer_final.version_dir.name, color1 = c.CYAN)
+        p("Path", str(trainer_final.version_dir), color1 = c.BLUE)
+        p("")
+
+    else:
+        p("ERROR", "No checkpoint found!", color1 = c.RED)
+else:
+    p("WARNING", "Trainer is None - training was skipped", color1 = c.ORANGE)

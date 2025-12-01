@@ -354,7 +354,7 @@ class Trainer:
         # Initialize logger
         self.logger = Logger(self.paths["log"], cfg=config)
         self.logger.header("Training started")
-        # self.logger.info(self.model)
+        self.logger.info(self.model)
         # LOG MODEL
 
         # GPU memory optimization
@@ -393,17 +393,42 @@ class Trainer:
             "extra": self.cfg.extra,
         }
 
-    def _save_checkpoint(self, epoch: int, is_best: bool) -> None:
+    def _save_checkpoint(
+        self,
+        epoch: int,
+        is_best: bool,
+        train_loss: float = 0.0,
+        val_metrics: dict = None,
+    ) -> None:
         """
         Save model, optimizer, scaler, and metrics.
         """
         state = {
             "epoch": epoch,
+            "final_epoch": epoch,
             "model": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
             "scaler": self.scaler.state_dict(),
             "best_val_loss": self.best_val_loss,
+            "train_loss": train_loss,
         }
+        if val_metrics is not None:
+            state.update(
+                {
+                    "val_loss": val_metrics.get("loss", 0.0),
+                    "val_accuracy": val_metrics.get("acc", 0.0),
+                    "val_iou": val_metrics.get("iou", 0.0),
+                    "val_iou_individual": val_metrics.get("iou_individual_tree", 0.0),
+                    "val_iou_group": val_metrics.get("iou_group_of_trees", 0.0),
+                    "val_dice": val_metrics.get("dice", 0.0),
+                    "iou": val_metrics.get("iou", 0.0),
+                    "accuracy": val_metrics.get("acc", 0.0),
+                    "f1_score": val_metrics.get("dice", 0.0),
+                    "precision": val_metrics.get("precision", 0.0),
+                    "recall": val_metrics.get("recall", 0.0),
+                }
+            )
+
         torch.save(state, self.paths["checkpoint"])
         if is_best:
             torch.save(state, self.paths["best"])
@@ -511,13 +536,6 @@ class Trainer:
                 f"Acc {val['acc']:.4f}"
             )
 
-            # #TODO IMPLEMENT
-            # self.history = {
-            #     "train_loss": [],
-            #     "val_loss": [],
-            #     "lr": [],
-            # }
-
             is_best = val["loss"] < self.best_val_loss
             if is_best:
                 self.best_val_loss = val["loss"]
@@ -526,7 +544,7 @@ class Trainer:
             else:
                 no_improve += 1
 
-            self._save_checkpoint(epoch, is_best)
+            self._save_checkpoint(epoch, is_best, train_loss, val)
 
             if no_improve >= patience:
                 self.logger.info("Early stop triggered")

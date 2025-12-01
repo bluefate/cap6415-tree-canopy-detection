@@ -139,13 +139,6 @@ for _ in range(5):
         pred = torch.sigmoid(pred).squeeze().numpy()
         pred_bin = (pred > 0.5).astype(np.uint8)
 
-    ##pred_u8 = pred_bin * 255
-    # show_image(img, f"Image {idx}")
-    # show_mask(mask, "Ground Truth")
-    # show_mask(pred_bin, "Prediction")
-    # show_overlay(img, pred_bin, 0.4, "Overlay")
-
-
     titles = [f"Image {idx}", "Ground Truth", "Prediction", "Overlay"]
 
     if img.max() <= 1.0:

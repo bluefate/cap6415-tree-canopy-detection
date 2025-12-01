@@ -20,9 +20,12 @@ sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
 import torch
 from src.utils.config import Config
-from src.utils.helpers import c, p, t
+from src.utils.helpers import c, format_time, p, t
 from src.models.zoo import build_model
 from src.data.annotations import load_json_annotations
+
+# %%
+t("PRE-FLIGHT CHECK")
 
 
 # %%
@@ -146,8 +149,21 @@ def check_dataset():
         else:
             p("✗ Image format", f"wrong: {img_t.shape}", color1 = c.RED)
 
-        if mask_t.ndim == 3 and mask_t.shape[0] == 1:
-            p("✓ Mask format", "correct [1, H, W]", color1 = c.GREEN)
+        # if mask_t.ndim == 3 and mask_t.shape[0] == 1:
+        #     p("✓ Mask format", "correct [1, H, W]", color1 = c.GREEN)
+        # else:
+        #     p("✗ Mask format", f"wrong: {mask_t.shape}", color1 = c.RED)
+
+        # Multi-class segmentation: masks should be [H, W] with class indices (0, 1, 2)
+        if mask_t.ndim == 2:
+            p("✓ Mask format", f"correct [H, W] for multi-class", color1 = c.GREEN)
+            unique_vals = torch.unique(mask_t)
+            if torch.all((unique_vals >= 0) & (unique_vals <= 2)):
+                p("✓ Mask values", f"valid classes: {unique_vals.tolist()}", color1 = c.GREEN)
+            else:
+                p("✗ Mask values", f"invalid: {unique_vals.tolist()}", color1 = c.RED)
+        elif mask_t.ndim == 3 and mask_t.shape[0] == 1:
+            p("⚠ Mask format", "[1, H, W] - should be [H, W] for CrossEntropyLoss", color1 = c.ORANGE)
         else:
             p("✗ Mask format", f"wrong: {mask_t.shape}", color1 = c.RED)
 
@@ -184,10 +200,18 @@ def check_model():
 
         p("✓ Forward pass", f"output shape={output.shape}", color1 = c.GREEN)
 
-        if output.shape == (2, 1, 256, 256):
-            p("✓ Output shape", "correct", color1 = c.GREEN)
+        # if output.shape == (2, 1, 256, 256):
+        #     p("✓ Output shape", "correct", color1 = c.GREEN)
+        # else:
+        #     p("✗ Output shape", f"wrong: {output.shape}", color1 = c.RED)
+
+        # Multi-class segmentation: 3 channels (background, individual_tree, group_of_trees)
+        expected_shape = (2, 3, 256, 256)
+
+        if output.shape == expected_shape:
+            p("✓ Output shape", "correct (multi-class)", color1 = c.GREEN)
         else:
-            p("✗ Output shape", f"wrong: {output.shape}", color1 = c.RED)
+            p("✗ Output shape", f"expected {expected_shape}, got {output.shape}", color1 = c.RED)
 
         return True
 
@@ -244,24 +268,21 @@ def estimate_runtime():
 
     # 4 experiments × 10 epochs
     total_seconds = 4 * 10 * seconds_per_epoch
-    total_minutes = total_seconds / 60
-    total_hours = total_minutes / 60
 
     p("Training samples", train_size)
     p("Batches per epoch", batches_per_epoch)
-    p("Estimated time per epoch", f"~{seconds_per_epoch // 60} min")
-    p("Total estimated time", f"~{total_hours:.1f} hours", color1 = c.CYAN)
+    p("Estimated time per epoch", f"~{format_time(seconds_per_epoch // 60)}", color1 = c.BLACK, color2 = c.RED)
+    p("Estimated total time", f"~{format_time(total_seconds)}", color1 = c.BLACK, color2 = c.RED)
 
-    if total_hours > 4:
-        p("⚠ Long run", "Consider reducing epochs or using GPU", color1 = c.ORANGE)
+
 
 
 
 
 
 # %%
-t("PRE-FLIGHT CHECK")
-t("=" * 80)
+
+
 
 checks = [
     ("Configuration", check_config),
@@ -284,14 +305,19 @@ for name, func in checks:
 
         traceback.print_exc()
 
+
+# %%
+
 # Runtime estimate
 try:
     estimate_runtime()
 except Exception as e:
     p("⚠ Runtime estimate failed", str(e), color1 = c.ORANGE)
 
+
+# %%
+
 # Summary
-t("=" * 80)
 t("SUMMARY")
 
 passed = sum(results.values())
@@ -302,6 +328,9 @@ for name, success in results.items():
         p(f"✓ {name}", "PASS", color1 = c.GREEN, bold = True)
     else:
         p(f"✗ {name}", "FAIL", color1 = c.RED, bold = True)
+
+
+# %%
 
 p("")
 p("Total", f"{passed}/{total} passed")

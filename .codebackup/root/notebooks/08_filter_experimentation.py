@@ -329,6 +329,6 @@ titles_all = ['Original', 'Ground Truth'] + all_filters
 show_side_by_side(
         *images,
         titles = tuple(titles_all),
-        maxcolumns = 3
+        maxcolumns = 5
 )
 
