@@ -178,6 +178,9 @@ class Trainer:
         total_iou_individual = 0.0
         total_iou_group = 0.0
         total_acc = 0.0
+        total_precision = 0.0
+        total_recall = 0.0
+        total_f1 = 0.0
 
         with torch.no_grad():
             for images, masks in self.val_loader:
@@ -195,16 +198,27 @@ class Trainer:
                 total_iou_individual += m.get("iou_individual_tree", 0.0)
                 total_iou_group += m.get("iou_group_of_trees", 0.0)
                 total_acc += m["acc"]
+                total_precision += m.get("precision", 0.0)
+                total_recall += m.get("recall", 0.0)
+
+                # Calculate F1 score from precision and recall
+                prec = m.get("precision", 0.0)
+                rec = m.get("recall", 0.0)
+                f1 = 2 * (prec * rec) / (prec + rec + 1e-8)
+                total_f1 += f1
 
         n = max(1, len(self.val_loader))
 
         return {
             "loss": total_loss / n,
-            "iou": total_iou / n,  # This is now mean_iou of tree classes
+            "iou": total_iou / n,
             "iou_individual_tree": total_iou_individual / n,
             "iou_group_of_trees": total_iou_group / n,
-            "dice": 0.0,  # Placeholder
             "acc": total_acc / n,
+            "precision": total_precision / n,
+            "recall": total_recall / n,
+            "f1_score": total_f1 / n,
+            "dice": total_f1 / n,  # Use F1 as Dice approximation
         }
 
     def run(self) -> None:
@@ -225,9 +239,12 @@ class Trainer:
             self.logger.info(
                 f"Train loss {train_loss:.4f}, "
                 f"Val loss {val['loss']:.4f}, "
-                f"IoU {val['iou']:.4f} (ind={val['iou_individual_tree']:.4f},"
+                f"IoU {val['iou']:.4f} (ind={val['iou_individual_tree']:.4f}, "
                 f"grp={val['iou_group_of_trees']:.4f}), "
-                f"Acc {val['acc']:.4f}"
+                f"Acc {val['acc']:.4f}, "
+                f"Prec {val['precision']:.4f}, "
+                f"Rec {val['recall']:.4f}, "
+                f"F1 {val['f1_score']:.4f}"
             )
 
             is_best = val["loss"] < self.best_val_loss

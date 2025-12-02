@@ -189,4 +189,29 @@ def compute_metrics_multiclass(
     ious["iou"] = ious["mean_iou"]
     ious["dice"] = 0.0  # Placeholder
 
+    all_tp = 0
+    all_fp = 0
+    all_fn = 0
+
+    for cls_id in range(1, num_classes):  # Skip background class 0
+        pred_mask = pred_classes == cls_id
+        true_mask = true_classes == cls_id
+
+        tp = np.logical_and(pred_mask, true_mask).sum()
+        fp = np.logical_and(pred_mask, ~true_mask).sum()
+        fn = np.logical_and(~pred_mask, true_mask).sum()
+
+        all_tp += tp
+        all_fp += fp
+        all_fn += fn
+
+    # Overall precision and recall
+    ious["precision"] = float(all_tp) / float(all_tp + all_fp + 1e-8)
+    ious["recall"] = float(all_tp) / float(all_tp + all_fn + 1e-8)
+
+    # F1 score
+    prec = ious["precision"]
+    rec = ious["recall"]
+    ious["f1_score"] = 2 * (prec * rec) / (prec + rec + 1e-8)
+
     return ious

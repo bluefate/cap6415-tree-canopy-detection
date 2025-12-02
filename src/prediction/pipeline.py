@@ -65,6 +65,19 @@ class Predictor:
         img_t = torch.tensor(img.transpose(2, 0, 1)).float() / 255.0
         return self.predict_tensor(img_t)
 
+    def _resize_prediction_to_original(self, pred_mask, original_shape):
+        """
+        Resize prediction mask back to original image dimensions.
+        """
+        orig_h, orig_w = original_shape[:2]
+        if pred_mask.shape != (orig_h, orig_w):
+            pred_mask = cv2.resize(
+                pred_mask.astype(np.uint8),
+                (orig_w, orig_h),
+                interpolation=cv2.INTER_NEAREST,
+            )
+        return pred_mask
+
     def run_on_folder(self, image_dir: Path, transform=None, num_samples: int = None):
         """
         Run prediction on a folder of images using ImageOnlyDataset.
@@ -78,9 +91,34 @@ class Predictor:
         for idx in range(total):
             name, img_t = dataset[idx]
 
+            # Load original image to get true dimensions
+            img_path = image_dir / name
+            original_img = cv2.imread(str(img_path))
+            if original_img is None:
+                # Try with different extensions
+                for ext in [".png", ".tiff"]:
+                    alt_path = img_path.with_suffix(ext)
+                    if alt_path.exists():
+                        original_img = cv2.imread(str(alt_path))
+                        break
+
+            if original_img is not None:
+                original_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
+                original_shape = original_img.shape
+            else:
+                # Fallback to processed image shape
+                if isinstance(img_t, torch.Tensor):
+                    original_shape = img_t.permute(1, 2, 0).shape
+                else:
+                    original_shape = img_t.shape
+                original_img = (
+                    img_t
+                    if not isinstance(img_t, torch.Tensor)
+                    else img_t.permute(1, 2, 0).cpu().numpy()
+                )
+
             # Convert HWC -> CHW safely for both numpy and torch
             if isinstance(img_t, torch.Tensor):
-                # img_chw = img_t.permute(2,0,1).unsqueeze(0).float()
                 img_chw = img_t.unsqueeze(0).float()
                 base = img_t.permute(1, 2, 0).cpu().numpy()
             else:
@@ -90,35 +128,40 @@ class Predictor:
                 base = img_t
 
             with torch.no_grad():
-                # pred = self.model(img_chw.to(self.device)).cpu().squeeze().numpy()
                 pred = self.model(img_chw.to(self.device)).cpu()
 
             # Convert multi-class logits to class predictions
             if pred.shape[1] == 3:  # Multi-class
-                # Get class with highest probability
                 pred_classes = torch.argmax(pred, dim=1).squeeze().numpy()  # [H, W]
-
-                # For overlay visualization, create binary mask
                 pred_bin_for_overlay = (pred_classes > 0).astype(np.uint8)
             else:  # Binary
                 pred = torch.sigmoid(pred).squeeze().numpy()
                 pred_classes = (pred > 0.5).astype(np.uint8)
                 pred_bin_for_overlay = pred_classes
 
-            pred_u8 = pred_bin_for_overlay * 255
-            overlay = np.zeros_like(base)
+            # Resize predictions to match original image dimensions
+            pred_classes_resized = self._resize_prediction_to_original(
+                pred_classes, original_shape
+            )
+            pred_bin_resized = self._resize_prediction_to_original(
+                pred_bin_for_overlay, original_shape
+            )
+
+            # Create overlay with original image dimensions
+            pred_u8 = pred_bin_resized * 255
+            overlay = np.zeros_like(original_img)
             overlay = overlay.copy()
             overlay[:, :, 0] = pred_u8
             overlay = cv2.addWeighted(
-                base.astype(np.uint8), 0.6, overlay.astype(np.uint8), 0.4, 0
+                original_img.astype(np.uint8), 0.6, overlay.astype(np.uint8), 0.4, 0
             )
 
             results.append(
                 {
                     "name": name,
-                    "image": base,
-                    "mask": pred_classes,
-                    "overlay": overlay,
+                    "image": original_img,  # Use original size image
+                    "mask": pred_classes_resized,  # Use resized mask
+                    "overlay": overlay,  # Use properly sized overlay
                 }
             )
 
