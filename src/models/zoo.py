@@ -1,6 +1,6 @@
 from src.models.simple_cnn import SimpleCNN
 from src.models.unet import UNet
-from utils.helpers import p, t
+from src.utils.helpers import p, t
 
 
 # Model	            Year	Key Idea	            Strengths	                        Weaknesses

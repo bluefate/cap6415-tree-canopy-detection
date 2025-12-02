@@ -9,7 +9,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from utils.helpers import c, p
+from src.utils.helpers import c, p
 
 
 def load_image(image_path: Union[str, Path]) -> np.ndarray:

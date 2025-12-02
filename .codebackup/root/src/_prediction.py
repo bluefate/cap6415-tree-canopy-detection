@@ -330,6 +330,15 @@ def extract_cm_resolution(fname: str) -> int:
     if match:
         return int(match.group(1))
 
+    # Validate submission
+    try:
+        from src.prediction.validation import validate_submission_format
+        stats = validate_submission_format(output_path)
+        if not stats['valid']:
+            p(f"⚠ WARNING: {len(stats['issues'])} validation issues found")
+    except ImportError:
+        pass
+
     # If no information found, return fallback
     return 10
 

@@ -28,7 +28,6 @@ from utils.image_converter import ImageConverter
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
 
-import torch
 from torch.utils.data import DataLoader
 from src.data.annotations import load_json_annotations
 from src.data.augmentations import get_train_augmentations, get_val_augmentations
@@ -221,8 +220,9 @@ p("All experiments", all_experiments, show = 100, color1 = c.ORANGE)
 t("Setup experiments to run ")
 
 #experiments = [all_experiments[81]]  # 81: ('yolov8l', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
-experiments = [all_experiments[67]]  # 67: ('yolov8s', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
+#experiments = [all_experiments[67]]  # 67: ('yolov8s', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
 #experiments = all_experiments
+experiments = [all_experiments[0]]
 
 p("Experiments to Run", experiments, show = 50, color1 = c.RED)
 
@@ -283,133 +283,139 @@ p("Experiments to Run", experiments, show = 50, color1 = c.RED)
 
 
 # %%
-def estimate_runtime( experiments, filter_sets ):
-    """
-    Estimate training runtime with GPU/CPU awareness and model complexity.
+import datetime
+import torch
 
-    Uses actual parameter counts and device-specific multipliers for accuracy.
+
+# Assume 'p', 't', 'c', 'entries', and 'config' are defined in the context.
+
+def format_time( seconds ):
+    """Converts a total number of seconds into a human-readable D days, HH:MM:SS format."""
+    td = datetime.timedelta(seconds = int(seconds))
+    time_str = str(td)
+
+    # Handle the 'days' case (e.g., "1 day, 0:03:20" -> "1d 0h 3m 20s")
+    if 'day' in time_str:
+        parts = time_str.split(', ')
+        days = parts[0].replace(' days', 'd').replace(' day', 'd')
+        hms = parts[1].split(':')
+        return f"{days} {hms[0].zfill(1)}h {hms[1].zfill(2)}m {hms[2].zfill(2)}s"
+
+    # If less than a day, output Hh Mm Ss (e.g., "3:25:45" -> "3h 25m 45s")
+    hms = time_str.split(':')
+    # Use lstrip('0') to show '3h' instead of '03h' unless it's '0h'
+    return f"{hms[0].lstrip('0')}h {hms[1]}m {hms[2]}s"
+
+
+def estimate_runtime( experiments ):
+    """
+    Estimate training runtime with GPU/CPU awareness, model complexity,
+    and experiment mode (rgb, filtered, concat) awareness.
     """
 
+    # --- Setup and Initialization ---
     train_size = int(0.8 * len(entries))
     batch_size = config.train.batch_size
     batches_per_epoch = max(1, train_size // batch_size)
     epochs = config.train.epochs
+    total_seconds = 0.0
 
     # Device detection
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     device_name = torch.cuda.get_device_name(0) if device.type == 'cuda' else 'CPU'
 
-    # Baseline timing (seconds per batch on reference GPU)
-    # Adjust based on your GPU: RTX 3090 = 0.5, GTX 1660 = 1.5, CPU = 5.0
     if device.type == 'cuda':
         gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
-        if gpu_memory < 4:  # Low-end GPU (like MX350)
+        if gpu_memory < 4:  # Low-end GPU
             base_seconds = 2.0
         elif gpu_memory < 8:  # Mid-range GPU
             base_seconds = 1.0
         else:  # High-end GPU
             base_seconds = 0.5
     else:
-        base_seconds = 5.0  # CPU is much slower
+        base_seconds = 5.0  # CPU is significantly slower
 
-    total_seconds = 0.0
+    # Mode timing multipliers (updated for clarity and to incorporate overhead)
+    mode_multiplier = {
+        "rgb":      1.0,  # Standard 3-channel input
+        "filtered": 1.5,  # Filter computation overhead
+        "concat":   2.5  # 6-channel input + filter overhead (higher than 2.0 to account for extra memory/ops)
+    }
 
-    # Header
-    p("=" * 70, color1 = c.ORANGE)
-    p("Runtime Estimation", color1 = c.ORANGE, bold = True)
-    p("=" * 70, color1 = c.ORANGE)
-    p("")
+    model_complexity = {
+        "simple_cnn":        1.0,
+        "unet":              2.5,
+        "smp_deeplabv3plus": 4.5,
+        "segformer":         3.5,
+        "yolov8n":           1.8,
+        "yolov8l":           6.0,
+    }
+
+    # --- Header and Pre-Run Info ---
+    t("Runtime Estimate")
     p("Device", device_name, color1 = c.GREEN)
+    p("Total Experiments", len(experiments), color1 = c.BLACK, color2 = c.ORANGE)
     p("Training samples", train_size, color1 = c.BLACK)
     p("Batches per epoch", batches_per_epoch, color1 = c.BLACK)
     p("Epochs per experiment", epochs, color1 = c.BLACK)
     p("Batch size", batch_size, color1 = c.BLACK)
-    p("")
-
-    # Mode timing multipliers (relative overhead)
-    mode_multiplier = {
-        "rgb":      1.0,  # Standard 3-channel input
-        "filtered": 1.3,  # Filter computation overhead
-        "concat":   1.8  # 6-channel input + filter overhead
-    }
-
-    # Model complexity multipliers (relative to simple_cnn)
-    model_complexity = {
-        "simple_cnn":        1.0,
-        "unet":              2.5,
-        "smp_unet":          3.0,
-        "smp_fpn":           2.8,
-        "smp_linknet":       2.2,
-        "smp_deeplabv3":     4.0,
-        "smp_deeplabv3plus": 4.5,
-        "segformer":         3.5,
-        "yolov8n":           1.8,
-        "yolov8s":           2.5,
-        "yolov8m":           4.0,
-        "yolov8l":           6.0,
-    }
+    p("-" * 70, color1 = c.ORANGE)
+    p()
 
     p("Per-Experiment Estimates:", color1 = c.CYAN, bold = True)
     p("-" * 70, color1 = c.CYAN)
 
+    # --- Calculation Loop ---
     for model_name, mode, filters in experiments:
-        # Calculate time for this experiment
+
+        # Get multipliers, defaulting to 1.0 if model/mode not found
         mode_mult = mode_multiplier.get(mode, 1.0)
         complexity_mult = model_complexity.get(model_name, 1.0)
 
         # Total multiplier
         total_mult = mode_mult * complexity_mult
 
-        # Time calculation
+        # Time calculation: Base * Device/Complexity Multipliers * (Batches * Epochs)
         sec_per_batch = base_seconds * total_mult
+
         exp_seconds = epochs * batches_per_epoch * sec_per_batch
         total_seconds += exp_seconds
 
         # Format filter string
-        filter_str = f"[{', '.join(filters[:2])}...]" if filters else "none"
+        filter_str = f"[{', '.join(filters[:2])}...]" if filters and len(filters) > 0 else "none"
 
         # Display
         exp_label = f"{model_name:20s} | {mode:8s} | {filter_str:20s}"
+
         p(exp_label, format_time(exp_seconds), color1 = c.BLUE, color2 = c.BLACK)
 
-    # Summary
-    p("")
-    p("=" * 70, color1 = c.ORANGE)
-    p("Total Estimates", color1 = c.ORANGE, bold = True)
-    p("=" * 70, color1 = c.ORANGE)
+    p()
+    t("Totals")
 
-    total_minutes = total_seconds / 60
-    total_hours = total_minutes / 60
+    total_hours = total_seconds / 3600
 
-    p("Total experiments", len(experiments), color1 = c.BLACK)
-    p("Total batches", batches_per_epoch * epochs * len(experiments), color1 = c.BLACK)
+    p("Total experiments", len(experiments))
+    p("Total batches", batches_per_epoch * epochs * len(experiments))
+
     p("Estimated total time", format_time(total_seconds), color1 = c.GREEN, bold = True)
 
-    # Time breakdown
-    if total_hours > 12:
+    # Time breakdown and Warnings
+    if total_hours >= 24:
         p("Estimated completion", f"~{total_hours / 24:.1f} days", color1 = c.ORANGE)
-    elif total_hours > 2:
-        p("Estimated completion", f"~{total_hours:.1f} hours", color1 = c.ORANGE)
-    else:
-        p("Estimated completion", f"~{total_minutes:.0f} minutes", color1 = c.GREEN)
-
-    p("")
-
-    # Warnings
-    if total_hours > 24:
         p("⚠ WARNING", "Training will take over 24 hours!", color1 = c.ORANGE, bold = True)
         p("Consider", "Reducing epochs or selecting fewer models", color1 = c.ORANGE)
-    elif total_hours > 8:
+    elif total_hours >= 8:
+        p("Estimated completion", f"~{total_hours:.1f} hours", color1 = c.ORANGE)
         p("⚠ NOTE", "Long training session - consider running overnight", color1 = c.ORANGE)
+    else:
+        p("Estimated completion", f"~{total_seconds / 60:.0f} minutes", color1 = c.GREEN)
 
     if device.type == 'cpu':
         p("⚠ CPU DETECTED", "Training on CPU is 10-20x slower than GPU", color1 = c.RED, bold = True)
-
-    p("")
-    #return total_seconds
+    p()
 
 
-estimate_runtime(experiments, filter_sets)
+estimate_runtime(experiments)
 
 # %%
 t("Train Experiments")
@@ -1611,6 +1617,254 @@ for item in best_submissions:
     p("")
 
 
+# %%
+# %%
+# Build global list of all best experiment submissions
+best_overall = None
+
+for item in best_submissions:
+    ckpt_path = Path(item["version"]) / "checkpoint.pth"
+
+    if not ckpt_path.exists():
+        continue
+
+    try:
+        ckpt = torch.load(ckpt_path, map_location = "cpu")
+        val_loss = ckpt.get("best_val_loss", None)
+        if val_loss is None:
+            continue
+
+        if best_overall is None or val_loss < best_overall["best_val_loss"]:
+            best_overall = {
+                "model":         item["model"],
+                "mode":          item["mode"],
+                "filters":       item.get("filters"),
+                "version":       item["version"],
+                "submission":    item["submission"],
+                "best_val_loss": val_loss
+            }
+    except Exception as e:
+        p("Warning", f"Could not load checkpoint {ckpt_path}: {e}", color1 = c.ORANGE)
+        continue
+
+# Append overall best only if not already present
+if best_overall:
+    already_present = any(
+            s.get("version") == best_overall["version"] and s.get("overall_best")
+            for s in best_submissions
+    )
+    if not already_present:
+        best_submissions.append(
+                {
+                    "model":         best_overall["model"],
+                    "mode":          best_overall["mode"],
+                    "filters":       best_overall.get("filters"),
+                    "version":       best_overall["version"],
+                    "submission":    best_overall["submission"],
+                    "best_val_loss": best_overall["best_val_loss"],
+                    "overall_best":  True
+                }
+        )
+    else:
+        p("best already in list")
+
+
+# %%
+# ===== Visualization Function =====
+
+def visualize_experiment_predictions( item, image_dir, num_samples = 3 ):
+    """
+    Visualize predictions for a single experiment with correct preprocessing.
+    """
+    model_name = item["model"]
+    mode = item["mode"]
+    version_path = Path(item["version"])
+    filters_str = item.get("filters")
+
+    # Parse filters from string if needed
+    if filters_str and filters_str != "none" and filters_str != "None":
+        if isinstance(filters_str, str):
+            # Handle string format like "['sobel_x', 'sobel_y', 'laplacian_3x3']"
+            if filters_str.startswith("["):
+                import ast
+
+                try:
+                    filters = ast.literal_eval(filters_str)
+                except:
+                    # Don't split - treat as single filter
+                    filters = [filters_str.strip("[]'\" ")]
+            else:
+                # Handle underscore-separated: "sobel_x_sobel_y_gaussian_5x5"
+                suffixes = { 'x', 'y', '3x3', '5x5', '7x7' }
+                parts = filters_str.split("_")
+                filters = []
+                i = 0
+                while i < len(parts) and len(filters) < 3:
+                    if i + 1 < len(parts) and parts[i + 1] in suffixes:
+                        filters.append(f"{parts[i]}_{parts[i + 1]}")
+                        i += 2
+                    else:
+                        filters.append(parts[i])
+                        i += 1
+        else:
+            filters = filters_str
+    else:
+        filters = None
+
+    # Find model weights
+    best_model_path = version_path / "best_model.pth"
+    checkpoint_path = version_path / "checkpoint.pth"
+
+    if best_model_path.exists():
+        model_path = best_model_path
+    elif checkpoint_path.exists():
+        model_path = checkpoint_path
+    else:
+        p("No model weights found", str(version_path), color1 = c.ORANGE)
+        return
+
+    try:
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+        # Build model
+        model = build_model(model_name, in_channels = 3, out_channels = 3).to(device)
+
+        # Load weights
+        state = torch.load(model_path, map_location = device)
+        if "model" in state:
+            model.load_state_dict(state["model"])
+        else:
+            model.load_state_dict(state)
+        model.eval()
+
+        val_tf = get_val_augmentations(config.train.image_size)
+
+        # Get image files
+        image_files = sorted(list(image_dir.glob("*.png")))
+        if not image_files:
+            image_files = sorted(list(image_dir.glob("*.tif")))
+
+        if not image_files:
+            p("No images found in", str(image_dir), color1 = c.ORANGE)
+            return
+
+        # Sample random images
+        sample_files = random.sample(image_files, min(num_samples, len(image_files)))
+
+        for img_path in sample_files:
+            # Load image
+            img_bgr = cv2.imread(str(img_path))
+            if img_bgr is None:
+                continue
+            img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+
+            # Apply same preprocessing as training
+            if mode == "filtered" and filters:
+                from src.data.image_loader import create_enhanced_image
+
+                try:
+                    processed_img = create_enhanced_image(img_rgb, filters)
+                except Exception as e:
+                    p("Filter preprocessing failed", str(e), color1 = c.ORANGE)
+                    processed_img = img_rgb
+            elif mode == "concat" and filters:
+                # For concat mode: RGB + filters (6 channels -> take first 3 for now)
+                from src.data.image_loader import create_enhanced_image
+
+                try:
+                    filtered_img = create_enhanced_image(img_rgb, filters)
+                    # Model expects 3 channels, so we use filtered only
+                    processed_img = filtered_img
+                except Exception as e:
+                    p("Concat preprocessing failed", str(e), color1 = c.ORANGE)
+                    processed_img = img_rgb
+            else:
+                # RGB mode
+                processed_img = img_rgb
+
+            # Apply transforms
+            augmented = val_tf(image = processed_img)
+            img_tensor = augmented["image"]
+
+            # Ensure correct format [C, H, W]
+            if isinstance(img_tensor, torch.Tensor):
+                if img_tensor.ndim == 3 and img_tensor.shape[0] != 3:
+                    img_tensor = img_tensor.permute(2, 0, 1)
+                img_tensor = img_tensor.float()
+            else:
+                img_tensor = torch.from_numpy(img_tensor.transpose(2, 0, 1)).float()
+
+            # Normalize to 0-1 if needed
+            if img_tensor.max() > 1.0:
+                img_tensor = img_tensor / 255.0
+
+            img_tensor = img_tensor.unsqueeze(0).to(device)
+
+            # Predict
+            with torch.no_grad():
+                pred = model(img_tensor)
+
+            # Convert to mask
+            if pred.shape[1] == 3:  # Multi-class
+                pred_classes = torch.argmax(pred, dim = 1).squeeze().cpu().numpy()
+            else:  # Binary
+                pred_classes = (torch.sigmoid(pred).squeeze().cpu().numpy() > 0.5).astype(np.uint8)
+
+            pred_mask = pred_classes.astype(np.uint8)
+
+            # Color mask for display
+            h, w = pred_mask.shape
+            mask_rgb = np.zeros((h, w, 3), dtype = np.uint8)
+            mask_rgb[pred_mask == 1] = (0, 255, 0)  # individual trees - green
+            mask_rgb[pred_mask == 2] = (255, 255, 0)  # groups - yellow
+
+            # Resize original for overlay (if sizes differ)
+            img_resized = cv2.resize(img_rgb, (w, h))
+
+            # Create overlay
+            overlay = cv2.addWeighted(img_resized, 0.6, mask_rgb, 0.4, 0)
+
+            # Show results
+            show_side_by_side(
+                    img_resized, pred_mask, mask_rgb, overlay,
+                    titles = (f"Original: {img_path.name}", "Pred Classes", "Color Mask", "Overlay"),
+                    cmaps = [None, "gray", None, None],
+                    maxcolumns = 4,
+            )
+
+    except Exception as e:
+        p("Visualization failed", str(e), color1 = c.RED)
+        import traceback
+
+        traceback.print_exc()
+
+
+# %%
+# ===== Summary with Visualizations =====
+t("Best Submissions Summary with Predictions")
+
+image_dir = config.paths.eval_images
+
+for item in best_submissions:
+    is_overall = item.get("overall_best", False)
+    label = "OVERALL BEST" if is_overall else "Experiment"
+
+    p("")
+    p("=" * 70, color1 = c.CYAN)
+    p(label, f"{item['model']} | {item['mode']}", color1 = c.MAGENTA, bold = is_overall)
+    p("=" * 70, color1 = c.CYAN)
+    p("Version", item["version"])
+    p("Filters", item.get("filters", "none"))
+    p("Submission", item["submission"])
+
+    if "best_val_loss" in item:
+        p("Val Loss", f"{item['best_val_loss']:.6f}", color1 = c.GREEN)
+
+    # Visualize predictions for this experiment
+    t(f"Predictions: {item['model']} ({item['mode']})")
+    visualize_experiment_predictions(item, image_dir, num_samples = 1)
+
+    p("")
 
 # %%
 
@@ -1620,7 +1874,7 @@ image_dir = config.paths.train_images
 p("Train images dir", image_dir)
 
 # sample three entries
-sample_entries = random.sample(entries, 2)
+sample_entries = random.sample(entries, 1)
 
 for e in sample_entries:
     p("Image", e.image_path.name)
@@ -1644,45 +1898,113 @@ for e in sample_entries:
 t("Visualizing sample predictions")
 test_model_weights = model_weights
 test_best_model_name = best_model_name
-image_dir = config.paths.eval_images
 
 test_model_weights = r"C:\github\Tree-Canopy-Detection\checkpoints\yolov8s\filtered\sobel_x_sobel_y_laplacian_3x3\v001\checkpoint.pth"
 test_best_model_name = "yolov8s"
+test_mode = "filtered"
+test_filters = ['sobel_x', 'sobel_y', 'laplacian_3x3']
+
+#
+# test_model_weights = r"C:\github\Tree-Canopy-Detection\checkpoints\v002\best_model.pth"
+# test_best_model_name = "simple_cnn"
+
+
+# In 10_master_execution_plan.py, replace the visualization section with:
+
+
+image_dir = config.paths.eval_images
 
 try:
-    # Use the best model that was selected earlier
-    predictor = Predictor(
-            model_path = test_model_weights,
-            model_name = test_best_model_name,
-            image_size = config.train.image_size,
-    )
+    from src.models.zoo import build_model
+    import torch
+    import numpy as np
+
+
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Build model
+    model = build_model(test_best_model_name, in_channels = 3, out_channels = 3).to(device)
+
+    # Load weights
+    state = torch.load(test_model_weights, map_location = device)
+    if "model" in state:
+        model.load_state_dict(state["model"])
+    else:
+        model.load_state_dict(state)
+    model.eval()
 
     val_tf = get_val_augmentations(config.train.image_size)
 
-    # Run prediction on a small subset of eval images
-    results = predictor.run_on_folder(
-            image_dir,
-            transform = val_tf,
-            num_samples = 15,
-    )
+    # Get image files
+    image_files = sorted(list(image_dir.glob("*.png")))[:3]
 
-    for r in results:
-        name = r["name"]
-        img = r["image"]
-        pred_mask = r["mask"]
-        overlay = r["overlay"]
+    for img_path in image_files:
+        # Load image
+        img_bgr = cv2.imread(str(img_path))
+        if img_bgr is None:
+            continue
+        img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
 
-        p("Eval image", name)
+        # Apply same preprocessing as training
+        if test_mode == "filtered":
+            from src.data.image_loader import create_enhanced_image
 
+
+            processed_img = create_enhanced_image(img_rgb, test_filters)
+        else:
+            processed_img = img_rgb
+
+        # Apply transforms
+        augmented = val_tf(image = processed_img)
+        img_tensor = augmented["image"].float()
+
+        # Ensure correct format
+        if img_tensor.ndim == 3 and img_tensor.shape[0] != 3:
+            img_tensor = img_tensor.permute(2, 0, 1)
+        img_tensor = img_tensor.unsqueeze(0).to(device)
+
+        # Normalize if needed (your training normalizes to 0-1)
+        if img_tensor.max() > 1.0:
+            img_tensor = img_tensor / 255.0
+
+        # Predict
+        with torch.no_grad():
+            pred = model(img_tensor)
+
+        # Convert to mask
+        if pred.shape[1] == 3:  # Multi-class
+            pred_classes = torch.argmax(pred, dim = 1).squeeze().cpu().numpy()
+        else:
+            pred_classes = (torch.sigmoid(pred).squeeze().cpu().numpy() > 0.5).astype(np.uint8)
+
+        # Create visualization
+        pred_mask = pred_classes.astype(np.uint8)
+
+        # Color mask for display
+        mask_rgb = np.zeros_like(img_rgb)
+        mask_rgb[pred_mask == 1] = (0, 255, 0)  # individual trees - green
+        mask_rgb[pred_mask == 2] = (255, 255, 0)  # groups - yellow
+
+        # Resize original for overlay (if sizes differ)
+        h, w = pred_mask.shape
+        img_resized = cv2.resize(img_rgb, (w, h))
+
+        overlay = cv2.addWeighted(img_resized, 0.6, mask_rgb, 0.4, 0)
+
+        p("Eval image", img_path.name)
         show_side_by_side(
-                img, pred_mask, overlay,
-                titles = ("Original", "Pred mask", "Overlay"),
-                maxcolumns = 3,
+                img_resized, pred_mask, mask_rgb, overlay,
+                titles = ("Original", "Pred Classes", "Color Mask", "Overlay"),
+                cmaps = [None, "gray", None, None],
+                maxcolumns = 4,
         )
 
+except Exception as e:
+    p("Failed to visualize predictions", str(e), color1 = c.ORANGE)
+    import traceback
 
-except Exception as e_viz:
-    p("Failed to visualize predictions", str(e_viz), color1 = c.ORANGE)
+
+    traceback.print_exc()
 
 # %%
 import numpy as np

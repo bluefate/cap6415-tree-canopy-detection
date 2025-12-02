@@ -9,8 +9,8 @@ from typing import List, Optional, Tuple
 from PIL import Image
 from tqdm import tqdm
 
+from src.utils.helpers import c, p
 from src.utils.logging import Logger
-from utils.helpers import c, p
 
 
 class ImageConverter:
