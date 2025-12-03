@@ -14,6 +14,7 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
     return torch.optim.Adam(model.parameters(), lr=lr)
 
 
+# Cross-Entropy Loss
 def prepare_criterion():
     """Multiclass cross entropy + dice loss for 3-class segmentation."""
     return torch.nn.CrossEntropyLoss()
