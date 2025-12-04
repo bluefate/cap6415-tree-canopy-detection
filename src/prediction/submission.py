@@ -69,9 +69,10 @@ def export_submission(
     cm_resolution and scene_type come from the template.
     """
     # Load template - use raw string (r"...") for Windows paths
-    template_path = Path(
-        r"C:\github\Tree-Canopy-Detection\src\data\data1\sample_answer.json"
-    )
+    template_path = Path("src/data/data1/sample_answer.json")
+    # template_path = Path(
+    #     r"C:\github\Tree-Canopy-Detection\src\data\data1\sample_answer.json"
+    # )
 
     if not template_path.exists():
         raise FileNotFoundError(f"Template not found: {template_path}")
