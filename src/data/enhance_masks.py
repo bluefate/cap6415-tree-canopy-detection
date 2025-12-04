@@ -72,6 +72,8 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             img_t = image.float()
             if img_t.ndim == 3 and img_t.shape[0] != 3:
                 img_t = img_t.permute(2, 0, 1)
+            if img_t.max() > 1.0:
+                img_t = img_t / 255.0
         else:
             img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 

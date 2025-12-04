@@ -1,5 +1,9 @@
 ﻿# Auto-strip notebook metadata  -s
-*.ipynb filter=nbstripout
+#*.ipynb filter=nbstripout
+##### executed
+# git config --local --remove-section filter.nbstripout
+# git add --renormalize .
+
 
 # Normalize Line Endings (Consistency)
 #* text=auto
