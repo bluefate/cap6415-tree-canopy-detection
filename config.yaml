@@ -17,16 +17,16 @@ paths:
   #annotations: "src/data/data1/train_annotations.json"
   #data: "data"
 
-  train_images: "/content/drive/MyDrive/TreeCanopyProject/data1/train_images"
-  train_masks: "/content/drive/MyDrive/TreeCanopyProject/data1/train_masks"
-  train_images_zip: "/content/drive/MyDrive/TreeCanopyProject/data1/train_images.zip"
-  eval_images: "/content/drive/MyDrive/TreeCanopyProject/data1/evaluation_images"
-  eval_masks: "/content/drive/MyDrive/TreeCanopyProject/data1/evaluation_masks"
-  eval_images_zip: "/content/drive/MyDrive/TreeCanopyProject/data1/evaluation_images.zip"
+  train_images: "/content/drive/MyDrive/TreeCanopyProject/data/data1/train_images"
+  train_masks: "/content/drive/MyDrive/TreeCanopyProject/data/data1/train_masks"
+  train_images_zip: "/content/drive/MyDrive/TreeCanopyProject/data/data1/train_images.zip"
+  eval_images: "/content/drive/MyDrive/TreeCanopyProject/data/data1/evaluation_images"
+  eval_masks: "/content/drive/MyDrive/TreeCanopyProject/data/data1/evaluation_masks"
+  eval_images_zip: "/content/drive/MyDrive/TreeCanopyProject/data/data1/evaluation_images.zip"
   models: "/content/drive/MyDrive/TreeCanopyProject/checkpoints"
   notebooks: "/content/drive/MyDrive/TreeCanopyProject/notebooks"
-  annotations: "/content/drive/MyDrive/TreeCanopyProject/data1/train_annotations.json"
-  data: "/content/drive/MyDrive/TreeCanopyProject/data1"
+  annotations: "/content/drive/MyDrive/TreeCanopyProject/data/data1/train_annotations.json"
+  data: "/content/drive/MyDrive/TreeCanopyProject/data/data1"
 
 
 
