@@ -20,6 +20,7 @@ scikit-image  # image processing algorithms (filters, morphology, segmentation).
 # Deep learning
 
 torch  # main PyTorch library for tensor operations and model training.
+torchinfo
 torchvision  # model architectures (ResNet, UNet, etc.) and image transforms.
 torchaudio  # audio support; required by some torchvision dependencies.
 timm  # PyTorch Image Models library, adds many pretrained networks for transfer learning.
