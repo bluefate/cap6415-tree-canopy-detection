@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Any, Dict
 
+import psutil
 import torch
 from torch.utils.data import DataLoader
 
@@ -50,6 +51,10 @@ class Trainer:
         self.logger.header("Training started")
         self.logger.info(self.model)
         # LOG MODEL
+
+        self.logger.info(f"CPU cores: {psutil.cpu_count()}")
+        self.logger.info(f"RAM: {psutil.virtual_memory().total / 1e9:.1f} GB")
+        self.logger.info(f"Disk space: {psutil.disk_usage('/').free / 1e9:.1f} GB")
 
         # GPU memory optimization
         if self.device.type == "cuda":
