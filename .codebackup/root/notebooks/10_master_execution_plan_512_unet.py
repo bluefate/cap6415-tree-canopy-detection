@@ -219,9 +219,9 @@ t("Setup experiments to run ")
 
 #experiments = [all_experiments[81]]  # 81: ('yolov8l', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
 #experiments = [all_experiments[67]]  # 67: ('yolov8s', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
-experiments = all_experiments
+#experiments = all_experiments
 # experiments = [all_experiments[0]]
-#experiments = [exp for exp in all_experiments if exp[0] == 'simple_cnn']
+experiments = [exp for exp in all_experiments if exp[0] == 'unet']
 
 p("Experiments to Run", experiments, show = 50, color1 = c.RED)
 

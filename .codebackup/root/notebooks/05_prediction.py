@@ -15,7 +15,7 @@ from src.models.zoo import MODEL_BUILDERS
 from src.prediction.pipeline import Predictor
 from src.prediction.submission import export_submission
 from src.utils.config import Config
-from src.utils.helpers import init_notebook, p
+from src.utils.helpers import c, init_notebook, p
 from src.utils.versioning import VersionManager
 
 
@@ -36,20 +36,80 @@ p("Learning Rate", config.train.learning_rate, precision = 9)
 p("Image Size", config.train.image_size)
 
 # %%
-
-
 model_name = "simple_cnn"
 
-vm = VersionManager(config.paths.models)
-version_dir = vm.find_latest()
+# Search for models in structured paths first
+structured_paths = [
+    config.paths.models / model_name / "rgb",
+    config.paths.models / "notebook_eval" / model_name / "rgb",
+    config.paths.models / model_name / "rgb" / f"size_{config.train.image_size}",
+]
+
+version_dir = None
+vm = None
+
+# Try structured paths first
+for path in structured_paths:
+    if path.exists():
+        p(f"Checking path: {path}", color1=c.CYAN)
+        vm = VersionManager(path)
+        version_dir = vm.find_latest()
+        if version_dir is not None:
+            p(f"Found model in: {path}", color1=c.GREEN)
+            break
+
+# Fallback to general search
+if version_dir is None:
+    p("Structured paths not found, searching generally...", color1=c.ORANGE)
+    vm = VersionManager(config.paths.models)
+    version_dir = vm.find_latest()
+
+# Add null check for missing models
+if version_dir is None:
+    p("No trained models found!", color1=c.RED, bold=True)
+    p("Available directories:", color1=c.ORANGE)
+    models_dir = config.paths.models
+    if models_dir.exists():
+        p("Top-level directories:")
+        for item in models_dir.iterdir():
+            if item.is_dir():
+                p("  ", item.name)
+                # Check subdirectories
+                for subitem in item.iterdir():
+                    if subitem.is_dir():
+                        p("    ", subitem.name)
+                        # Check for version directories
+                        for subsubitem in subitem.iterdir():
+                            if subsubitem.is_dir() and subsubitem.name.startswith('v'):
+                                p("      ", subsubitem.name)
+    else:
+        p("Models directory doesn't exist:", models_dir)
+
+    p("\nTo fix this issue:")
+    p("1. Run notebook 03 (training) first, OR")
+    p("2. Run notebook 10 with a simple experiment like:", color1=c.CYAN)
+    p("   experiments = [('simple_cnn', 'rgb', None)]", color1=c.CYAN)
+
+    raise RuntimeError("No trained models found. Please run training first.")
+
+p(f"Using model from: {version_dir}", color1=c.GREEN)
+
 model_path = version_dir / "best_model.pth"
 
-predictor = Predictor(
-        model_path = model_path,
-        model_name = model_name,
-        image_size = config.train.image_size,
-)
+# Check if model file exists
+if not model_path.exists():
+    checkpoint_path = version_dir / "checkpoint.pth"
+    if checkpoint_path.exists():
+        p("Using checkpoint instead of best_model", color1=c.ORANGE)
+        model_path = checkpoint_path
+    else:
+        raise RuntimeError(f"No model weights found in {version_dir}")
 
+predictor = Predictor(
+    model_path=model_path,
+    model_name=model_name,
+    image_size=config.train.image_size,
+)
 
 # %% [markdown]
 # #### Run on evaluation folder
@@ -77,10 +137,10 @@ for r in results:
     # show_overlay(img, mask, 0.4, "Overlay")
 
     show_side_by_side(
-        img, mask, overlay,
-        titles = [r["name"], "Predicted mask", "Overlay"],
-        cmaps = [None, "gray", None],
-        )
+            img, mask, overlay,
+            titles = [r["name"], "Predicted mask", "Overlay"],
+            cmaps = [None, "gray", None],
+    )
 
 
 
@@ -91,8 +151,11 @@ for r in results:
 vm = VersionManager(config.paths.models)
 version_folder = vm.find_latest()
 
-p("Exporting submission for version:", version_folder.name)
+if version_folder is None:
+    p("No model version found for export", color1=c.RED)
+else:
+    p("Exporting submission for version:", version_folder.name)
 
-out_path = version_folder / "submission.json"
-export_submission(results, out_path)
-p("Submission Saved", out_path)
+    out_path = version_folder / "submission.json"
+    export_submission(results, out_path)
+    p("Submission Saved", out_path)

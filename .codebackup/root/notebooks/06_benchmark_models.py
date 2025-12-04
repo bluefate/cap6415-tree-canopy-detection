@@ -18,7 +18,6 @@ from src.data.annotations import load_json_annotations
 from src.data.augmentations import get_val_augmentations
 from src.data.loaders import ImageMaskDataset
 from src.models.zoo import build_model, MODEL_BENCHMARKS
-from src.training.metrics import compute_metrics
 from src.utils.config import Config
 from src.utils.helpers import init_notebook, p
 
@@ -61,6 +60,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 # #### Benchmarking
 
 # %%
+
 rows = []
 
 for name, params in MODEL_BENCHMARKS.items():
@@ -68,8 +68,6 @@ for name, params in MODEL_BENCHMARKS.items():
 
     try:
         model = build_model(name, in_channels = 3, out_channels = 3, **params).to(device)
-
-
     except Exception as e:
         p("Failed to load model", name)
         p("Error", e)
@@ -95,9 +93,14 @@ for name, params in MODEL_BENCHMARKS.items():
 
             total_time += (t1 - t0)
 
-            m = compute_metrics(pred, mask_t)
-            total_iou += m["iou"]
-            total_dice += m["dice"]
+            # Use multiclass metrics for consistency
+            from src.training.metrics import compute_metrics_multiclass
+
+
+            m = compute_metrics_multiclass(pred, mask_t, num_classes = 3)
+
+            total_iou += m.get("iou", m.get("mean_iou", 0.0))
+            total_dice += m.get("dice", 0.0)
             total_acc += m["acc"]
 
     n = len(val_ds)

@@ -1,3 +1,75 @@
+# %%
+import os
+import sys
+from IPython.display import HTML
+
+
+
+if 'google.colab' in str(get_ipython()):
+    HTML("""
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        pre, code, .output pre {
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+    </style>
+    """)
+
+    os.chdir('/content')
+
+    from google.colab import drive
+    drive.mount('/content/drive')
+
+    # Load environment variables
+    env_path = '/content/drive/MyDrive/TreeCanopyProject/.env'
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                if '=' in line and not line.startswith('#'):
+                    key, value = line.strip().split('=', 1)
+                    os.environ[key] = value
+
+    # Clone repository
+    repo_path = '/content/CAP6415_F25_project-Tree-Canopy-Detection'
+    github_token = os.getenv('TOKEN')
+
+    if not os.path.exists(repo_path):
+        if github_token:
+            # !git config --global user.email "jherna65@fau.edu"
+            # !git config --global user.name "bluefate"
+            clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
+            # !git clone $clone_url
+            print("Repository cloned")
+        else:
+            print("ERROR: No token")
+    else:
+        print("Repository already exists")
+
+    # Set paths and pull latest
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        if github_token:
+            # #!git reset --hard HEAD
+            # !git pull
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, 'src'))
+        print("Setup complete")
+
+    # Set paths
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, 'src'))
+        print("Setup complete")
+
+    print("Requirements")
+    # Install packages
+    # !pip install -r requirements.txt
+
+# %%
+# # !git fetch origin
+# # !git reset --hard origin/main
+
 # %% [markdown]
 # # Notebook: 10 Master Execution Plan
 # ### Purpose: Complete pipeline from data preparation to final submission
@@ -94,6 +166,20 @@ p("Images with individual trees", individual_count)
 p("Images with tree groups", group_count)
 
 
+
+# %%
+# Add this after your imports and before training
+import torch
+from torch.cuda.amp import GradScaler, autocast
+
+# Optimize CUDA
+torch.backends.cudnn.benchmark = True
+torch.cuda.set_per_process_memory_fraction(0.95)
+
+# Mixed precision scaler
+scaler = GradScaler()
+
+p("CUDA optimizations enabled")
 
 # %% [markdown]
 # #### Step 2: Filter Experimentation
@@ -219,9 +305,10 @@ t("Setup experiments to run ")
 
 #experiments = [all_experiments[81]]  # 81: ('yolov8l', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
 #experiments = [all_experiments[67]]  # 67: ('yolov8s', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
-experiments = all_experiments
+#experiments = all_experiments
 # experiments = [all_experiments[0]]
 #experiments = [exp for exp in all_experiments if exp[0] == 'simple_cnn']
+experiments = [exp for exp in all_experiments if exp[1] == 'rgb']
 
 p("Experiments to Run", experiments, show = 50, color1 = c.RED)
 
@@ -447,13 +534,6 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("Model", model_name, color1 = c.ORANGE)
     p("Mode", mode, color1 = c.ORANGE)
     p("Filters", filters, color1 = c.ORANGE)
-
-    # experiment key
-    key = f"{model_name}_{mode}"
-    if filters:
-        filter_key = "_".join(filters)
-        key = f"{key}_{filter_key}"
-    p("key", key)
 
     try:
         # Prepare data
@@ -1275,8 +1355,6 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
 
 # %%
 
-# %%
-
 t("Generating Final Submission with Best Model")
 
 # Load best model info
@@ -2067,13 +2145,26 @@ except Exception as e_viz:
 # %%
 
 # %%
-from prediction.validation import analyze_validation_metrics
+from src.prediction.validation import analyze_validation_metrics
 
+# Load best model info first
+best_model_info_path = config.paths.models / "BEST_MODEL.txt"
+best_model_name = "simple_cnn"  # default fallback
+
+if best_model_info_path.exists():
+    with open(best_model_info_path, 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            if "model:" in line:
+                best_model_name = line.split(':')[1].strip()
+                break
 
 if trainer is not None:
     checkpoint_path = trainer.paths["checkpoint"]
     if checkpoint_path.exists():
         ckpt = torch.load(checkpoint_path, map_location = "cpu")
+
+        p(f"Analyzing validation metrics for", best_model_name, color1 = c.ORANGE)
 
         analyze_validation_metrics(
                 val_loss = ckpt.get("val_loss", 0),
@@ -2085,6 +2176,5 @@ if trainer is not None:
                 individual_tree_iou = ckpt.get("val_iou_individual", 0),
                 group_tree_iou = ckpt.get("val_iou_group", 0),
                 dice = ckpt.get("val_dice", ckpt.get("dice", 0)),
-                model_name = "simple_cnn"
+                model_name = best_model_name
         )
-

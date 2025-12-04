@@ -723,7 +723,7 @@ if __name__ == "__main__":
 # From C:\github\Tree-Canopy-Detection\src\models\zoo.py
 from src.models.simple_cnn import SimpleCNN
 from src.models.unet import UNet
-from utils.helpers import p, t
+from src.utils.helpers import p, t
 
 
 # Model	            Year	Key Idea	            Strengths	                        Weaknesses

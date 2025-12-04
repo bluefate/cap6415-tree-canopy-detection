@@ -13,10 +13,27 @@ import sys
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
 
+from src.utils.config import Config
+from src.utils.helpers import init_notebook
+
+
+config = Config.load()
+init_notebook(config.train.seed)
+
+
+
+# %%
+import os
+import sys
+
+
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../src"))
+
 from src.data.annotations import get_unique_classes, load_json_annotations
 from src.exploration.class_explorer import *
 from src.utils.config import Config
-from utils.helpers import init_notebook, p
+from src.utils.helpers import init_notebook, p
 
 
 config = Config.load()

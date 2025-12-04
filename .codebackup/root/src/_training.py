@@ -15,6 +15,7 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
     return torch.optim.Adam(model.parameters(), lr=lr)
 
 
+# Cross-Entropy Loss
 def prepare_criterion():
     """Multiclass cross entropy + dice loss for 3-class segmentation."""
     return torch.nn.CrossEntropyLoss()
@@ -243,11 +244,121 @@ def compute_metrics_multiclass(
     ious["iou"] = ious["mean_iou"]
     ious["dice"] = 0.0  # Placeholder
 
+    all_tp = 0
+    all_fp = 0
+    all_fn = 0
+
+    for cls_id in range(1, num_classes):  # Skip background class 0
+        pred_mask = pred_classes == cls_id
+        true_mask = true_classes == cls_id
+
+        tp = np.logical_and(pred_mask, true_mask).sum()
+        fp = np.logical_and(pred_mask, ~true_mask).sum()
+        fn = np.logical_and(~pred_mask, true_mask).sum()
+
+        all_tp += tp
+        all_fp += fp
+        all_fn += fn
+
+    # Overall precision and recall
+    ious["precision"] = float(all_tp) / float(all_tp + all_fp + 1e-8)
+    ious["recall"] = float(all_tp) / float(all_tp + all_fn + 1e-8)
+
+    # F1 score
+    prec = ious["precision"]
+    rec = ious["recall"]
+    ious["f1_score"] = 2 * (prec * rec) / (prec + rec + 1e-8)
+
     return ious
 
 
 # From C:\github\Tree-Canopy-Detection\src\training\running.py
+import copy
+
+import torch
+
 from data.enhance_masks import EnhancedImageMaskDataset
+from utils.helpers import c, p
+
+
+def get_version_config(
+    config,
+    filters,
+    notebook,
+    model_name,
+    mode,
+    in_channels,
+    best_model_tracker=None,
+    i=None,
+    experiments=None,
+):
+    version_root = config.paths.models / notebook / model_name / mode
+    if filters:
+        filter_str = "_".join(filters)
+        version_root = version_root / filter_str
+    # Add image size to path to differentiate models
+    version_root = version_root / f"size_{config.train.image_size}"
+
+    version_root.mkdir(parents=True, exist_ok=True)
+    p("Version root", version_root)
+
+    # saving custom config
+    exp_config = copy.deepcopy(config)
+    exp_config.extra["experiment"] = {
+        "model_name": model_name,
+        "input_mode": mode,
+        "filter_names": filters,
+        "input_channels": in_channels,
+    }
+
+    # experiment key
+    key = f"{model_name}_{mode}"
+    if filters:
+        filter_key = "_".join(filters)
+        key = f"{key}_{filter_key}"
+    p("key", key)
+
+    # Check if experiment already completed successfully
+    best_model_path = version_root / "best_model.pth"
+    checkpoint_path_check = version_root / "checkpoint.pth"
+
+    best_model_exists = False
+    if best_model_tracker:
+        if best_model_path.exists():
+            p(f"SKIPPING {i}/{len(experiments)}", key, color1=c.CYAN, color2=c.CYAN)
+            p("[Info]", f"Already trained: {best_model_path}", color1=c.CYAN)
+
+            # Still check if this is the best model overall
+            if checkpoint_path_check.exists():
+                try:
+                    ckpt = torch.load(checkpoint_path_check, map_location="cpu")
+                    val_loss = ckpt.get("best_val_loss", float("inf"))
+                    p("[Info]", f"Previous Val Loss: {val_loss:.6f}", color1=c.CYAN)
+
+                    if val_loss < best_model_tracker["best_val_loss"]:
+                        best_model_tracker["best_val_loss"] = val_loss
+                        best_model_tracker["best_experiment"] = key
+                        best_model_tracker["best_model_path"] = best_model_path
+                        best_model_tracker["best_version_dir"] = version_root
+                        p(
+                            "\t\tðŸ�† BEST MODEL (from previous run)",
+                            key,
+                            color1=c.ORANGE,
+                            bold=True,
+                        )
+                except Exception as e:
+                    p("Warning", f"Could not load checkpoint: {e}", color1=c.ORANGE)
+
+            best_model_exists = True
+
+    return (
+        key,
+        version_root,
+        exp_config,
+        best_model_path,
+        checkpoint_path_check,
+        best_model_exists,
+    )
 
 
 def get_available_filters():
@@ -307,6 +418,7 @@ def validate_filter_set(filter_names, available_filters):
 from pathlib import Path
 from typing import Any, Dict
 
+import psutil
 import torch
 from torch.utils.data import DataLoader
 
@@ -356,6 +468,10 @@ class Trainer:
         self.logger.header("Training started")
         self.logger.info(self.model)
         # LOG MODEL
+
+        self.logger.info(f"CPU cores: {psutil.cpu_count()}")
+        self.logger.info(f"RAM: {psutil.virtual_memory().total / 1e9:.1f} GB")
+        self.logger.info(f"Disk space: {psutil.disk_usage('/').free / 1e9:.1f} GB")
 
         # GPU memory optimization
         if self.device.type == "cuda":
@@ -484,6 +600,9 @@ class Trainer:
         total_iou_individual = 0.0
         total_iou_group = 0.0
         total_acc = 0.0
+        total_precision = 0.0
+        total_recall = 0.0
+        total_f1 = 0.0
 
         with torch.no_grad():
             for images, masks in self.val_loader:
@@ -501,16 +620,27 @@ class Trainer:
                 total_iou_individual += m.get("iou_individual_tree", 0.0)
                 total_iou_group += m.get("iou_group_of_trees", 0.0)
                 total_acc += m["acc"]
+                total_precision += m.get("precision", 0.0)
+                total_recall += m.get("recall", 0.0)
+
+                # Calculate F1 score from precision and recall
+                prec = m.get("precision", 0.0)
+                rec = m.get("recall", 0.0)
+                f1 = 2 * (prec * rec) / (prec + rec + 1e-8)
+                total_f1 += f1
 
         n = max(1, len(self.val_loader))
 
         return {
             "loss": total_loss / n,
-            "iou": total_iou / n,  # This is now mean_iou of tree classes
+            "iou": total_iou / n,
             "iou_individual_tree": total_iou_individual / n,
             "iou_group_of_trees": total_iou_group / n,
-            "dice": 0.0,  # Placeholder
             "acc": total_acc / n,
+            "precision": total_precision / n,
+            "recall": total_recall / n,
+            "f1_score": total_f1 / n,
+            "dice": total_f1 / n,  # Use F1 as Dice approximation
         }
 
     def run(self) -> None:
@@ -531,9 +661,12 @@ class Trainer:
             self.logger.info(
                 f"Train loss {train_loss:.4f}, "
                 f"Val loss {val['loss']:.4f}, "
-                f"IoU {val['iou']:.4f} (ind={val['iou_individual_tree']:.4f},"
+                f"IoU {val['iou']:.4f} (ind={val['iou_individual_tree']:.4f}, "
                 f"grp={val['iou_group_of_trees']:.4f}), "
-                f"Acc {val['acc']:.4f}"
+                f"Acc {val['acc']:.4f}, "
+                f"Prec {val['precision']:.4f}, "
+                f"Rec {val['recall']:.4f}, "
+                f"F1 {val['f1_score']:.4f}"
             )
 
             is_best = val["loss"] < self.best_val_loss

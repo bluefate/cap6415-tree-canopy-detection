@@ -9,6 +9,8 @@ import sys
 
 from torch.nn import CrossEntropyLoss
 
+from training.running import get_version_config
+
 
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
@@ -91,14 +93,23 @@ p("Image Size", config.train.image_size)
 # #### Run Training
 
 # %%
-version_root = config.paths.models
+# Create structured path: checkpoints/notebook_eval/[model]/[mode]/[version]
+model_name, mode, in_channels = "simple_cnn", "rgb", "3"
+
+key, version_root, exp_config, best_model_path, checkpoint_path_check, best_model_exists = get_version_config(
+        config, None, "03", model_name, mode, in_channels, None, None, None
+)
+
 trainer = run_training(
-        config = config,
+        config = exp_config,
         train_loader = train_loader,
         val_loader = val_loader,
         version_root = version_root,
-        model_name = "simple_cnn",
+        model_name = model_name,
 )
+
+# %% [markdown]
+#
 
 # %%
 from models.zoo import build_model
@@ -127,4 +138,27 @@ p(f"\nModel output dtype: {preds.dtype}, shape: {preds.shape}", color1 = c.BLACK
 criterion = CrossEntropyLoss()
 loss = criterion(preds, batch_masks[:1])
 p(f"Loss computed successfully: {loss.item()}", color1 = c.BLACK)
+
+
+# %%
+from prediction.validation import analyze_validation_metrics
+
+
+if trainer is not None:
+    checkpoint_path = trainer.paths["checkpoint"]
+    if checkpoint_path.exists():
+        ckpt = torch.load(checkpoint_path, map_location = "cpu")
+
+        analyze_validation_metrics(
+                val_loss = ckpt.get("val_loss", 0),
+                iou = ckpt.get("val_iou", ckpt.get("iou", 0)),
+                accuracy = ckpt.get("val_accuracy", ckpt.get("accuracy", 0)),
+                precision = ckpt.get("val_precision", ckpt.get("precision", 0)),
+                recall = ckpt.get("val_recall", ckpt.get("recall", 0)),
+                f1_score = ckpt.get("val_f1_score", ckpt.get("f1_score", 0)),
+                individual_tree_iou = ckpt.get("val_iou_individual", 0),
+                group_tree_iou = ckpt.get("val_iou_group", 0),
+                dice = ckpt.get("val_dice", ckpt.get("dice", 0)),
+                model_name = "simple_cnn"
+        )
 

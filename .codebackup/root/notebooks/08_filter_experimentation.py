@@ -6,6 +6,8 @@
 import os
 import sys
 
+from training.running import get_available_filters
+
 
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
@@ -18,8 +20,8 @@ import pandas as pd
 from src.data.annotations import load_json_annotations
 from src.exploration.visualize import show_side_by_side
 from src.utils.config import Config
-from src.utils.helpers import init_notebook, p, t
-from src.data.image_loader import apply_all_filters, create_enhanced_image, apply_filters
+from src.utils.helpers import c, init_notebook, p, t
+from src.data.image_loader import apply_all_filters, create_enhanced_image
 
 
 config = Config.load()
@@ -120,30 +122,9 @@ from src.exploration.enhancement import to_gray, clahe_enhance
 from src.exploration.filters import cv2_apply_laplacian, cv2_apply_sobel
 
 
-
 # Select random samples for testing
 num_samples = min(10, len(entries))
 sample_entries = random.sample(entries, num_samples)
-
-# results = []
-# t("Evaluating filters on sample images")
-# for idx, entry in enumerate(sample_entries):
-#     p(f"Processing sample {idx + 1}/{num_samples}", entry.image_path.name)
-#
-#     # Apply All Filters to Sample Images
-#     img, mask = load_sample_with_mask(entry, train_dir)
-#     filters = apply_all_filters(img) XXXXXXXX
-#
-#     for filter_name, filtered_img in filters.items():
-#         metrics = compute_edge_quality(filtered_img, mask)
-#
-#         results.append(
-#                 {
-#                     'image':  entry.image_path.name,
-#                     'filter': filter_name,
-#                     **metrics
-#                 }
-#         )
 
 # Get all available kernels
 kernel_bank = get_kernels("all")  # returns dict of {name: kernel_matrix}
@@ -183,9 +164,9 @@ for idx, entry in enumerate(sample_entries):
 
     # Evaluate algorithmic filters (OpenCV native)
     algorithmic_filters = {
-        'laplacian': lambda: cv2_apply_laplacian(img),
-        'sobel': lambda: cv2_apply_sobel(img),
-        'clahe': lambda: clahe_enhance(gray, clip=2.0, tile=8),
+        'laplacian':    lambda: cv2_apply_laplacian(img),
+        'sobel':        lambda: cv2_apply_sobel(img),
+        'clahe':        lambda: clahe_enhance(gray, clip = 2.0, tile = 8),
         'gaussian_3x3': lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
         'gaussian_5x5': lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
     }
@@ -201,14 +182,16 @@ for idx, entry in enumerate(sample_entries):
 
             metrics = compute_edge_quality(filtered, mask)
 
-            results.append({
-                'image': entry.image_path.name,
-                'filter': fname,
-                'filter_type': 'algorithmic',
-                **metrics
-            })
+            results.append(
+                    {
+                        'image':       entry.image_path.name,
+                        'filter':      fname,
+                        'filter_type': 'algorithmic',
+                        **metrics
+                    }
+            )
         except Exception as e:
-            p("Warning", f"Filter '{fname}' failed: {e}", color1=c.ORANGE)
+            p("Warning", f"Filter '{fname}' failed: {e}", color1 = c.ORANGE)
             continue
 
 # Convert to DataFrame
@@ -245,6 +228,47 @@ p("Top 3 Filters", top_3_filters)
 # %% [markdown]
 # #### Step 5: Visual Comparison
 #
+
+# %%
+def apply_filters_safely( img, filter_names ):
+    """
+    Apply filters with error handling.
+    """
+    try:
+        return apply_all_filters(img)
+    except Exception as e:
+        p("Filter application failed", str(e), color1 = c.RED)
+        return { }
+
+
+def validate_filter_compatibility( filter_names, available_filters ):
+    """
+    Check if all filters are available.
+    """
+    missing = [f for f in filter_names if f not in available_filters]
+    if missing:
+        p("Missing filters", missing, color1 = c.ORANGE)
+        return False
+    return True
+
+
+for entry in sample_entries:
+    try:
+        img, mask = load_sample_with_mask(entry, train_dir)
+
+        # Apply filters safely
+        filters = apply_filters_safely(img, get_available_filters())
+
+        if not filters:
+            p("No filters applied successfully", color1 = c.ORANGE)
+            continue
+
+        # Continue with existing logic...
+
+    except Exception as e:
+        p("Failed to process entry", str(e), color1 = c.RED)
+        continue
+
 
 # %%
 # Visualize top 3 filters on a sample image

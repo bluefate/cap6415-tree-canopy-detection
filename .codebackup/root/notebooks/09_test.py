@@ -446,7 +446,7 @@ all_passed = verify_dataset_shapes()
 # #### Test CLAHE Error Fix
 
 # %%
-from exploration.enhancement import clahe_enhance, to_gray
+from src.exploration.enhancement import clahe_enhance, to_gray
 
 
 # %%

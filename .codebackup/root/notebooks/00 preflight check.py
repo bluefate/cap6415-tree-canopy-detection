@@ -1,4 +1,11 @@
 # %% [markdown]
+# <a href="https://colab.research.google.com/github/bluefate/CAP6415_F25_project-Tree-Canopy-Detection/blob/main/notebooks/00%20preflight%20check.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
+# %%
+if 'google.colab' in str(get_ipython()):
+  # %cd /content/CAP6415_F25_project-Tree-Canopy-Detection
+
+# %% [markdown]
 # # Notebook: 00 Pre-Flight Check Script
 # ### Purpose: Test full pipeline to catch issues early
 #
