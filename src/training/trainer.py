@@ -39,6 +39,10 @@ class Trainer:
             "train_loss": [],
             "val_loss": [],
             "lr": [],
+            "val_iou": [],
+            "val_precision": [],
+            "val_recall": [],
+            "val_f1": [],
         }
 
         # versioning paths
@@ -110,6 +114,7 @@ class Trainer:
             "scaler": self.scaler.state_dict(),
             "best_val_loss": self.best_val_loss,
             "train_loss": train_loss,
+            "history": self.history,
         }
         if val_metrics is not None:
             state.update(
@@ -142,6 +147,7 @@ class Trainer:
         self.scaler.load_state_dict(data["scaler"])
         self.best_val_loss = data.get("best_val_loss", float("inf"))
         self.start_epoch = data.get("epoch", 0) + 1
+        self.history = data.get("history", self.history)
         self.logger.info(f"Resuming from epoch {self.start_epoch}")
 
     def train_epoch(self) -> float:
@@ -251,6 +257,16 @@ class Trainer:
                 f"Rec {val['recall']:.4f}, "
                 f"F1 {val['f1_score']:.4f}"
             )
+
+            # store epoch history
+            self.history["train_loss"].append(train_loss)
+            self.history["val_loss"].append(val["loss"])
+            self.history["val_iou"].append(val["iou"])
+            self.history["val_precision"].append(val["precision"])
+            self.history["val_recall"].append(val["recall"])
+            self.history["val_f1"].append(val["f1_score"])
+            current_lr = self.optimizer.param_groups[0]["lr"]
+            self.history["lr"].append(current_lr)
 
             is_best = val["loss"] < self.best_val_loss
             if is_best:
