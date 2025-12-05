@@ -23,7 +23,8 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 
 def prepare_criterion():
     """Weighted cross entropy for imbalanced 3-class segmentation."""
-    weights = torch.tensor([1.00, 2.50, 7.00])  # [background, individual, group]
+    # weights = torch.tensor([1.00, 2.50, 7.00])  # [background, individual, group]
+    weights = torch.tensor([1.0, 5.0, 5.0])  # [background, individual, group]
     return torch.nn.CrossEntropyLoss(
         weight=weights.cuda() if torch.cuda.is_available() else weights
     )

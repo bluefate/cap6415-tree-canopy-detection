@@ -106,6 +106,7 @@ def get_unique_classes(entries: List[AnnotationEntry]) -> List[str]:
 
 # From C:\github\Tree-Canopy-Detection\src\data\augmentations.py
 import albumentations as A
+import cv2
 from albumentations.pytorch import ToTensorV2
 
 
@@ -114,46 +115,64 @@ from albumentations.pytorch import ToTensorV2
 # CLAHE (Contrast Limited AHE): Improves on AHE by limiting contrast amplification. This prevents noise in uniform areas (like sky or skin) from being exaggerated
 
 
-def get_train_augmentations(image_size: int = 64):
+def get_train_augmentations(image_size: int = 256):
     """
     Build augmentation pipeline for training.
     Includes flips, brightness changes, distortions, and resizing.
     """
     return A.Compose(
         [
+            A.PadIfNeeded(
+                min_height=image_size,
+                min_width=image_size,
+                border_mode=cv2.BORDER_CONSTANT,
+                value=0,
+            ),
             A.Resize(image_size, image_size),
+            # A.RandomCrop(height=image_size, width=image_size),
             A.HorizontalFlip(p=0.5),
             A.VerticalFlip(p=0.5),
+            A.RandomRotate90(p=0.5),
             # A.ShiftScaleRotate(
             #         shift_limit = 0.1,
             #         scale_limit = 0.1,
             #         rotate_limit = 15,
             #         p = 0.5,
             # ),
-            A.Affine(
-                scale=(0.9, 1.1),
-                rotate=(-15, 15),
-                shear=(-10, 10),
-                p=0.5,
-            ),
+            # A.Affine(
+            #     scale=(0.9, 1.1),
+            #     rotate=(-15, 15),
+            #     shear=(-10, 10),
+            #     p=0.5,
+            # ),
             A.RandomBrightnessContrast(p=0.5),
+            A.HueSaturationValue(p=0.3),
             # A.CLAHE(p=0.5), #alrady used as a filter
-            A.ElasticTransform(alpha=0.1, p=0.1),
-            A.GridDistortion(p=0.1),
-            A.OpticalDistortion(p=0.1),
+            # A.ElasticTransform(alpha=0.1, p=0.1),
+            # A.GridDistortion(p=0.1),
+            # A.OpticalDistortion(p=0.1),
+            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ToTensorV2(),
         ],
     )
 
 
-def get_val_augmentations(image_size: int):
+def get_val_augmentations(image_size: int = 256):
     """
     Build validation and inference augmentation pipeline.
     Only resize and tensor conversion.
     """
     return A.Compose(
         [
+            A.PadIfNeeded(
+                min_height=image_size,
+                min_width=image_size,
+                border_mode=cv2.BORDER_CONSTANT,
+                value=0,
+            ),
+            # A.CenterCrop(height=image_size, width=image_size),
             A.Resize(image_size, image_size),
+            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
             ToTensorV2(),
         ],
     )
@@ -225,9 +244,9 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
 
         # Apply transforms
         if self.transform:
-            augmented = self.transform(image=image, mask=mask)
-            image = augmented["image"]
-            mask = augmented["mask"]
+            processed = self.transform(image=image, mask=mask)
+            image = processed["image"]
+            mask = processed["mask"]
 
         # Convert image to tensor
         if isinstance(image, torch.Tensor):
@@ -699,6 +718,7 @@ class ImageMaskDataset(Dataset):
     Neded for segmentation training.
     """
 
+    # -----------------------
     def __init__(
         self,
         entries: List[AnnotationEntry],
@@ -711,9 +731,11 @@ class ImageMaskDataset(Dataset):
         self.classes = classes
         self.transform = transform
 
+    # -----------------------
     def __len__(self) -> int:
         return len(self.entries)
 
+    # -----------------------
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         entry = self.entries[idx]
         img_path = self.image_dir / entry.image_path.name
@@ -729,9 +751,9 @@ class ImageMaskDataset(Dataset):
         mask = build_multiclass_mask(entry)
 
         if self.transform:
-            augmented = self.transform(image=image, mask=mask)
-            image = augmented["image"]
-            mask = augmented["mask"]
+            processed = self.transform(image=image, mask=mask)
+            image = processed["image"]
+            mask = processed["mask"]
 
         # Convert image to tensor
         if isinstance(image, torch.Tensor):
@@ -742,22 +764,6 @@ class ImageMaskDataset(Dataset):
                 img_t = img_t / 255.0
         else:
             img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
-
-        # # Specific handling for 6-channel concat mode
-        # if self.mode == "concat":
-        #     # Ensure the shape is [C, H, W]
-        #     if img_t.shape[0] == 6:
-        #         # Rearrange to [C, H, W]
-        #         img_t = img_t.permute(1, 0, 2)
-        #
-        #     # If models need 3 channels, you might need to select specific channels
-        #     if img_t.shape[0] > 3:
-        #         # Option 1: Take first 3 channels
-        #         img_t = img_t[:3]
-        #
-        #         self.logger.warn(
-        #             "Reduced 6-channel input to first 3 channels for compatibility"
-        #         )
 
         # Convert mask to tensor [H, W] -> [1, H, W]
         if isinstance(mask, torch.Tensor):
@@ -771,6 +777,7 @@ class ImageMaskDataset(Dataset):
 
         assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}"
 
+        # -----------------------
         return img_t, mask_t
 
 
@@ -794,35 +801,23 @@ class ImageOnlyDataset(Dataset):
     Used only for inference
     """
 
-    def __init__(self, image_dir: Path, transform=None):
+    # -----------------------
+    def __init__(
+        self,
+        image_dir: Path,
+        transform=None,
+    ):
         self.image_dir = Path(image_dir)
         self.transform = transform
         self.files = sorted(
             [f for f in self.image_dir.glob("*.*") if f.suffix.lower() in [".png"]],
         )
 
-        # supported_extensions = [".png", ".tif", ".tiff"]
-        # all_files = [
-        #     f
-        #     for f in self.image_dir.glob("*.*")
-        #     if f.suffix.lower() in supported_extensions
-        # ]
-        #
-        # # Deduplicate: prefer PNG over TIFF if both exist
-        # seen_stems = {}
-        # for f in all_files:
-        #     stem = f.stem
-        #     ext = f.suffix.lower()
-        #     if stem not in seen_stems:
-        #         seen_stems[stem] = f
-        #     elif ext == ".png":
-        #         seen_stems[stem] = f
-        #
-        # self.files = sorted(seen_stems.values())
-
+    # -----------------------
     def __len__(self) -> int:
         return len(self.files)
 
+    # -----------------------
     def __getitem__(self, idx: int) -> Tuple[str, torch.Tensor]:
 
         path = self.files[idx]
@@ -833,6 +828,7 @@ class ImageOnlyDataset(Dataset):
             processed = self.transform(image=image)
             image = processed["image"]
 
+        # Convert image to tensor
         if isinstance(image, torch.Tensor):
             img_t = image.float()
             if img_t.ndim == 3 and img_t.shape[0] != 3:
@@ -842,6 +838,7 @@ class ImageOnlyDataset(Dataset):
         else:
             img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
+        # -----------------------
         return path.name, img_t
 
     def _load_image(

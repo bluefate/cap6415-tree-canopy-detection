@@ -1,3 +1,6 @@
+# %% [markdown]
+# <a href="https://colab.research.google.com/github/bluefate/CAP6415_F25_project-Tree-Canopy-Detection/blob/main/notebooks/10_master_execution_plan_64_rgb.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+
 # %%
 import os
 import sys
@@ -1300,6 +1303,9 @@ else:
 t("Performance Comparison Visualization")
 
 if len(df_results) > 0:
+    import matplotlib.pyplot as plt
+
+
     # Create comparison plots
     fig, axes = plt.subplots(2, 2, figsize = (15, 10))
     fig.suptitle('Model Performance Comparison', fontsize = 16, fontweight = 'bold')
