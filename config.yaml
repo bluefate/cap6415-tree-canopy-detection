@@ -49,7 +49,7 @@ train:
   num_workers: 9 #8 # ✓ 2 CPU threads pre-load data, 4 for A100 GPU
   seed: 42
   batch_size: 128 # 16 # 2 Critical for 2GB GPU, 4 for T4 GPU , 8 for L4 GPU, 16 for A100 GPU
-  epochs: 50
+  epochs: 100
   learning_rate: 5e-4
   early_stop_patience: 10 #8 # Stops training entirely if validation loss doesn't improve for N epochs [10-15 (gives more chances)]
   scheduler_patience: 3 # Reduces learning rate if validation loss doesn't improve for N epochs [3-5 (reduce LR earlier to recover)]
