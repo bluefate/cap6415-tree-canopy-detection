@@ -10,6 +10,9 @@ import numpy as np
 import plotly.io as pio
 import torch
 
+from data.annotations import load_json_annotations
+from utils.config import Config
+
 
 # def to_chw(arr):
 #     if isinstance(arr, np.ndarray):
@@ -484,7 +487,72 @@ def format_time( seconds ):
     return f"{hms[0].lstrip('0')}h {hms[1]}m {hms[2]}s"
 
 
-def estimate_runtime( experiments ):
+
+def simple_estimate_runtime():
+    """Estimate total runtime."""
+    t("Runtime Estimate")
+
+    config = Config.load()
+
+    entries = load_json_annotations(config.paths.annotations)
+    train_size = int(0.8 * len(entries))
+
+    batch_size = config.train.batch_size
+    batches_per_epoch = train_size // batch_size
+
+    # Assume ~1 second per batch (conservative)
+    seconds_per_epoch = batches_per_epoch * 1
+
+    # 4 experiments × 10 epochs
+    total_seconds = 4 * 10 * seconds_per_epoch
+
+    p("Training samples", train_size)
+    p("Batches per epoch", batches_per_epoch)
+    p("Estimated time per epoch", f"~{format_time(seconds_per_epoch // 60)}", color1 = c.BLACK, color2 = c.RED)
+    p("Estimated total time", f"~{format_time(total_seconds)}", color1 = c.BLACK, color2 = c.RED)
+
+
+
+
+def estimate_runtime_by_epcoh( num_experiments, epochs_per_exp = 10 ):
+    """Rough estimate of total training time"""
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Time per epoch estimates (in seconds)
+    time_per_epoch = {
+        "simple_cnn": 30,
+        "unet":       60,
+        "yolov8s":    90,
+    }
+
+    total_seconds = 0
+    for model_name, mode, _ in experiments:
+        base_time = time_per_epoch.get(model_name, 60)
+        # Filtered mode adds ~20% overhead
+        if mode == "filtered":
+            base_time *= 1.2
+        total_seconds += base_time * epochs_per_exp
+
+    total_minutes = total_seconds / 60
+    total_hours = total_minutes / 60
+
+    p("Runtime Estimate", "", color1 = c.ORANGE)
+    p("  Device", device.type.upper())
+    p("  Experiments", num_experiments)
+    p("  Epochs per exp", epochs_per_exp)
+    p("  Estimated time", f"{total_hours:.1f} hours ({total_minutes:.0f} min)")
+
+    if device.type == "cpu":
+        p("  ⚠ WARNING", "CPU training is 10-20x slower!", color1 = c.RED)
+
+    return total_hours
+
+
+
+
+
+
+def estimate_runtime( experiments, config : Config, entries = None ):
     """
     Estimate training runtime with GPU/CPU awareness, model complexity,
     and experiment mode (rgb, filtered, concat) awareness.

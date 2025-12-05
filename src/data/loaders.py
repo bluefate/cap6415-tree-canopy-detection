@@ -68,6 +68,7 @@ class ImageMaskDataset(Dataset):
             processed = self.transform(image=image, mask=mask)
             image = processed["image"]
             mask = processed["mask"]
+
             # Ensure mask values are proper class indices (0,1,2)
             if mask.max() > 2:
                 mask = (mask / 255).astype(np.uint8)
