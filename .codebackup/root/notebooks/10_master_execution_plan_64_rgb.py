@@ -1,7 +1,6 @@
-# %% [markdown]
+#%% md
 # <a href="https://colab.research.google.com/github/bluefate/CAP6415_F25_project-Tree-Canopy-Detection/blob/main/notebooks/10_master_execution_plan_64_rgb.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
-
-# %%
+#%%
 import os
 import sys
 
@@ -42,10 +41,10 @@ if 'google.colab' in str(get_ipython()):
 
     if not os.path.exists(repo_path):
         if github_token:
-            # !git config --global user.email "jherna65@fau.edu"
-            # !git config --global user.name "bluefate"
+            !git config --global user.email "jherna65@fau.edu"
+            !git config --global user.name "bluefate"
             clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
-            # !git clone $clone_url
+            !git clone $clone_url
             print("Repository cloned")
         else:
             print("ERROR: No token")
@@ -56,8 +55,8 @@ if 'google.colab' in str(get_ipython()):
     if os.path.exists(repo_path):
         os.chdir(repo_path)
         if github_token:
-            # #!git reset --hard HEAD
-            # !git pull
+            #!git reset --hard HEAD
+            !git pull
         sys.path.insert(0, repo_path)
         sys.path.insert(0, os.path.join(repo_path, 'src'))
         print("Setup complete")
@@ -71,17 +70,14 @@ if 'google.colab' in str(get_ipython()):
 
     print("Requirements")
     # Install packages
-    # !pip install -r requirements.txt
-
-# %%
-# # !git fetch origin
-# # !git reset --hard origin/main
-
-# %% [markdown]
+    !pip install -r requirements.txt
+#%%
+# !git fetch origin
+# !git reset --hard origin/main
+#%% md
 # # Notebook: 10 Master Execution Plan
 # ### Purpose: Complete pipeline from data preparation to final submission
-
-# %%
+#%%
 
 import json
 import os
@@ -125,18 +121,16 @@ init_notebook(config.train.seed)
 config.show()
 
 
-
-# %% [markdown]
+#%% md
 # #### Step 1: Data Preparation
-#
+# 
 # - TIFF → PNG conversion (notebook 00_preprocess_images)
 # - Annotation loading
 # - Mask generation
 # - Data augmentation
-#
-#
-
-# %%
+# 
+# 
+#%%
 t("Loading Annotations")
 entries = load_json_annotations(config.paths.annotations)
 p("Total images", len(entries))
@@ -176,8 +170,7 @@ p("Images with individual trees", individual_count)
 p("Images with tree groups", group_count)
 
 
-
-# %%
+#%%
 # Add this after your imports and before training
 import torch
 from torch.cuda.amp import GradScaler
@@ -191,23 +184,20 @@ torch.cuda.set_per_process_memory_fraction(0.95)
 scaler = GradScaler()
 
 p("CUDA optimizations enabled")
-
-# %% [markdown]
+#%% md
 # #### Step 2: Filter Experimentation
-#
+# 
 # **Action:** Run and retrieve notebook 08 to identify top 3 filters
-#
+# 
 # **Expected Output:**
 # - Filter ranking CSV
 # - Top 3 filter names
 # - Visual comparisons
-#
-#
-
-# %% [markdown]
+# 
+# 
+#%% md
 # ##### Validate Available Filters
-
-# %%
+#%%
 
 
 # Get available filters
@@ -215,16 +205,14 @@ t("Validating Available Filters")
 AVAILABLE_FILTERS = get_available_filters()
 p("Available filters count", len(AVAILABLE_FILTERS))
 p("Sample filters", AVAILABLE_FILTERS, show = 15, color1 = c.ORANGE)
-
-# %% [markdown]
+#%% md
 # #### Step 3: Enhanced Dataset Creation
-#
+# 
 # - Create training dataset with filter-enhanced inputs
 # - Apply filters as additional channels.
-#
-#
-
-# %%
+# 
+# 
+#%%
 t("Dataset modes")
 
 val_transform = get_val_augmentations(config.train.image_size)
@@ -245,27 +233,24 @@ for mode in ['rgb', 'filtered']:
     except Exception as e:
         p(f"Mode: {mode}", f"FAILED: {e}", color1 = c.RED, color2 = c.RED)
 
-
-# %% [markdown]
+#%% md
 # #### Step 4: Model Training Comparison
-#
+# 
 # **Experiment Design:**
 # Comparing model performance across input types:
 # 1. Baseline: RGB only
 # 2. Filtered: Top 3 filters as channels
 # 3. Concat: RGB + Filters (6 channels)
-#
+# 
 # **Models to test:**
 # - SimpleCNN (fast baseline)
 # - UNet (standard architecture)
 # - SMP UNet + ResNet34 (transfer learning)
-#
-#
-
-# %% [markdown]
+# 
+# 
+#%% md
 # ##### Experiment setup
-
-# %%
+#%%
 t("Filter Sets")
 
 # Define filter combinations to test
@@ -299,8 +284,7 @@ if not all_valid:
 
 p("")
 p("filter_sets", filter_sets, color1 = c.ORANGE)
-
-# %%
+#%%
 
 t("Available experiments")
 
@@ -310,8 +294,7 @@ all_experiments = MODEL_EXPERIMENTS(filter_sets)
 # Note: This requires model architecture modification for 6-channel input
 
 p("All experiments", all_experiments, show = 100, color1 = c.ORANGE)
-
-# %%
+#%%
 t("Setup experiments to run ")
 # SimpleCNN only ued for debugging pipeline wiring, not for actual results
 #experiments = [all_experiments[81]]  # 81: ('yolov8l', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
@@ -323,8 +306,7 @@ experiments = [exp for exp in all_experiments if exp[1] == 'rgb' and exp[0] != '
 
 p("Experiments to Run", experiments, show = 50, color1 = c.RED)
 
-
-# %%
+#%%
 import datetime
 import torch
 
@@ -458,9 +440,7 @@ def estimate_runtime( experiments ):
 
 
 estimate_runtime(experiments)
-
-
-# %%
+#%%
 def analyze_class_distribution( train_loader, val_loader = None ):
     """
     Analyze class distribution in training (and optionally validation) data.
@@ -556,8 +536,7 @@ def analyze_class_distribution( train_loader, val_loader = None ):
     }
 
 
-
-# %%
+#%%
 def create_experiment_tracker():
     """Create a tracker to store and plot experiment results."""
     return {
@@ -746,18 +725,14 @@ def plot_training_history( trainer, title_prefix = "" ):
     plt.tight_layout(rect = [0, 0, 1, 0.9])
     plt.show()
 
-
-
-# %%
+#%%
 def get_input_channels( mode, filters ):
     """Determine input channels based on mode."""
     if mode == "concat" and filters:
         return 6  # RGB + 3 filters
     else:
         return 3  # RGB or filtered RGB
-
-
-# %%
+#%%
 # Initialize best model tracker
 best_model_tracker = {
     "best_val_loss":    float('inf'),
@@ -768,11 +743,9 @@ best_model_tracker = {
 }
 
 experiment_tracker = create_experiment_tracker()
-
-# %%
+#%%
 # plot_experiment_results(experiment_tracker)
-
-# %%
+#%%
 t("Train Experiments")
 
 # Running experiments
@@ -896,8 +869,7 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
         results[key] = { "status": "ERROR", "error": str(e) }
         continue
 
-
-# %%
+#%%
 
 # Summary
 t("Experiment Results Summary")
@@ -910,15 +882,13 @@ p("Successful", successful - skipped, color1 = c.BLUE)
 p("Skipped", skipped, color1 = c.ORANGE)
 p("Failed", failed, color1 = c.RED if failed > 0 else c.RED)
 
+#%%
 
-# %%
+#%%
 
-# %%
-
-# %% [markdown]
+#%% md
 # ##### Model Comparison & Best Model Selection
-
-# %%
+#%%
 # List of metrics to extract
 metrics_to_extract = [
     'best_val_loss',
@@ -934,10 +904,9 @@ metrics_to_extract = [
     'precision',
     'recall',
 ]
+#%%
 
-# %%
-
-# %%
+#%%
 t("Collecting Experiment Results")
 
 experiment_results = []
@@ -1058,7 +1027,7 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
 # Convert to DataFrame
 df_results = pd.DataFrame(experiment_results)
 
-# %%
+#%%
 # Display results
 p()
 t("Results Summary")
@@ -1098,7 +1067,7 @@ if len(df_results) > 0:
 else:
     p("No experiment results found!", color1 = c.RED, bold = True)
 
-# %%
+#%%
 # Aggregation summary
 agg_dict = { }
 for col in metrics_to_extract:
@@ -1128,11 +1097,9 @@ else:
 
 
 
-
-# %%
+#%%
 summary
-
-# %%
+#%%
 # Convert to DataFrame for easy analysis
 df_results = pd.DataFrame(experiment_results)
 
@@ -1152,8 +1119,7 @@ for col in additional_cols:
 
 p("Columns to display:", display_columns, color1 = c.CYAN)
 
-
-# %%
+#%%
 t("Top 10 Experiments")
 
 # Check if we have any sortable columns
@@ -1175,11 +1141,9 @@ try:
 except Exception as e:
     p(f"Error sorting results: {e}", color1 = c.RED)
     p(sorted_results.head(10).to_string(index = False), color1 = c.BLACK)
-
-# %%
+#%%
 sorted_results
-
-# %%
+#%%
 # Prepare aggregation dictionary dynamically
 agg_dict = { }
 for col in additional_cols:
@@ -1210,11 +1174,9 @@ if agg_dict:
 
 else:
     p("No aggregatable columns found", color1 = c.RED)
-
-# %%
+#%%
 summary
-
-# %%
+#%%
 
 t("Best Model Selection")
 
@@ -1298,14 +1260,10 @@ else:
 
             shutil.copy2(best_model_src, best_model_dst)
             p("✓ Copied best model", str(best_model_dst), color1 = c.GREEN)
-
-# %%
+#%%
 t("Performance Comparison Visualization")
 
 if len(df_results) > 0:
-    import matplotlib.pyplot as plt
-
-
     # Create comparison plots
     fig, axes = plt.subplots(2, 2, figsize = (15, 10))
     fig.suptitle('Model Performance Comparison', fontsize = 16, fontweight = 'bold')
@@ -1359,8 +1317,7 @@ if len(df_results) > 0:
     p("✓ Saved comparison plot", str(plot_path), color1 = c.GREEN)
 
     plt.show()
-
-# %%
+#%%
 t("Exporting Results")
 from datetime import datetime
 
@@ -1415,26 +1372,24 @@ if len(df_results) > 0:
     p("EXPERIMENT COMPARISON COMPLETE", color1 = c.GREEN, bold = True)
     p("=" * 80, color1 = c.CYAN, bold = True)
 
+#%%
 
-# %%
-
-# %% [markdown]
+#%% md
 # #### Step 5: Class-Specific Training
-#
+# 
 # **Strategy:**
 # Trainning separate models for:
 # 1. Individual trees
 # 2. Groups of trees
 # 3. Combined predictions
-#
+# 
 # **Rationale:**
 # - Individual trees have distinct boundaries
 # - Tree groups have larger, more diffuse edges
 # - Specialized models may perform better
-#
-#
-
-# %%
+# 
+# 
+#%%
 def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
     """
     Train a model for a specific class.
@@ -1504,9 +1459,7 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
 
 
 p("", "Class-specific training configured")
-
-
-# %%
+#%%
 # ## Train individual tree model
 # try:
 #     trainer_individual = train_class_specific_model('individual_tree', 'simple_cnn')
@@ -1519,24 +1472,22 @@ p("", "Class-specific training configured")
 # except Exception as e:
 #     p("Failed to train group_of_trees model", str(e), color1=c.RED)
 #     trainer_group = None
-
-# %% [markdown]
+#%% md
 # #### Step 6: Ensemble Predictions
-#
+# 
 # **Approach:**
 # Combine predictions from multiple models:
 # 1. RGB-trained model
 # 2. Filter-enhanced model
 # 3. Class-specific models
-#
+# 
 # **Fusion methods:**
 # - Average (simple)
 # - Weighted average (based on validation IoU)
 # - Majority voting (threshold-based)
-#
-#
-
-# %%
+# 
+# 
+#%%
 def ensemble_predict( models_and_weights, image_tensor, device = 'cpu' ):
     """
     Combine predictions from multiple models.
@@ -1558,25 +1509,22 @@ def ensemble_predict( models_and_weights, image_tensor, device = 'cpu' ):
 p("", "Ensemble prediction function ready")
 
 
+#%%
 
-# %%
+#%%
 
-# %%
+#%%
 
-# %%
-
-# %% [markdown]
+#%% md
 # #### Step 7: Submission Generation
-#
+# 
 # **Current Status:**
 # - Prediction pipeline exists (notebook 05)
 # - Submission export implemented (`export_submission`)
-#
-
-# %%
+# 
+#%%
 p("eval_images", config.paths.eval_images)
-
-# %%
+#%%
 from src.prediction.pipeline import Predictor
 from src.prediction.submission import export_submission
 
@@ -1619,9 +1567,7 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
             p("Sample annotation keys", list(first_ann.keys()))
 
     return output_path
-
-
-# %%
+#%%
 from pathlib import Path
 import pandas as pd
 
@@ -1705,8 +1651,7 @@ else:
                 color1 = c.CYAN,
         )
 
-
-# %%
+#%%
 
 t("Generating Final Submission with Best Model")
 
@@ -1748,13 +1693,11 @@ if best_model_info_path.exists():
             p("✓ Final submission generated", str(output_file), color1 = c.GREEN, bold = True)
 else:
     p("Warning", "No best model info found, skipping final submission", color1 = c.ORANGE)
+#%%
 
-# %%
-
-# %% [markdown]
+#%% md
 # #### Generate submissions for all trained experiments
-
-# %%
+#%%
 best_submissions = []
 
 # Extract unique model names and modes from experiments
@@ -1850,8 +1793,7 @@ for model_name in all_model_names:
 p("")
 t("Submission Generation Complete")
 p("Total submissions generated", len(best_submissions))
-
-# %%
+#%%
 # Build global list of all best experiment submissions
 best_overall = None
 
@@ -1914,11 +1856,9 @@ for item in best_submissions:
         p("Val Loss", item["best_val_loss"])
     p("")
 
-
-# %% [markdown]
+#%% md
 # #### Build global list of all best experiment submissions
-
-# %%
+#%%
 
 best_overall = None
 
@@ -2182,8 +2122,7 @@ for item in best_submissions:
     visualize_experiment_predictions(item, image_dir, num_samples = 1)
 
     p("")
-
-# %%
+#%%
 
 t("Visualizing Training Data (Ground Truth)")
 
@@ -2210,9 +2149,9 @@ for e in sample_entries:
     except Exception as e_viz:
         p("Failed to visualize", str(e_viz), color1 = c.ORANGE)
 
+#%%
 
-# %%
-# %%
+#%%
 t("Visualizing sample predictions")
 
 
@@ -2344,9 +2283,7 @@ else:
 
 
         traceback.print_exc()
-
-
-# %%
+#%%
 def test_best_models_by_version( config, eval_dir, num_samples = 2 ):
     """Generate predictions for the best model from each version/experiment."""
     models_dir = config.paths.models
@@ -2482,10 +2419,9 @@ def test_best_models_by_version( config, eval_dir, num_samples = 2 ):
 
 # Run the test
 test_best_models_by_version(config, eval_dir, num_samples = 2)
+#%%
 
-
-# %%
-# %%
+#%%
 def fix_submission_visualization( submission_results, image_dir ):
     """
     Fix mask sizing issues in submission visualization.
@@ -2536,7 +2472,7 @@ def fix_submission_visualization( submission_results, image_dir ):
     return submission_results
 
 
-# %%
+#%%
 t("Visualizing predictions from submission")
 
 submission_path = config.paths.models / "FINAL_SUBMISSION.json"
@@ -2613,10 +2549,9 @@ except Exception as e_viz:
 
 
     traceback.print_exc()
+#%%
 
-# %%
-
-# %%
+#%%
 from src.prediction.validation import analyze_validation_metrics
 
 

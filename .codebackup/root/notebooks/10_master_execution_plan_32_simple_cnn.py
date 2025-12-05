@@ -1027,7 +1027,7 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
 # Convert to DataFrame
 df_results = pd.DataFrame(experiment_results)
 
-# %%
+#%%
 # Display results
 p()
 t("Results Summary")
@@ -1067,7 +1067,7 @@ if len(df_results) > 0:
 else:
     p("No experiment results found!", color1 = c.RED, bold = True)
 
-# %%
+#%%
 # Aggregation summary
 agg_dict = { }
 for col in metrics_to_extract:
@@ -2150,7 +2150,8 @@ for e in sample_entries:
         p("Failed to visualize", str(e_viz), color1 = c.ORANGE)
 
 #%%
-# %%
+
+#%%
 t("Visualizing sample predictions")
 
 
@@ -2419,7 +2420,8 @@ def test_best_models_by_version( config, eval_dir, num_samples = 2 ):
 # Run the test
 test_best_models_by_version(config, eval_dir, num_samples = 2)
 #%%
-# %%
+
+#%%
 def fix_submission_visualization( submission_results, image_dir ):
     """
     Fix mask sizing issues in submission visualization.
@@ -2470,7 +2472,7 @@ def fix_submission_visualization( submission_results, image_dir ):
     return submission_results
 
 
-# %%
+#%%
 t("Visualizing predictions from submission")
 
 submission_path = config.paths.models / "FINAL_SUBMISSION.json"
