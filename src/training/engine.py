@@ -26,6 +26,7 @@ def run_training(
     val_loader,
     version_root: Path,
     model_name: str = "unet",
+    in_channels: int = 3,
 ):
     """
     Builds model, optimizer, criterion, and Trainer. Then runs training.
@@ -33,7 +34,7 @@ def run_training(
     image_size = config.train.image_size
     lr = config.train.learning_rate
 
-    model = build_model(model_name, in_channels=3, out_channels=3)
+    model = build_model(model_name, in_channels=in_channels, out_channels=3)
     optimizer = prepare_optimizer(model, lr)
     criterion = prepare_criterion()
 
