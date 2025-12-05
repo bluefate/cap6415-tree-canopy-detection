@@ -15,10 +15,14 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 
 
 # Cross-Entropy Loss
-def prepare_criterion():
-    """Multiclass cross entropy + dice loss for 3-class segmentation."""
-    return torch.nn.CrossEntropyLoss()
+# def prepare_criterion():
+#     """Multiclass cross entropy + dice loss for 3-class segmentation."""
+#     return torch.nn.CrossEntropyLoss()
 
+def prepare_criterion():
+    """Weighted cross entropy for imbalanced 3-class segmentation."""
+    weights = torch.tensor([0.5, 2.0, 2.0])  # [background, individual, group]
+    return torch.nn.CrossEntropyLoss(weight=weights.cuda() if torch.cuda.is_available() else weights)
 
 def run_training(
     config: Config,
