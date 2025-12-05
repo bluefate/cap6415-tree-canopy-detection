@@ -10,9 +10,6 @@ import numpy as np
 import plotly.io as pio
 import torch
 
-from data.annotations import load_json_annotations
-from utils.config import Config
-
 
 # def to_chw(arr):
 #     if isinstance(arr, np.ndarray):
@@ -491,6 +488,8 @@ def format_time( seconds ):
 def simple_estimate_runtime():
     """Estimate total runtime."""
     t("Runtime Estimate")
+    from data.annotations import load_json_annotations
+    from utils.config import Config
 
     config = Config.load()
 
@@ -514,7 +513,7 @@ def simple_estimate_runtime():
 
 
 
-def estimate_runtime_by_epcoh( num_experiments, epochs_per_exp = 10 ):
+def estimate_runtime_by_epcoh( experiments, epochs_per_exp = 10 ):
     """Rough estimate of total training time"""
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -538,7 +537,7 @@ def estimate_runtime_by_epcoh( num_experiments, epochs_per_exp = 10 ):
 
     p("Runtime Estimate", "", color1 = c.ORANGE)
     p("  Device", device.type.upper())
-    p("  Experiments", num_experiments)
+    p("  Experiments", len(experiments))
     p("  Epochs per exp", epochs_per_exp)
     p("  Estimated time", f"{total_hours:.1f} hours ({total_minutes:.0f} min)")
 
@@ -552,7 +551,7 @@ def estimate_runtime_by_epcoh( num_experiments, epochs_per_exp = 10 ):
 
 
 
-def estimate_runtime( experiments, config : Config, entries = None ):
+def estimate_runtime( experiments, config, entries = None ):
     """
     Estimate training runtime with GPU/CPU awareness, model complexity,
     and experiment mode (rgb, filtered, concat) awareness.
