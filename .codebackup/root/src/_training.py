@@ -16,9 +16,26 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 
 
 # Cross-Entropy Loss
+# def prepare_criterion():
+#     """Multiclass cross entropy + dice loss for 3-class segmentation."""
+#     return torch.nn.CrossEntropyLoss()
+
+
 def prepare_criterion():
-    """Multiclass cross entropy + dice loss for 3-class segmentation."""
-    return torch.nn.CrossEntropyLoss()
+    """Weighted cross entropy for imbalanced 3-class segmentation."""
+    weights = torch.tensor([1.00, 2.50, 7.00])  # [background, individual, group]
+    return torch.nn.CrossEntropyLoss(
+        weight=weights.cuda() if torch.cuda.is_available() else weights
+    )
+
+
+# look for this after train_loader to verify class inbalance
+# all_masks = []
+# for _, mask in train_loader:
+#     all_masks.append(mask.flatten())
+# all_masks = torch.cat(all_masks)
+# print(f"Class distribution: {torch.bincount(all_masks, minlength=3)}")
+# print(f"Class percentages: {torch.bincount(all_masks, minlength=3).float() / len(all_masks) * 100}")
 
 
 def run_training(
@@ -27,6 +44,7 @@ def run_training(
     val_loader,
     version_root: Path,
     model_name: str = "unet",
+    in_channels: int = 3,
 ):
     """
     Builds model, optimizer, criterion, and Trainer. Then runs training.
@@ -34,7 +52,7 @@ def run_training(
     image_size = config.train.image_size
     lr = config.train.learning_rate
 
-    model = build_model(model_name, in_channels=3, out_channels=3)
+    model = build_model(model_name, in_channels=in_channels, out_channels=3)
     optimizer = prepare_optimizer(model, lr)
     criterion = prepare_criterion()
 
@@ -456,6 +474,10 @@ class Trainer:
             "train_loss": [],
             "val_loss": [],
             "lr": [],
+            "val_iou": [],
+            "val_precision": [],
+            "val_recall": [],
+            "val_f1": [],
         }
 
         # versioning paths
@@ -527,6 +549,7 @@ class Trainer:
             "scaler": self.scaler.state_dict(),
             "best_val_loss": self.best_val_loss,
             "train_loss": train_loss,
+            "history": self.history,
         }
         if val_metrics is not None:
             state.update(
@@ -559,6 +582,7 @@ class Trainer:
         self.scaler.load_state_dict(data["scaler"])
         self.best_val_loss = data.get("best_val_loss", float("inf"))
         self.start_epoch = data.get("epoch", 0) + 1
+        self.history = data.get("history", self.history)
         self.logger.info(f"Resuming from epoch {self.start_epoch}")
 
     def train_epoch(self) -> float:
@@ -668,6 +692,16 @@ class Trainer:
                 f"Rec {val['recall']:.4f}, "
                 f"F1 {val['f1_score']:.4f}"
             )
+
+            # store epoch history
+            self.history["train_loss"].append(train_loss)
+            self.history["val_loss"].append(val["loss"])
+            self.history["val_iou"].append(val["iou"])
+            self.history["val_precision"].append(val["precision"])
+            self.history["val_recall"].append(val["recall"])
+            self.history["val_f1"].append(val["f1_score"])
+            current_lr = self.optimizer.param_groups[0]["lr"]
+            self.history["lr"].append(current_lr)
 
             is_best = val["loss"] < self.best_val_loss
             if is_best:

@@ -63,9 +63,9 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
 
         # Apply transforms
         if self.transform:
-            augmented = self.transform(image=image, mask=mask)
-            image = augmented["image"]
-            mask = augmented["mask"]
+            processed = self.transform(image=image, mask=mask)
+            image = processed["image"]
+            mask = processed["mask"]
 
         # Convert image to tensor
         if isinstance(image, torch.Tensor):

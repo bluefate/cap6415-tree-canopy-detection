@@ -222,7 +222,8 @@ class UNet(nn.Module):
         d1 = self.dec1(u1)
 
         out = self.out(d1)
-        return torch.sigmoid(out)
+        # return torch.sigmoid(out)
+        return out
 
 
 # From C:\github\Tree-Canopy-Detection\src\models\yolov8_seg.py

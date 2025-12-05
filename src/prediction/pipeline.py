@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 import torch
 
-from src.data.loaders import ImageOnlyDataset
 from src.models.zoo import build_model
 from src.utils.logging import Logger
 
@@ -56,6 +55,66 @@ class Predictor:
             pred = torch.sigmoid(pred).cpu().squeeze().numpy()
             return (pred > 0.5).astype(np.uint8)
 
+    def _load_weights(self):
+        if not self.model_path.exists():
+            raise FileNotFoundError(f"Missing model weights {self.model_path}")
+        state = torch.load(self.model_path, map_location=self.device)
+        if "model" in state:
+            self.model.load_state_dict(state["model"])
+        else:
+            self.model.load_state_dict(state)
+        self.model.eval()
+        self.logger.info(f"Loaded weights: {self.model_path}")
+
+    def predict_sliding_window(
+        self, image: np.ndarray, tile_size: int, overlap: float = 0.25
+    ) -> np.ndarray:
+        """
+        Perform inference using sliding window to preserve resolution.
+        """
+        h, w = image.shape[:2]
+        stride = int(tile_size * (1 - overlap))
+
+        # Initialize outputs
+        # shape: [3, H, W] for 3 classes
+        prob_map = torch.zeros((3, h, w), device=self.device)
+        count_map = torch.zeros((1, h, w), device=self.device)
+
+        # Preprocessing (Normalization matches training)
+        # Manually normalize since we aren't using Albumentations pipeline here easily
+        img_norm = image.astype(np.float32) / 255.0
+        img_norm = (img_norm - np.array([0.485, 0.456, 0.406])) / np.array(
+            [0.229, 0.224, 0.225]
+        )
+        tensor_img = torch.from_numpy(img_norm.transpose(2, 0, 1)).float()  # [C, H, W]
+
+        # Sliding window
+        for y in range(0, h, stride):
+            for x in range(0, w, stride):
+                y2 = min(h, y + tile_size)
+                x2 = min(w, x + tile_size)
+                y1 = max(0, y2 - tile_size)
+                x1 = max(0, x2 - tile_size)
+
+                crop = tensor_img[:, y1:y2, x1:x2].unsqueeze(0).to(self.device)
+
+                with torch.no_grad():
+                    # Get raw logits
+                    output = self.model(crop)
+                    # Apply softmax to get probabilities
+                    output = F.softmax(output, dim=1)
+
+                prob_map[:, y1:y2, x1:x2] += output.squeeze(0)
+                count_map[:, y1:y2, x1:x2] += 1.0
+
+        # Average results
+        prob_map /= count_map
+
+        # Argmax to get class indices
+        pred_mask = torch.argmax(prob_map, dim=0).cpu().numpy().astype(np.uint8)
+
+        return pred_mask
+
     def predict_image(self, image: np.ndarray) -> np.ndarray:
         """
         Run inference directly on an RGB numpy image.
@@ -80,89 +139,139 @@ class Predictor:
 
     def run_on_folder(self, image_dir: Path, transform=None, num_samples: int = None):
         """
-        Run prediction on a folder of images using ImageOnlyDataset.
-        Returns list of dictionaries with masks and overlays.
+        Run prediction on a folder using sliding window.
         """
-        dataset = ImageOnlyDataset(image_dir, transform=transform)
+        image_files = sorted(
+            list(image_dir.glob("*.png")) + list(image_dir.glob("*.tif"))
+        )
         results = []
 
-        total = len(dataset) if num_samples is None else min(num_samples, len(dataset))
+        total = (
+            len(image_files)
+            if num_samples is None
+            else min(num_samples, len(image_files))
+        )
 
         for idx in range(total):
-            name, img_t = dataset[idx]
+            img_path = image_files[idx]
 
-            # Load original image to get true dimensions
-            img_path = image_dir / name
+            # Load RGB
             original_img = cv2.imread(str(img_path))
             if original_img is None:
-                # Try with different extensions
-                for ext in [".png", ".tiff"]:
-                    alt_path = img_path.with_suffix(ext)
-                    if alt_path.exists():
-                        original_img = cv2.imread(str(alt_path))
-                        break
+                continue
+            original_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
 
-            if original_img is not None:
-                original_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
-                original_shape = original_img.shape
-            else:
-                # Fallback to processed image shape
-                if isinstance(img_t, torch.Tensor):
-                    original_shape = img_t.permute(1, 2, 0).shape
-                else:
-                    original_shape = img_t.shape
-                original_img = (
-                    img_t
-                    if not isinstance(img_t, torch.Tensor)
-                    else img_t.permute(1, 2, 0).cpu().numpy()
-                )
-
-            # Convert HWC -> CHW safely for both numpy and torch
-            if isinstance(img_t, torch.Tensor):
-                img_chw = img_t.unsqueeze(0).float()
-                base = img_t.permute(1, 2, 0).cpu().numpy()
-            else:
-                img_chw = (
-                    torch.from_numpy(img_t.transpose(2, 0, 1)).unsqueeze(0).float()
-                )
-                base = img_t
-
-            with torch.no_grad():
-                pred = self.model(img_chw.to(self.device)).cpu()
-
-            # Convert multi-class logits to class predictions
-            if pred.shape[1] == 3:  # Multi-class
-                pred_classes = torch.argmax(pred, dim=1).squeeze().numpy()  # [H, W]
-                pred_bin_for_overlay = (pred_classes > 0).astype(np.uint8)
-            else:  # Binary
-                pred = torch.sigmoid(pred).squeeze().numpy()
-                pred_classes = (pred > 0.5).astype(np.uint8)
-                pred_bin_for_overlay = pred_classes
-
-            # Resize predictions to match original image dimensions
-            pred_classes_resized = self._resize_prediction_to_original(
-                pred_classes, original_shape
-            )
-            pred_bin_resized = self._resize_prediction_to_original(
-                pred_bin_for_overlay, original_shape
+            # Predict using sliding window (tile_size matches training size)
+            pred_mask = self.predict_sliding_window(
+                original_img, tile_size=self.image_size
             )
 
-            # Create overlay with original image dimensions
-            pred_u8 = pred_bin_resized * 255
-            overlay = np.zeros_like(original_img)
-            overlay = overlay.copy()
-            overlay[:, :, 0] = pred_u8
-            overlay = cv2.addWeighted(
-                original_img.astype(np.uint8), 0.6, overlay.astype(np.uint8), 0.4, 0
-            )
+            # Create overlay
+            mask_rgb = np.zeros_like(original_img)
+            mask_rgb[pred_mask == 1] = [0, 255, 0]  # Individual = Green
+            mask_rgb[pred_mask == 2] = [255, 255, 0]  # Group = Yellow
+
+            overlay = cv2.addWeighted(original_img, 0.7, mask_rgb, 0.3, 0)
 
             results.append(
                 {
-                    "name": name,
-                    "image": original_img,  # Use original size image
-                    "mask": pred_classes_resized,  # Use resized mask
-                    "overlay": overlay,  # Use properly sized overlay
+                    "name": img_path.name,
+                    "image": original_img,
+                    "mask": pred_mask,
+                    "overlay": overlay,
                 }
             )
 
+            if (idx + 1) % 5 == 0:
+                print(f"Processed {idx + 1}/{total} images")
+
         return results
+
+    # def run_on_folder(self, image_dir: Path, transform=None, num_samples: int = None):
+    #     """
+    #     Run prediction on a folder of images using ImageOnlyDataset.
+    #     Returns list of dictionaries with masks and overlays.
+    #     """
+    #     dataset = ImageOnlyDataset(image_dir, transform=transform)
+    #     results = []
+    #
+    #     total = len(dataset) if num_samples is None else min(num_samples, len(dataset))
+    #
+    #     for idx in range(total):
+    #         name, img_t = dataset[idx]
+    #
+    #         # Load original image to get true dimensions
+    #         img_path = image_dir / name
+    #         original_img = cv2.imread(str(img_path))
+    #         if original_img is None:
+    #             # Try with different extensions
+    #             for ext in [".png", ".tiff"]:
+    #                 alt_path = img_path.with_suffix(ext)
+    #                 if alt_path.exists():
+    #                     original_img = cv2.imread(str(alt_path))
+    #                     break
+    #
+    #         if original_img is not None:
+    #             original_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
+    #             original_shape = original_img.shape
+    #         else:
+    #             # Fallback to processed image shape
+    #             if isinstance(img_t, torch.Tensor):
+    #                 original_shape = img_t.permute(1, 2, 0).shape
+    #             else:
+    #                 original_shape = img_t.shape
+    #             original_img = (
+    #                 img_t
+    #                 if not isinstance(img_t, torch.Tensor)
+    #                 else img_t.permute(1, 2, 0).cpu().numpy()
+    #             )
+    #
+    #         # Convert HWC -> CHW safely for both numpy and torch
+    #         if isinstance(img_t, torch.Tensor):
+    #             img_chw = img_t.unsqueeze(0).float()
+    #             base = img_t.permute(1, 2, 0).cpu().numpy()
+    #         else:
+    #             img_chw = (
+    #                 torch.from_numpy(img_t.transpose(2, 0, 1)).unsqueeze(0).float()
+    #             )
+    #             base = img_t
+    #
+    #         with torch.no_grad():
+    #             pred = self.model(img_chw.to(self.device)).cpu()
+    #
+    #         # Convert multi-class logits to class predictions
+    #         if pred.shape[1] == 3:  # Multi-class
+    #             pred_classes = torch.argmax(pred, dim=1).squeeze().numpy()  # [H, W]
+    #             pred_bin_for_overlay = (pred_classes > 0).astype(np.uint8)
+    #         else:  # Binary
+    #             pred = torch.sigmoid(pred).squeeze().numpy()
+    #             pred_classes = (pred > 0.5).astype(np.uint8)
+    #             pred_bin_for_overlay = pred_classes
+    #
+    #         # Resize predictions to match original image dimensions
+    #         pred_classes_resized = self._resize_prediction_to_original(
+    #             pred_classes, original_shape
+    #         )
+    #         pred_bin_resized = self._resize_prediction_to_original(
+    #             pred_bin_for_overlay, original_shape
+    #         )
+    #
+    #         # Create overlay with original image dimensions
+    #         pred_u8 = pred_bin_resized * 255
+    #         overlay = np.zeros_like(original_img)
+    #         overlay = overlay.copy()
+    #         overlay[:, :, 0] = pred_u8
+    #         overlay = cv2.addWeighted(
+    #             original_img.astype(np.uint8), 0.6, overlay.astype(np.uint8), 0.4, 0
+    #         )
+    #
+    #         results.append(
+    #             {
+    #                 "name": name,
+    #                 "image": original_img,  # Use original size image
+    #                 "mask": pred_classes_resized,  # Use resized mask
+    #                 "overlay": overlay,  # Use properly sized overlay
+    #             }
+    #         )
+    #
+    #     return results
