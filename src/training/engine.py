@@ -19,10 +19,23 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 #     """Multiclass cross entropy + dice loss for 3-class segmentation."""
 #     return torch.nn.CrossEntropyLoss()
 
+
 def prepare_criterion():
     """Weighted cross entropy for imbalanced 3-class segmentation."""
-    weights = torch.tensor([0.5, 2.0, 2.0])  # [background, individual, group]
-    return torch.nn.CrossEntropyLoss(weight=weights.cuda() if torch.cuda.is_available() else weights)
+    weights = torch.tensor([1.00, 2.50, 7.00])  # [background, individual, group]
+    return torch.nn.CrossEntropyLoss(
+        weight=weights.cuda() if torch.cuda.is_available() else weights
+    )
+
+
+# look for this after train_loader to verify class inbalance
+# all_masks = []
+# for _, mask in train_loader:
+#     all_masks.append(mask.flatten())
+# all_masks = torch.cat(all_masks)
+# print(f"Class distribution: {torch.bincount(all_masks, minlength=3)}")
+# print(f"Class percentages: {torch.bincount(all_masks, minlength=3).float() / len(all_masks) * 100}")
+
 
 def run_training(
     config: Config,
