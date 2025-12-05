@@ -1,3 +1,79 @@
+# %%
+import os
+import sys
+
+from IPython.display import HTML
+
+
+if 'google.colab' in str(get_ipython()):
+    HTML(
+            """
+                <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+                <style>
+                    pre, code, .output pre {
+                        font-family: 'JetBrains Mono', monospace !important;
+                    }
+                </style>
+                """
+    )
+
+    os.chdir('/content')
+
+    from google.colab import drive
+
+
+    drive.mount('/content/drive')
+
+    # Load environment variables
+    env_path = '/content/drive/MyDrive/TreeCanopyProject/.env'
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                if '=' in line and not line.startswith('#'):
+                    key, value = line.strip().split('=', 1)
+                    os.environ[key] = value
+
+    # Clone repository
+    repo_path = '/content/CAP6415_F25_project-Tree-Canopy-Detection'
+    github_token = os.getenv('TOKEN')
+
+    if not os.path.exists(repo_path):
+        if github_token:
+            # !git config --global user.email "jherna65@fau.edu"
+            # !git config --global user.name "bluefate"
+            clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
+            # !git clone $clone_url
+            print("Repository cloned")
+        else:
+            print("ERROR: No token")
+    else:
+        print("Repository already exists")
+
+    # Set paths and pull latest
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        if github_token:
+            # #!git reset --hard HEAD
+            # !git pull
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, 'src'))
+        print("Setup complete")
+
+    # Set paths
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, 'src'))
+        print("Setup complete")
+
+    print("Requirements")
+    # Install packages
+    # !pip install -r requirements.txt
+
+# %%
+# # !git fetch origin
+# # !git reset --hard origin/main
+
 # %% [markdown]
 # # Notebook: 10 Master Execution Plan
 # ### Purpose: Complete pipeline from data preparation to final submission
@@ -13,6 +89,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 #os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  #enable for debugging ONLY
@@ -38,6 +115,7 @@ from src.utils.versioning import VersionManager
 
 
 config = Config.load()
+config.train.image_size = 512
 #config = Config.load(Path("..").resolve() / "config_PROD.yaml")
 init_notebook(config.train.seed)
 config.show()
@@ -94,6 +172,21 @@ p("Images with individual trees", individual_count)
 p("Images with tree groups", group_count)
 
 
+
+# %%
+# Add this after your imports and before training
+import torch
+from torch.cuda.amp import GradScaler
+
+
+# Optimize CUDA
+torch.backends.cudnn.benchmark = True
+torch.cuda.set_per_process_memory_fraction(0.95)
+
+# Mixed precision scaler
+scaler = GradScaler()
+
+p("CUDA optimizations enabled")
 
 # %% [markdown]
 # #### Step 2: Filter Experimentation
@@ -216,69 +309,15 @@ p("All experiments", all_experiments, show = 100, color1 = c.ORANGE)
 
 # %%
 t("Setup experiments to run ")
-
+# SimpleCNN only ued for debugging pipeline wiring, not for actual results
 #experiments = [all_experiments[81]]  # 81: ('yolov8l', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
 #experiments = [all_experiments[67]]  # 67: ('yolov8s', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
-experiments = all_experiments
+#experiments = all_experiments
 # experiments = [all_experiments[0]]
 #experiments = [exp for exp in all_experiments if exp[0] == 'simple_cnn']
+experiments = [exp for exp in all_experiments if exp[1] == 'rgb' and exp[0] != 'simple_cnn']
 
 p("Experiments to Run", experiments, show = 50, color1 = c.RED)
-
-
-# %%
-
-# t("Runtime Estimate")
-
-
-# def estimate_runtime( experiments, filter_sets ):
-#     """
-#     Estimate training runtime using:
-#       - experiments list
-#       - filter_sets dict
-#     Adjusts time for rgb vs filtered vs concat.
-#     """
-#
-#     train_size = int(0.8 * len(entries))
-#     batch_size = config.train.batch_size
-#     batches_per_epoch = max(1, train_size // batch_size)
-#     epochs = config.train.epochs
-#
-#     # Baseline timing assumption (seconds per batch)
-#     base_seconds = 1.0
-#
-#     total_seconds = 0.0
-#
-#     p("Experiments", len(experiments), color1 = c.BLACK, color2 = c.ORANGE)
-#     p("Filter sets", len(filter_sets), color1 = c.BLACK, color2 = c.ORANGE)
-#     p("Number of Epochs", epochs, color1 = c.BLACK, color2 = c.ORANGE)
-#
-#     # def count_params(model):
-#     #     return sum(p.numel() for p in model.parameters() if p.requires_grad)
-#
-#     # Mode timing multipliers
-#     mode_multiplier = { "rgb": 1.0, "filtered": 1.5, "concat": 2.0 }
-#     p("Models:", color1 = c.BLACK)
-#     for model_name, mode, filters in experiments:
-#
-#         ## params = count_params(models[model_name])
-#         ## p(count_params(model_name))
-#         # base seconds per batch
-#         sec_per_batch = base_seconds * mode_multiplier.get(mode, 1.0)
-#
-#         exp_seconds = epochs * batches_per_epoch * sec_per_batch
-#         total_seconds += exp_seconds
-#
-#         p(f"\t{model_name} | {mode}", format_time(exp_seconds), color1 = c.BLUE)
-#
-#     p()
-#     t("Totals")
-#     p("Training samples", train_size)
-#     p("Batches per epoch", batches_per_epoch)
-#     p("Estimated total time", f"~{format_time(total_seconds)}", color1 = c.BLACK, color2 = c.RED)
-#
-#
-# estimate_runtime(experiments, filter_sets)
 
 
 # %%
@@ -418,6 +457,294 @@ estimate_runtime(experiments)
 
 
 # %%
+def analyze_class_distribution( train_loader, val_loader = None ):
+    """
+    Analyze class distribution in training (and optionally validation) data.
+    Call this before training to understand class imbalance and get weight recommendations.
+    """
+
+    p()
+    t("CLASS DISTRIBUTION ANALYSIS")
+
+
+    def analyze_loader( loader, name ):
+        all_masks = []
+        total_images = 0
+
+        for _, mask in loader:
+            all_masks.append(mask.flatten())
+            total_images += mask.shape[0]
+
+        all_masks = torch.cat(all_masks)
+        counts = torch.bincount(all_masks, minlength = 3)
+        total_pixels = counts.sum().item()
+
+        print(f"\n{name}:")
+        print(f"  Total images: {total_images}")
+        print(f"  Total pixels: {total_pixels:,}")
+        print()
+
+        class_names = ["background", "individual_tree", "group_of_trees"]
+        percentages = []
+
+        for i, (class_name, count) in enumerate(zip(class_names, counts)):
+            pct = count.item() / total_pixels * 100
+            percentages.append(pct)
+            print(f"  Class {i} ({class_name:15}): {count.item():>10,} pixels ({pct:5.2f}%)")
+
+        return counts, percentages
+
+    # Analyze training data
+    train_counts, train_pcts = analyze_loader(train_loader, "TRAINING SET")
+
+    # Analyze validation data if provided
+    if val_loader is not None:
+        val_counts, val_pcts = analyze_loader(val_loader, "VALIDATION SET")
+
+    # Calculate recommended weights (inverse frequency)
+    p()
+    t("RECOMMENDED WEIGHTS")
+
+    total = train_counts.sum().float()
+    frequencies = train_counts.float() / total
+
+    # Method 1: Inverse frequency
+    inv_freq_weights = 1.0 / (frequencies + 1e-8)
+    inv_freq_weights = inv_freq_weights / inv_freq_weights.sum() * 3  # Normalize to sum=3
+
+    # Method 2: Balanced weights (sklearn-style)
+    n_classes = 3
+    n_samples = total.item()
+    balanced_weights = n_samples / (n_classes * train_counts.float() + 1e-8)
+    balanced_weights = balanced_weights / balanced_weights.min()  # Normalize so min=1
+
+    # Method 3: Simple practical weights (background down, trees up)
+    bg_ratio = train_pcts[0] / 100
+    simple_weights = torch.tensor(
+            [
+                0.3,  # Background (reduce)
+                1.0 / (train_pcts[1] / 100 + 0.1),  # Individual tree
+                1.0 / (train_pcts[2] / 100 + 0.1),  # Group of trees
+            ]
+    )
+    simple_weights = simple_weights / simple_weights.sum() * 3
+
+    # using print because p nt outputing weights correctly.
+    print("\nMethod 1 - Inverse Frequency:")
+    print(
+            f"  weights = torch.tensor([{inv_freq_weights[0]:.2f}, {inv_freq_weights[1]:.2f}, {inv_freq_weights[2]:.2f}])"
+    )
+
+    print("\nMethod 2 - Balanced (sklearn-style):")
+    print(
+            f"  weights = torch.tensor([{balanced_weights[0]:.2f}, {balanced_weights[1]:.2f}, {balanced_weights[2]:.2f}])"
+    )
+
+    print("\nMethod 3 - Simple Practical:")
+    print(f"  weights = torch.tensor([{simple_weights[0]:.2f}, {simple_weights[1]:.2f}, {simple_weights[2]:.2f}])")
+
+    return {
+        "train_counts":      train_counts,
+        "train_percentages": train_pcts,
+        "inv_freq_weights":  inv_freq_weights,
+        "balanced_weights":  balanced_weights,
+        "simple_weights":    simple_weights,
+    }
+
+
+
+# %%
+def create_experiment_tracker():
+    """Create a tracker to store and plot experiment results."""
+    return {
+        "models":         [],
+        "val_loss":       [],
+        "iou":            [],
+        "iou_individual": [],
+        "iou_group":      [],
+        "precision":      [],
+        "recall":         [],
+        "f1":             [],
+    }
+
+
+def update_tracker( tracker, model_name, checkpoint_path ):
+    """Update tracker with results from a completed experiment."""
+    if not checkpoint_path.exists():
+        return False
+
+    try:
+        ckpt = torch.load(checkpoint_path, map_location = "cpu")
+        tracker["models"].append(model_name)
+        tracker["val_loss"].append(ckpt.get("val_loss", ckpt.get("best_val_loss", 0)))
+        tracker["iou"].append(ckpt.get("val_iou", ckpt.get("iou", 0)))
+        tracker["iou_individual"].append(ckpt.get("val_iou_individual", 0))
+        tracker["iou_group"].append(ckpt.get("val_iou_group", 0))
+        tracker["precision"].append(ckpt.get("val_precision", ckpt.get("precision", 0)))
+        tracker["recall"].append(ckpt.get("val_recall", ckpt.get("recall", 0)))
+        tracker["f1"].append(ckpt.get("val_f1_score", ckpt.get("f1_score", 0)))
+        return True
+    except Exception as e:
+        print(f"Error loading checkpoint: {e}")
+        return False
+
+
+def plot_experiment_results( tracker, save_path = None ):
+    """Plot comparison of all completed experiments."""
+    if len(tracker["models"]) == 0:
+        print("No experiments completed yet.")
+        return
+
+    # One row, six columns
+    fig, axes = plt.subplots(1, 6, figsize = (24, 4))
+    fig.suptitle("Experiment Comparison", fontsize = 14, fontweight = "bold")
+
+    models = tracker["models"]
+    x = range(len(models))
+    colors = plt.cm.tab10(range(len(models)))
+
+    def setup_xticks( ax ):
+        ax.set_xticks(x)
+        ax.set_xticklabels(models, rotation = 0, ha = "center", fontsize = 8)
+
+    # Plot 1: Val Loss (lower is better)
+    ax = axes[0]
+    ax.bar(x, tracker["val_loss"], color = colors)
+    ax.set_ylabel("Val Loss")
+    ax.set_title("Validation Loss (lower=better)")
+    setup_xticks(ax)
+    ax.axhline(y = min(tracker["val_loss"]), color = "green", linestyle = "--", alpha = 0.5)
+
+    # Plot 2: IoU (higher is better)
+    ax = axes[1]
+    ax.bar(x, tracker["iou"], color = colors)
+    ax.set_ylabel("IoU")
+    ax.set_title("Mean IoU (higher=better)")
+    setup_xticks(ax)
+    ax.axhline(y = max(tracker["iou"]), color = "green", linestyle = "--", alpha = 0.5)
+
+    # Plot 3: IoU by class
+    ax = axes[2]
+    width = 0.35
+    x_arr = np.arange(len(models))
+    ax.bar(x_arr - width / 2, tracker["iou_individual"], width, label = "Individual", color = "forestgreen")
+    ax.bar(x_arr + width / 2, tracker["iou_group"], width, label = "Group", color = "gold")
+    ax.set_ylabel("IoU")
+    ax.set_title("IoU by Class")
+    ax.set_xticks(x_arr)
+    ax.set_xticklabels(models, rotation = 45, ha = "center", fontsize = 8)
+    ax.legend()
+
+    # Plot 4: Precision
+    ax = axes[3]
+    ax.bar(x, tracker["precision"], color = colors)
+    ax.set_ylabel("Precision")
+    ax.set_title("Precision (higher=better)")
+    setup_xticks(ax)
+
+    # Plot 5: Recall
+    ax = axes[4]
+    ax.bar(x, tracker["recall"], color = colors)
+    ax.set_ylabel("Recall")
+    ax.set_title("Recall (higher=better)")
+    setup_xticks(ax)
+
+    # Plot 6: F1 Score
+    ax = axes[5]
+    ax.bar(x, tracker["f1"], color = colors)
+    ax.set_ylabel("F1 Score")
+    ax.set_title("F1 Score (higher=better)")
+    setup_xticks(ax)
+    ax.axhline(y = max(tracker["f1"]), color = "green", linestyle = "--", alpha = 0.5)
+
+    plt.tight_layout(rect = [0, 0, 1, 0.93])
+
+    if save_path:
+        plt.savefig(save_path, dpi = 150, bbox_inches = "tight")
+
+    plt.show()
+
+    # Print summary table
+    p()
+    t(f"{'Model':<20} {'Loss':>8} {'IoU':>8} {'Ind':>8} {'Grp':>8} {'Prec':>8} {'Rec':>8} {'F1':>8}")
+
+    best_iou_idx = np.argmax(tracker["iou"])
+    for i, model in enumerate(models):
+        marker = " 🏆" if i == best_iou_idx else ""
+        print(
+                f"{model:<20} {tracker['val_loss'][i]:>8.4f} {tracker['iou'][i]:>8.4f} "
+                f"{tracker['iou_individual'][i]:>8.4f} {tracker['iou_group'][i]:>8.4f} "
+                f"{tracker['precision'][i]:>8.4f} {tracker['recall'][i]:>8.4f} {tracker['f1'][i]:>8.4f}{marker}"
+        )
+
+
+def plot_training_history( trainer, title_prefix = "" ):
+    history = trainer.history
+
+    train_loss = history.get("train_loss", [])
+    val_loss = history.get("val_loss", [])
+    val_iou = history.get("val_iou", [])
+    val_precision = history.get("val_precision", [])
+    val_recall = history.get("val_recall", [])
+    val_f1 = history.get("val_f1", [])
+    lr = history.get("lr", [])
+
+    n_epochs = len(train_loss)
+    if n_epochs == 0:
+        print("No history to plot")
+        return
+
+    epochs = range(1, n_epochs + 1)
+
+    fig, axes = plt.subplots(1, 4, figsize = (22, 4))
+    fig.suptitle(f"{title_prefix} epoch metrics", fontsize = 14, fontweight = "bold")
+
+    # 1. Loss curves
+    ax = axes[0]
+    ax.plot(epochs, train_loss, label = "Train loss")
+    ax.plot(epochs, val_loss, label = "Val loss")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Loss")
+    ax.set_title("Loss per epoch")
+    ax.legend()
+
+    # 2. IoU and F1
+    ax = axes[1]
+    if len(val_iou) == n_epochs:
+        ax.plot(epochs, val_iou, label = "Val IoU")
+    if len(val_f1) == n_epochs:
+        ax.plot(epochs, val_f1, label = "Val F1")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Score")
+    ax.set_title("IoU and F1 per epoch")
+    ax.legend()
+
+    # 3. Precision and Recall
+    ax = axes[2]
+    if len(val_precision) == n_epochs:
+        ax.plot(epochs, val_precision, label = "Val precision")
+    if len(val_recall) == n_epochs:
+        ax.plot(epochs, val_recall, label = "Val recall")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Score")
+    ax.set_title("Precision and Recall per epoch")
+    ax.legend()
+
+    # 4. Learning rate
+    ax = axes[3]
+    if len(lr) == n_epochs:
+        ax.plot(epochs, lr, label = "LR")
+    ax.set_xlabel("Epoch")
+    ax.set_ylabel("Learning rate")
+    ax.set_title("LR schedule")
+    ax.legend()
+
+    plt.tight_layout(rect = [0, 0, 1, 0.9])
+    plt.show()
+
+
+
+# %%
 def get_input_channels( mode, filters ):
     """Determine input channels based on mode."""
     if mode == "concat" and filters:
@@ -427,8 +754,6 @@ def get_input_channels( mode, filters ):
 
 
 # %%
-t("Train Experiments")
-
 # Initialize best model tracker
 best_model_tracker = {
     "best_val_loss":    float('inf'),
@@ -438,22 +763,23 @@ best_model_tracker = {
     "best_version_dir": None,
 }
 
+experiment_tracker = create_experiment_tracker()
+
+# %%
+# plot_experiment_results(experiment_tracker)
+
+# %%
+t("Train Experiments")
+
 # Running experiments
 results = { }
-
+analysis_printed = False
 for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("\n\n")
     t(f"Experiment {i}/{len(experiments)}")
     p("Model", model_name, color1 = c.ORANGE)
     p("Mode", mode, color1 = c.ORANGE)
     p("Filters", filters, color1 = c.ORANGE)
-
-    # experiment key
-    key = f"{model_name}_{mode}"
-    if filters:
-        filter_key = "_".join(filters)
-        key = f"{key}_{filter_key}"
-    p("key", key)
 
     try:
         # Prepare data
@@ -494,6 +820,11 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
                 pin_memory = True if torch.cuda.is_available() else False,
         )
 
+        sample_img, sample_mask = next(iter(train_loader))
+        print(f"Image range: [{sample_img.min():.3f}, {sample_img.max():.3f}]")
+        print(f"Mask unique values: {torch.unique(sample_mask).tolist()}")
+        print(f"Mask value counts: {torch.bincount(sample_mask.flatten(), minlength = 3).tolist()}")
+
         val_loader = DataLoader(
                 val_ds,
                 batch_size = config.train.batch_size,
@@ -501,6 +832,12 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
                 num_workers = config.train.num_workers,
                 pin_memory = True if torch.cuda.is_available() else False,
         )
+
+        if not analysis_printed:
+            analysis_printed = True
+            # using softer balance'
+            # weights = torch.tensor([1.00, 2.50, 6.00]) in prepare_criterion
+            analysis = analyze_class_distribution(train_loader, val_loader)
 
         key, version_root, exp_config, best_model_path, checkpoint_path_check, best_model_exists = get_version_config(
                 config, filters, "10", model_name, mode, in_channels, best_model_tracker, i, experiments
@@ -514,6 +851,7 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
                 val_loader = val_loader,
                 version_root = version_root,
                 model_name = model_name,
+                in_channels = in_channels,
         )
 
         if trainer is not None:
@@ -535,6 +873,11 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
                         best_model_tracker["best_model_path"] = version_dir / "best_model.pth"
                         best_model_tracker["best_version_dir"] = version_dir
                         p("\t\t🏆 NEW BEST MODEL", key, color1 = c.ORANGE, color2 = c.ORANGE, bold = True)
+
+                    update_tracker(experiment_tracker, key, checkpoint_path)
+                    # plot_experiment_results(experiment_tracker)
+                    plot_training_history(trainer, title_prefix = key)
+
 
                 except Exception as e:
                     p("Warning", f"Could not load checkpoint: {e}", color1 = c.ORANGE, color2 = c.ORANGE)
@@ -956,9 +1299,6 @@ else:
 t("Performance Comparison Visualization")
 
 if len(df_results) > 0:
-    import matplotlib.pyplot as plt
-
-
     # Create comparison plots
     fig, axes = plt.subplots(2, 2, figsize = (15, 10))
     fig.suptitle('Model Performance Comparison', fontsize = 16, fontweight = 'bold')
@@ -980,7 +1320,7 @@ if len(df_results) > 0:
     ax2.set_ylabel('Validation Loss')
     ax2.set_xlabel('Model')
     plt.sca(ax2)
-    plt.xticks(rotation = 0)
+    plt.xticks(rotation = 45)
 
     # Plot 3: Mode Comparison
     ax3 = axes[1, 0]
@@ -1149,7 +1489,8 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
             train_loader = train_loader,
             val_loader = val_loader,
             version_root = config.paths.models,
-            model_name = model_name
+            model_name = model_name,
+            #in_channels = in_channels,
     )
 
     return trainer
@@ -1274,6 +1615,89 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
 
 
 # %%
+from pathlib import Path
+import pandas as pd
+
+
+t("Generating Submission For Each Experiment From all_experiments.csv")
+
+csv_path = config.paths.models / "all_experiments.csv"
+
+if not csv_path.exists():
+    p("Warning", f"No all_experiments.csv found at {csv_path}", color1 = c.ORANGE)
+else:
+    df_exp = pd.read_csv(csv_path)
+
+    if len(df_exp) == 0:
+        p("Warning", "all_experiments.csv is empty, no experiments to export", color1 = c.ORANGE)
+    else:
+        num_ok = 0
+        num_missing = 0
+
+        for idx, row in df_exp.iterrows():
+            model_name = str(row.get("model", "unknown_model"))
+            mode = str(row.get("mode", "unknown_mode"))
+            version_path_str = row.get("version_path", "")
+
+            if not isinstance(version_path_str, str) or not version_path_str:
+                p("Skipping row", f"{idx} (no valid version_path)", color1 = c.ORANGE)
+                num_missing += 1
+                continue
+
+            version_path = Path(version_path_str)
+
+            if not version_path.exists():
+                p(
+                        "Skipping experiment",
+                        f"{model_name} ({mode}) missing folder: {version_path}",
+                        color1 = c.ORANGE,
+                )
+                num_missing += 1
+                continue
+
+            best_model_path = version_path / "best_model.pth"
+            checkpoint_path = version_path / "checkpoint.pth"
+
+            if best_model_path.exists():
+                model_weights = best_model_path
+                weight_type = "best_model.pth"
+            elif checkpoint_path.exists():
+                model_weights = checkpoint_path
+                weight_type = "checkpoint.pth"
+            else:
+                p(
+                        "Skipping experiment",
+                        f"{model_name} ({mode}) no best_model.pth or checkpoint.pth in {version_path}",
+                        color1 = c.ORANGE,
+                )
+                num_missing += 1
+                continue
+
+            p(
+                    "Generating submission for",
+                    f"{model_name} ({mode}) using {weight_type}",
+                    color1 = c.GREEN,
+            )
+            p("From", str(version_path), color1 = c.BLUE)
+
+            output_file = version_path / "SUBMISSION.json"
+
+            generate_submission(
+                    model_path = model_weights,
+                    model_name = model_name,
+                    eval_dir = config.paths.eval_images,
+                    output_path = output_file,
+            )
+
+            p("✓ Submission generated", str(output_file), color1 = c.GREEN, bold = True)
+            num_ok += 1
+
+        p(
+                "Summary",
+                f"Submissions generated for {num_ok} experiments, skipped {num_missing}",
+                color1 = c.CYAN,
+        )
+
 
 # %%
 
@@ -1785,46 +2209,27 @@ for e in sample_entries:
 t("Visualizing sample predictions")
 
 
-# Find available model weights more robustly
 def find_available_model_weights( config, preferred_model = None ):
-    """
-    Find available trained model weights in order of preference.
-    """
+    """Find available trained model weights."""
     models_dir = config.paths.models
 
-    # List of paths to check in order of preference
-    paths_to_check = []
+    # Search for .pth files recursively
+    model_files = []
 
-    if preferred_model:
-        # Check for specific model in different locations
-        paths_to_check.extend(
-                [
-                    models_dir / preferred_model / "rgb" / "v001" / "best_model.pth",
-                    models_dir / preferred_model / "rgb" / "v001" / "checkpoint.pth",
-                    models_dir / "notebook_eval" / preferred_model / "rgb" / "v001" / "best_model.pth",
-                    models_dir / "notebook_eval" / preferred_model / "rgb" / "v001" / "checkpoint.pth",
-                ]
-        )
+    if models_dir.exists():
+        # Look for all .pth files
+        for pth_file in models_dir.rglob("*.pth"):
+            model_files.append(pth_file)
 
-    # General search patterns
-    search_patterns = [
-        "*/rgb/*/best_model.pth",
-        "*/rgb/*/checkpoint.pth",
-        "*/filtered/*/best_model.pth",
-        "*/filtered/*/checkpoint.pth",
-        "notebook_eval/*/rgb/*/best_model.pth",
-        "notebook_eval/*/rgb/*/checkpoint.pth",
-        "v*/best_model.pth",
-        "v*/checkpoint.pth"
-    ]
+    # Prioritize best_model.pth over checkpoint.pth
+    best_models = [f for f in model_files if f.name == "best_model.pth"]
+    checkpoint_models = [f for f in model_files if f.name == "checkpoint.pth"]
 
-    for pattern in search_patterns:
-        paths_to_check.extend(models_dir.glob(pattern))
-
-    # Return first existing path
-    for path in paths_to_check:
-        if path.exists():
-            return path, path.parent
+    # Return first best_model, then first checkpoint
+    if best_models:
+        return best_models[0], best_models[0].parent
+    elif checkpoint_models:
+        return checkpoint_models[0], checkpoint_models[0].parent
 
     return None, None
 
@@ -1932,6 +2337,144 @@ else:
 
 
         traceback.print_exc()
+
+
+# %%
+def test_best_models_by_version( config, eval_dir, num_samples = 2 ):
+    """Generate predictions for the best model from each version/experiment."""
+    models_dir = config.paths.models
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Find all best_model.pth files (prioritize over checkpoint.pth)
+    best_models = list(models_dir.rglob("best_model.pth"))
+    checkpoint_models = list(models_dir.rglob("checkpoint.pth"))
+
+    # Group by experiment (model + mode + version)
+    experiments = { }
+
+    for model_path in best_models + checkpoint_models:
+        # Extract experiment info from path
+        parts = model_path.parts
+
+        # Find model name
+        model_name = "simple_cnn"
+        for part in parts:
+            if part in ["simple_cnn", "unet", "yolov8s", "yolov8m", "yolov8l"]:
+                model_name = part
+                break
+
+        # Find mode
+        mode = "rgb"
+        if "filtered" in str(model_path):
+            mode = "filtered"
+        elif "concat" in str(model_path):
+            mode = "concat"
+
+        # Find version/size info
+        version_info = []
+        for part in parts:
+            if part.startswith("v") or "size" in part:
+                version_info.append(part)
+        version_str = "_".join(version_info) if version_info else "unknown"
+
+        # Create experiment key
+        exp_key = f"{model_name}_{mode}_{version_str}"
+
+        # Prioritize best_model.pth over checkpoint.pth
+        if exp_key not in experiments:
+            experiments[exp_key] = model_path
+        elif model_path.name == "best_model.pth" and experiments[exp_key].name == "checkpoint.pth":
+            experiments[exp_key] = model_path
+
+    print(f"Found {len(experiments)} unique experiments:")
+    for exp_key, model_path in experiments.items():
+        print(f"  {exp_key}: {model_path}")
+
+    # Get sample images
+    image_files = list(eval_dir.glob("*.png")) + list(eval_dir.glob("*.tif"))
+    sample_images = random.sample(image_files, min(num_samples, len(image_files)))
+
+    # Test each experiment's best model
+    for exp_key, model_path in experiments.items():
+        try:
+            # Extract model info
+            model_name = exp_key.split("_")[0]
+            mode = exp_key.split("_")[1]
+
+            print(f"\n=== {exp_key} ===")
+            print(f"Path: {model_path}")
+
+            # Load model
+            in_channels = 3
+            if mode == "concat":
+                in_channels = 6
+
+            model = build_model(model_name, in_channels = in_channels, out_channels = 3).to(device)
+
+            state = torch.load(model_path, map_location = device)
+            if "model" in state:
+                model.load_state_dict(state["model"])
+                if 'val_loss' in state:
+                    print(f"Validation loss: {state['val_loss']:.4f}")
+                if 'epoch' in state:
+                    print(f"Trained for {state['epoch']} epochs")
+            else:
+                model.load_state_dict(state)
+
+            model.eval()
+
+            # Test predictions
+            fig, axes = plt.subplots(len(sample_images), 3, figsize = (12, 4 * len(sample_images)))
+            if len(sample_images) == 1:
+                axes = axes.reshape(1, -1)
+
+            for i, img_path in enumerate(sample_images):
+                # Load and preprocess
+                img = cv2.imread(str(img_path))
+                img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                img_float = img_rgb.astype(np.float32) / 255.0
+
+                transform = get_val_augmentations(config.train.image_size)
+                img_transformed = transform(image = img_float)['image']
+
+                # Predict
+                with torch.no_grad():
+                    img_batch = img_transformed.unsqueeze(0).to(device)
+                    prediction = model(img_batch)
+                    pred_probs = torch.softmax(prediction, dim = 1)
+                    pred_classes = torch.argmax(pred_probs, dim = 1)
+
+                # Stats
+                pred_np = pred_classes.squeeze().cpu().numpy()
+                bg_pct = (pred_np == 0).sum() / pred_np.size * 100
+                tree_pct = ((pred_np == 1) | (pred_np == 2)).sum() / pred_np.size * 100
+
+                # Plot
+                axes[i, 0].imshow(img_rgb)
+                axes[i, 0].set_title(f"{img_path.name}")
+                axes[i, 0].axis('off')
+
+                axes[i, 1].imshow(pred_np, cmap = 'viridis')
+                axes[i, 1].set_title(f"Prediction\nTrees: {tree_pct:.1f}%")
+                axes[i, 1].axis('off')
+
+                # Tree probability
+                tree_prob = torch.max(pred_probs[0, 1:], dim = 0)[0].cpu().numpy()
+                axes[i, 2].imshow(img_rgb)
+                axes[i, 2].imshow(tree_prob, alpha = 0.6, cmap = 'hot')
+                axes[i, 2].set_title("Tree Confidence")
+                axes[i, 2].axis('off')
+
+            plt.suptitle(exp_key)
+            plt.tight_layout()
+            plt.show()
+
+        except Exception as e:
+            print(f"Failed to test {exp_key}: {e}")
+
+
+# Run the test
+test_best_models_by_version(config, eval_dir, num_samples = 2)
 
 
 # %%
@@ -2067,13 +2610,27 @@ except Exception as e_viz:
 # %%
 
 # %%
-from prediction.validation import analyze_validation_metrics
+from src.prediction.validation import analyze_validation_metrics
 
+
+# Load best model info first
+best_model_info_path = config.paths.models / "BEST_MODEL.txt"
+best_model_name = "simple_cnn"  # default fallback
+
+if best_model_info_path.exists():
+    with open(best_model_info_path, 'r') as f:
+        lines = f.readlines()
+        for line in lines:
+            if "model:" in line:
+                best_model_name = line.split(':')[1].strip()
+                break
 
 if trainer is not None:
     checkpoint_path = trainer.paths["checkpoint"]
     if checkpoint_path.exists():
         ckpt = torch.load(checkpoint_path, map_location = "cpu")
+
+        p(f"Analyzing validation metrics for", best_model_name, color1 = c.ORANGE)
 
         analyze_validation_metrics(
                 val_loss = ckpt.get("val_loss", 0),
@@ -2085,6 +2642,5 @@ if trainer is not None:
                 individual_tree_iou = ckpt.get("val_iou_individual", 0),
                 group_tree_iou = ckpt.get("val_iou_group", 0),
                 dice = ckpt.get("val_dice", ckpt.get("dice", 0)),
-                model_name = "simple_cnn"
+                model_name = best_model_name
         )
-
