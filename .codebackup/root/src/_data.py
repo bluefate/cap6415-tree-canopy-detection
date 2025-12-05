@@ -234,19 +234,21 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             )
             mask = build_multiclass_mask(filtered_entry)
 
-        # Apply filters based on mode
-        if self.mode == "filtered":
-            image = self.apply_filters(image)
-        elif self.mode == "concat":
-            filtered_img = self.apply_filters(image)
-            # Concatenate RGB + filtered
-            image = np.concatenate([image, filtered_img], axis=2)
-
-        # Apply transforms
+        # Apply transforms first
         if self.transform:
             processed = self.transform(image=image, mask=mask)
             image = processed["image"]
             mask = processed["mask"]
+            # back to numpy HWC uint8 (0â€“255) for filter step
+            image = (image.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+
+        # Apply filters based on mode
+        if self.mode == "filtered":
+            image = self.apply_filters_to_enhanced_image(image)
+        elif self.mode == "concat":
+            filtered_img = self.apply_filters_to_enhanced_image(image)
+            # Concatenate RGB + filtered
+            image = np.concatenate([image, filtered_img], axis=2)
 
         # Convert image to tensor
         if isinstance(image, torch.Tensor):
@@ -273,83 +275,13 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
 
         return img_t, mask_t
 
-    def apply_filters(self, img):
+    def apply_filters_to_enhanced_image(self, img):
         """
         Apply specified filters and return as 3-channel image.
         """
         from src.data.image_loader import create_enhanced_image
 
         return create_enhanced_image(img, self.filter_names)
-
-    # def apply_filters(self, img):
-    #     """
-    #     Apply specified filters and return as 3-channel image.
-    #
-    #     Handles both kernel-based and algorithmic filters with consistent
-    #     naming through the centralized filter registry approach.
-    #     """
-    #     from src.exploration.kernels import get_kernels
-    #     from src.exploration.enhancement import to_gray
-    #     import cv2
-    #     import numpy as np
-    #
-    #     gray = to_gray(img)
-    #
-    #     # loading kernel bank dynamically
-    #     kernel_bank = get_kernels("all")
-    #
-    #     # create callable filters dynamically from kernel bank
-    #     dynamic_kernels = {
-    #         name.lower(): lambda k=kernel: cv2.filter2D(gray, -1, k)
-    #         for name, kernel in kernel_bank.items()
-    #     }
-    #
-    #     dynamic_kernels.update(
-    #         {
-    #             # Edge detection
-    #             "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
-    #             "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0)
-    #             + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
-    #             "sobel_x_cv": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0),
-    #             "sobel_y_cv": lambda: cv2.Sobel(gray, cv2.CV_64F, 0, 1),
-    #             "canny": lambda: cv2.Canny(gray, 50, 150),
-    #             # Enhancement
-    #             "clahe": lambda: clahe_enhance(gray),
-    #             "histogram_eq": lambda: cv2.equalizeHist(gray),
-    #             # Gaussian blur variants - THIS FIXES THE gaussian_3x3 issue
-    #             "gaussian_3x3": lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
-    #             "gaussian_5x5": lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
-    #             "gaussian_7x7": lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
-    #             "gaussian_9x9": lambda: cv2.GaussianBlur(gray, (9, 9), 2.5),
-    #             # Other useful filters
-    #             "bilateral": lambda: cv2.bilateralFilter(gray, 9, 75, 75),
-    #             "median_3x3": lambda: cv2.medianBlur(gray, 3),
-    #             "median_5x5": lambda: cv2.medianBlur(gray, 5),
-    #         }
-    #     )
-    #
-    #     channels = []
-    #     for fname in self.filter_names:
-    #         key = fname.lower()
-    #         if key not in dynamic_kernels:
-    #             raise KeyError(
-    #                 f"Unknown filter '{fname}'. Available: {list(dynamic_kernels.keys())}"
-    #             )
-    #
-    #         filtered = dynamic_kernels[key]()
-    #         filtered = cv2.normalize(filtered, None, 0, 255, cv2.NORM_MINMAX).astype(
-    #             np.uint8
-    #         )
-    #         channels.append(filtered)
-    #
-    #     # Ensure at least 3 channels
-    #     if len(channels) == 0:
-    #         raise RuntimeError(f"No filters produced output for {self.filter_names}")
-    #
-    #     while len(channels) < 3:
-    #         channels.append(channels[-1])
-    #
-    #     return np.stack(channels[:3], axis=2)
 
     @classmethod
     def get_available_filters(cls):
@@ -389,22 +321,22 @@ Image loading utilities that handle multiple formats.
 """
 
 from pathlib import Path
-from typing import Union
 
 import cv2
 import numpy as np
 from PIL import Image
 
+from data.annotations import AnnotationEntry
 from src.utils.helpers import c, p
 
 
-def load_image(image_path: Union[str, Path]) -> np.ndarray:
+def load_image( image_dir: Path, entry: AnnotationEntry ) -> np.ndarray:
     """
     Load an image with automatic format handling and fallback for TIFFs.
     Tries OpenCV first (fastest), falls back to PIL for problematic TIFFs.
     Automatically uses PNG version if it exists alongside TIFF.
     """
-    image_path = Path(image_path)
+    image_path = Path(image_dir / entry.image_path.name)
 
     if not image_path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
@@ -544,94 +476,94 @@ def apply_all_filters(img):
     return results
 
 
-def apply_filters(self, img):
-    """
-    Apply specified filters and return as 3-channel image.
-    Handles both kernel-based and algorithmic filters.
-    """
-    from src.exploration.kernels import get_kernels, apply_kernel_using_convolution
-    from src.exploration.enhancement import to_gray, clahe_enhance
-    import cv2
-    import numpy as np
-
-    # Convert to grayscale for filter application
-    gray = to_gray(img)
-    target_h, target_w = img.shape[:2]
-
-    # Load kernel bank dynamically
-    kernel_bank = get_kernels("all")
-
-    # Create unified filter registry
-    filter_registry = {}
-
-    # Add kernel-based filters
-    for kname, kernel in kernel_bank.items():
-        # Use closure to capture kernel value
-        filter_registry[kname.lower()] = (
-            lambda k=kernel: apply_kernel_using_convolution(gray, k)
-        )
-
-    # Add algorithmic filters
-    filter_registry.update(
-        {
-            "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
-            "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0)
-            + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
-            "clahe": lambda: clahe_enhance(gray, clip=2.0, tile=8),
-            "gaussian_3x3": lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
-            "gaussian_5x5": lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
-            "gaussian_7x7": lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
-        }
-    )
-
-    # Apply requested filters
-    channels = []
-    for fname in self.filter_names:
-        key = fname.lower()
-
-        if key not in filter_registry:
-            available = sorted(filter_registry.keys())
-            raise KeyError(
-                f"Unknown filter '{fname}'. "
-                f"Available filters ({len(available)}): {available[:10]}..."
-            )
-
-        try:
-            # Apply filter
-            filtered = filter_registry[key]()
-
-            # Ensure 2D (grayscale)
-            if filtered.ndim == 3:
-                filtered = cv2.cvtColor(filtered, cv2.COLOR_RGB2GRAY)
-
-            # Resize if needed
-            if filtered.shape != (target_h, target_w):
-                filtered = cv2.resize(
-                    filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR
-                )
-
-            # Normalize to uint8
-            if filtered.dtype != np.uint8:
-                filtered = cv2.normalize(
-                    filtered, None, 0, 255, cv2.NORM_MINMAX
-                ).astype(np.uint8)
-
-            channels.append(filtered)
-
-        except Exception as e:
-            raise RuntimeError(f"Filter '{fname}' failed: {e}")
-
-    # Ensure we have at least 3 channels
-    if len(channels) == 0:
-        raise RuntimeError(f"No filters produced output for {self.filter_names}")
-
-    while len(channels) < 3:
-        channels.append(channels[-1].copy())
-
-    # Stack into 3-channel image
-    result = np.stack(channels[:3], axis=2)
-
-    return result
+# def apply_filters(self, img):
+#     """
+#     Apply specified filters and return as 3-channel image.
+#     Handles both kernel-based and algorithmic filters.
+#     """
+#     from src.exploration.kernels import get_kernels, apply_kernel_using_convolution
+#     from src.exploration.enhancement import to_gray, clahe_enhance
+#     import cv2
+#     import numpy as np
+#
+#     # Convert to grayscale for filter application
+#     gray = to_gray(img)
+#     target_h, target_w = img.shape[:2]
+#
+#     # Load kernel bank dynamically
+#     kernel_bank = get_kernels("all")
+#
+#     # Create unified filter registry
+#     filter_registry = {}
+#
+#     # Add kernel-based filters
+#     for kname, kernel in kernel_bank.items():
+#         # Use closure to capture kernel value
+#         filter_registry[kname.lower()] = (
+#             lambda k=kernel: apply_kernel_using_convolution(gray, k)
+#         )
+#
+#     # Add algorithmic filters
+#     filter_registry.update(
+#         {
+#             "laplacian": lambda: cv2.Laplacian(gray, cv2.CV_64F),
+#             "sobel": lambda: cv2.Sobel(gray, cv2.CV_64F, 1, 0)
+#             + cv2.Sobel(gray, cv2.CV_64F, 0, 1),
+#             "clahe": lambda: clahe_enhance(gray, clip=2.0, tile=8),
+#             "gaussian_3x3": lambda: cv2.GaussianBlur(gray, (3, 3), 1.0),
+#             "gaussian_5x5": lambda: cv2.GaussianBlur(gray, (5, 5), 1.5),
+#             "gaussian_7x7": lambda: cv2.GaussianBlur(gray, (7, 7), 2.0),
+#         }
+#     )
+#
+#     # Apply requested filters
+#     channels = []
+#     for fname in self.filter_names:
+#         key = fname.lower()
+#
+#         if key not in filter_registry:
+#             available = sorted(filter_registry.keys())
+#             raise KeyError(
+#                 f"Unknown filter '{fname}'. "
+#                 f"Available filters ({len(available)}): {available[:10]}..."
+#             )
+#
+#         try:
+#             # Apply filter
+#             filtered = filter_registry[key]()
+#
+#             # Ensure 2D (grayscale)
+#             if filtered.ndim == 3:
+#                 filtered = cv2.cvtColor(filtered, cv2.COLOR_RGB2GRAY)
+#
+#             # Resize if needed
+#             if filtered.shape != (target_h, target_w):
+#                 filtered = cv2.resize(
+#                     filtered, (target_w, target_h), interpolation=cv2.INTER_LINEAR
+#                 )
+#
+#             # Normalize to uint8
+#             if filtered.dtype != np.uint8:
+#                 filtered = cv2.normalize(
+#                     filtered, None, 0, 255, cv2.NORM_MINMAX
+#                 ).astype(np.uint8)
+#
+#             channels.append(filtered)
+#
+#         except Exception as e:
+#             raise RuntimeError(f"Filter '{fname}' failed: {e}")
+#
+#     # Ensure we have at least 3 channels
+#     if len(channels) == 0:
+#         raise RuntimeError(f"No filters produced output for {self.filter_names}")
+#
+#     while len(channels) < 3:
+#         channels.append(channels[-1].copy())
+#
+#     # Stack into 3-channel image
+#     result = np.stack(channels[:3], axis=2)
+#
+#     return result
 
 
 def create_enhanced_image(img, filter_names):

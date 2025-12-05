@@ -44,7 +44,6 @@ sample_path = random.choice(files)
 t(sample_path.name)
 img = cv2.imread(str(sample_path))
 img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-##img = load_image(sample_path)
 
 show_image(img)
 

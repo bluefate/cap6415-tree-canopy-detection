@@ -68,10 +68,22 @@ else:
 # # Step 2: Google Drive Integration
 
 # %%
+# Go to the Colab root
+# %cd /content
+
+# Confirm where you are
+# !pwd
+
+# See what is there
+# !ls
+
+
+# %%
 from google.colab import drive
 import shutil
 
 drive.mount('/content/drive')
+
 
 # Create project backup directory in Drive
 drive_project_path = '/content/drive/MyDrive/TreeCanopyProject'
@@ -99,6 +111,9 @@ for subdir in subdirs:
 # # Step 3: GitHub Repository Setup
 
 # %%
+# Go to the Colab root
+# %cd /content
+
 # !ls /content/drive/MyDrive/TreeCanopyProject
 
 
@@ -108,24 +123,31 @@ import os
 env_path = '/content/drive/MyDrive/TreeCanopyProject/.env'
 
 if os.path.exists(env_path):
-    with open(env_path, 'r') as f:
-        for line in f:
-            if '=' in line and not line.startswith('#'):
-                key, value = line.strip().split('=', 1)
-                os.environ[key] = value
-    print("✅ Environment variables loaded")
+    # with open(env_path, 'r') as f:
+    #     for line in f:
+    #         if '=' in line and not line.startswith('#'):
+    #             key, value = line.strip().split('=', 1)
+    #             os.environ[key] = value
+    # print("✅ Environment variables loaded")
+    print("✅ Environment variables already exists")
 else:
     print("❌ .env file not found")
 
 github_token = os.getenv('TOKEN')
 
+# %cd /content
 if github_token:
     # !git config --global user.email "jherna65@fau.edu"
     # !git config --global user.name "bluefate"
 
+    print()
     clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
+
+    print("\nClonning...")
     # !git clone $clone_url
     # %cd CAP6415_F25_project-Tree-Canopy-Detection
+
+    print("\nPulling...")
     # !git pull
 
     print("✅ Setup complete")
@@ -133,11 +155,34 @@ else:
     print("❌ Add GITHUB_TOKEN to .env file")
 
 
+print()
+# !ls /content/drive/MyDrive/TreeCanopyProject
+
+
 # %% [markdown]
 # # Step 4: Installing Requirements
 
 # %%
-# !pip install -r requirements.txt
+# # !pip install -r requirements.txt
 
 
 # %%
+from pathlib import Path
+
+#root_dir = Path("/content/drive/MyDrive/TreeCanopyProject")
+root_dir = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+extensions = [".py", ".ipynb"]
+
+
+prev_parent = None
+for path in sorted(root_dir.rglob("*")):
+    if path.is_file() and path.suffix in extensions:
+        # new directory → print an empty line
+        if path.parent != prev_parent:
+            if prev_parent is not None:
+                print()  # empty line between directories
+            prev_parent = path.parent
+            # optional: print the directory name
+            print(f"{path.parent.relative_to(root_dir)}/")
+        print(f"   {path.name}")
+

@@ -147,6 +147,7 @@ def compute_metrics_multiclass(
     # MULTI-CLASS MODE: If pred has C > 1 channels
     # Convert logits to class predictions
     if isinstance(pred, torch.Tensor):
+        pred = F.softmax(pred, dim=1)
         pred_classes = torch.argmax(pred, dim=1).detach().cpu().numpy()  # [B, H, W]
     else:
         pred_classes = np.argmax(pred, axis=1)

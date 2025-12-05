@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 
 from src.data.annotations import AnnotationEntry
-from src.data.image_loader import load_image as robust_load_image
+from src.data.image_loader import load_image
 from src.exploration.visualize import (
     show_side_by_side,
 )
@@ -18,17 +18,6 @@ from src.utils.helpers import p
 # -----------------------------------------------------------
 config = Config.load()
 CLASS_NAMES = ["individual_tree", "group_of_trees"]
-
-
-# def load_image(image_dir: Path, entry: AnnotationEntry):
-#     path = image_dir / entry.image_path.name
-#     img = cv2.imread(str(path))
-#     if img is None:
-#         raise RuntimeError("Failed to read image " + str(path))
-#     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-def load_image(image_dir: Path, entry: AnnotationEntry):
-    path = image_dir / entry.image_path.name
-    return robust_load_image(path)
 
 
 def mask_for_class(entry: AnnotationEntry, cls: str):

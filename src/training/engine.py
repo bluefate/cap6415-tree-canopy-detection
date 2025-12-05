@@ -52,7 +52,11 @@ def run_training(
     image_size = config.train.image_size
     lr = config.train.learning_rate
 
-    model = build_model(model_name, in_channels=in_channels, out_channels=3)
+    n_classes = len(
+        torch.unique(torch.cat([m.flatten() for _, m in train_loader.dataset]))
+    )
+
+    model = build_model(model_name, in_channels=in_channels, out_channels=n_classes)
     optimizer = prepare_optimizer(model, lr)
     criterion = prepare_criterion()
 

@@ -11,6 +11,14 @@ import numpy as np
 from src.utils.helpers import c, p
 
 
+def get_input_channels(mode, filters):
+    """Determine input channels based on mode."""
+    if mode == "concat" and filters:
+        return 6  # RGB + 3 filters
+    else:
+        return 3  # RGB or filtered RGB
+
+
 def normalize_filter_output(filtered, target_shape, dtype=np.uint8):
     """
     Normalize filter output to consistent shape and dtype.
