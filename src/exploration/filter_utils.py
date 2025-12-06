@@ -223,7 +223,7 @@ if __name__ == "__main__":
     from src.utils.config import Config
     from src.data.annotations import load_json_annotations
 
-    config = Config.load()
+    config = Config.load(root=root)
     entries = load_json_annotations(config.paths.annotations)
 
     # Test on first image

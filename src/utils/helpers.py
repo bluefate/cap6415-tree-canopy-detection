@@ -491,7 +491,7 @@ def simple_estimate_runtime():
     from src.data.annotations import load_json_annotations
     from src.utils.config import Config
 
-    config = Config.load()
+    config = Config.load(root = root)
 
     entries = load_json_annotations(config.paths.annotations)
     train_size = int(0.8 * len(entries))

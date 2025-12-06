@@ -13,7 +13,18 @@
 from IPython import get_ipython
 
 
-if "google.colab" in str(get_ipython()):
+if not "google.colab" in str(get_ipython()):
+    from pathlib import Path
+
+
+    root = Path("C:/github/Tree-Canopy-Detection")
+
+else:
+    from pathlib import Path
+
+
+    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    
     # noinspection PyUnresolvedReferences
     from google.colab import drive
 
@@ -121,7 +132,7 @@ from src.utils.helpers import c, init_notebook, p, t
 from src.data.enhance_masks import EnhancedImageMaskDataset
 
 
-config = Config.load()
+config = Config.load(root = root)
 config.train.image_size = 320
 config.auto_adjust()
 #config = Config.load(Path("..").resolve() / "config_PROD.yaml")

@@ -69,7 +69,8 @@ class Config(BaseModel):
 
 
     @classmethod
-    def load( cls, yaml_path: Path = None ) -> "Config":
+    def load( cls, yaml_path: Path = None, root: Path = None ) -> "Config":
+
 
         if yaml_path is None:
             load_dotenv()
@@ -84,6 +85,10 @@ class Config(BaseModel):
             raw = yaml.safe_load(f)
 
         raw_paths = raw.get("paths", { })
+        if root is not None:
+            raw_paths["root"] = str(root)
+
+
         raw_train = raw.get("train", { })
         extra = { k: v for k, v in raw.items() if k not in ["paths", "train"] }
 

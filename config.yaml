@@ -1,8 +1,8 @@
 # config.yaml
 
 paths:
-  #root: C:/github/Tree-Canopy-Detection
-  root: /content/CAP6415_F25_project-Tree-Canopy-Detection
+  root: C:/github/Tree-Canopy-Detection
+  #root: /content/CAP6415_F25_project-Tree-Canopy-Detection
   dataset_selector: "data1"
 
 
