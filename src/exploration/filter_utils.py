@@ -8,7 +8,7 @@ enhanced images without shape mismatch errors.
 import cv2
 import numpy as np
 
-from src.utils.helpers import c, p, t
+from src.utils.helpers import c, p
 
 
 def get_input_channels(mode, filters, model_name):
@@ -216,27 +216,3 @@ def test_filter_pipeline(img_path, filter_names=["laplacian", "sobel", "clahe"])
     filter_outputs = apply_filters_safe(img, filter_registry)
 
     return img, enhanced, filter_outputs
-
-
-if __name__ == "__main__":
-    # Quick test
-    from src.utils.config import Config
-    from src.data.annotations import load_json_annotations
-
-    config = Config.load(root=root)
-    entries = load_json_annotations(config.paths.annotations)
-
-    # Test on first image
-    img_path = config.paths.train_images / entries[0].image_path.name
-
-    t("Testing filter pipeline")
-
-    original, enhanced, filters = test_filter_pipeline(img_path)
-
-    p("Original shape", original.shape)
-    p("Enhanced shape", enhanced.shape)
-    p("Filter outputs")
-    for name, output in filters.items():
-        p("", f"  {name}: {output.shape}")
-
-    p("SUCCESS", "Filter pipeline working correctly", color1=c.GREEN)

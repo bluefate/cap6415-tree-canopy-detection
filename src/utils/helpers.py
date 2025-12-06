@@ -485,13 +485,10 @@ def format_time( seconds ):
 
 
 
-def simple_estimate_runtime():
+def simple_estimate_runtime(config):
     """Estimate total runtime."""
     t("Runtime Estimate")
     from src.data.annotations import load_json_annotations
-    from src.utils.config import Config
-
-    config = Config.load(root = root)
 
     entries = load_json_annotations(config.paths.annotations)
     train_size = int(0.8 * len(entries))

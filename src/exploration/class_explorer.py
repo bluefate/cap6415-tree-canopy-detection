@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import cv2
 import numpy as np
 import torch
@@ -10,14 +8,12 @@ from src.data.image_loader import load_image
 from src.exploration.visualize import (
     show_side_by_side,
 )
-from src.utils.config import Config
 from src.utils.helpers import p, t
 
 
 # -----------------------------------------------------------
 # Core helpers
 # -----------------------------------------------------------
-config = Config.load(root=root)
 CLASS_NAMES = ["individual_tree", "group_of_trees"]
 
 
@@ -64,7 +60,7 @@ def mask_all(entry: AnnotationEntry):
 # -----------------------------------------------------------
 
 
-def color_mask(entry: AnnotationEntry):
+def color_mask(config, entry: AnnotationEntry):
     H = entry.height
     W = entry.width
     mask_rgb = np.zeros((H, W, 3), dtype=np.uint8)
@@ -134,8 +130,8 @@ def draw_bboxes_for_class(img, entry: AnnotationEntry, cls: str):
     return out
 
 
-def explore_image(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def explore_image(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
 
     mask_ind = mask_for_class(entry, "individual_tree")
     mask_grp = mask_for_class(entry, "group_of_trees")
@@ -271,8 +267,8 @@ def analyze_class_distribution(train_loader, val_loader=None):
     }
 
 
-def show_single_class(entry: AnnotationEntry, image_dir: Path, cls: str):
-    img = load_image(image_dir, entry)
+def show_single_class(config, entry: AnnotationEntry, cls: str):
+    img = load_image(config.paths.train_images, entry)
     mask = mask_for_class(entry, cls)
     show_side_by_side(
         img,
@@ -282,14 +278,14 @@ def show_single_class(entry: AnnotationEntry, image_dir: Path, cls: str):
     )
 
 
-def show_all_classes(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def show_all_classes(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
 
     # build combined mask for both classes
     mask = mask_all(entry)
 
     # build colored mask (per polygon, per class)
-    mask_rgb = color_mask(entry)
+    mask_rgb = color_mask(config, entry)
 
     # overlay with mask colors
     overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
@@ -303,8 +299,8 @@ def show_all_classes(entry: AnnotationEntry, image_dir: Path):
     )
 
 
-def show_per_class(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def show_per_class(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
     classes = ["individual_tree", "group_of_trees"]
 
     # masks must be tuples (mask, class_name) for coloring
@@ -319,10 +315,10 @@ def show_per_class(entry: AnnotationEntry, image_dir: Path):
     )
 
 
-def show_overlay_all(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def show_overlay_all(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
     # mask = mask_all(entry)
-    mask = color_mask(entry)
+    mask = color_mask(config, entry)
 
     # show_overlay(img, mask, title="Overlay All")
     overlay = cv2.addWeighted(img, 0.6, mask, 0.4, 0)
@@ -334,8 +330,8 @@ def show_overlay_all(entry: AnnotationEntry, image_dir: Path):
     )
 
 
-def show_overlay_by_class(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def show_overlay_by_class(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
 
     m_ind = mask_for_class(entry, "individual_tree")
     m_grp = mask_for_class(entry, "group_of_trees")
@@ -367,9 +363,9 @@ def show_overlay_by_class(entry: AnnotationEntry, image_dir: Path):
 # -----------------------------------------------------------
 
 
-def explore_color_overlay(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
-    mask_rgb = color_mask(entry)
+def explore_color_overlay(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
+    mask_rgb = color_mask(config, entry)
     overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
 
     show_side_by_side(
@@ -377,8 +373,8 @@ def explore_color_overlay(entry: AnnotationEntry, image_dir: Path):
     )
 
 
-def explore_bboxes(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def explore_bboxes(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
     b_all = draw_bboxes(img, entry)
     b_ind = draw_bboxes_for_class(img, entry, "individual_tree")
     b_grp = draw_bboxes_for_class(img, entry, "group_of_trees")
@@ -416,7 +412,7 @@ def class_distribution(entries):
     return total
 
 
-def dataset_report(entries, image_dir: Path, sample_count=3):
+def dataset_report(config, entries, sample_count=3):
     dist = class_distribution(entries)
     p("Class counts:", dist)
 
@@ -427,9 +423,9 @@ def dataset_report(entries, image_dir: Path, sample_count=3):
 
     for e in samples:
         p("Image:", e.image_path.name)
-        explore_color_overlay(e, image_dir)
-        explore_bboxes(e, image_dir)
-        explore_image(e, image_dir)
+        explore_color_overlay(config, e)
+        explore_bboxes(config, e)
+        explore_image(config, e)
 
 
 def create_experiment_tracker():
