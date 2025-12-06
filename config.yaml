@@ -15,16 +15,16 @@ paths:
   #annotations: "src/data/data1/train_annotations.json"
   #data: "data"
 
-  train_images: "data/data1/train_images"
-  train_masks: "data/data1/train_masks"
-  train_images_zip: "data/data1/train_images.zip"
-  eval_images: "data/data1/evaluation_images"
-  eval_masks: "data/data1/evaluation_masks"
-  eval_images_zip: "data/data1/evaluation_images.zip"
+  train_images: "src/data/data1/train_images"
+  train_masks: "src/data/data1/train_masks"
+  train_images_zip: "src/data/data1/train_images.zip"
+  eval_images: "src/data/data1/evaluation_images"
+  eval_masks: "src/data/data1/evaluation_masks"
+  eval_images_zip: "src/data/data1/evaluation_images.zip"
   models: "checkpoints"
   notebooks: "notebooks"
-  annotations: "data/data1/train_annotations.json"
-  data: "data/data1"
+  annotations: "src/data/data1/train_annotations.json"
+  data: "src/data/data1"
 
 
 

@@ -24,6 +24,7 @@ def check_config(config):
             ('train_images', config.paths.train_images),
             ('eval_images', config.paths.eval_images),
             ('models', config.paths.models),
+            ('notebooks', config.paths.notebooks),
         ]
 
         for name, path in checks:
