@@ -21,7 +21,7 @@ if not "google.colab" in str(get_ipython()):
 else:
     from pathlib import Path
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
