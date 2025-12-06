@@ -443,6 +443,12 @@ def analyze_validation_metrics(
     # Print analysis if verbose
     if verbose:
         t(f"{model_name} Performance Analysis")
+        p(
+            "Performance Categories",
+            f"🥇 excellent |🥈 good |🥉 fair | 😡 poor",
+            color1=c.GREEN,
+        )
+        p()
         p("Overall Performance", f"{results['performance_level'].upper()}")
         p("Overall Score", f"{results['overall_score']:.2f}/4.0")
         p()
