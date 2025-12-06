@@ -4,6 +4,95 @@
 #
 
 # %%
+
+from IPython import get_ipython
+
+
+if not "google.colab" in str(get_ipython()):
+    from pathlib import Path
+
+
+    root = Path("C:/github/Tree-Canopy-Detection")
+
+else:
+    from pathlib import Path
+
+
+    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+
+    # noinspection PyUnresolvedReferences
+    from google.colab import drive
+
+    import os
+    import subprocess
+    import sys
+
+
+    os.chdir("/content")
+    drive.mount("/content/drive")
+
+    # Load environment variables
+    env_path = "/content/drive/MyDrive/TreeCanopyProject/.env"
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.strip().split("=", 1)
+                    os.environ[key] = value
+
+    # Clone repository
+    repo_path = "/content/CAP6415_F25_project-Tree-Canopy-Detection"
+    github_token = os.getenv("TOKEN")
+
+    if not os.path.exists(repo_path):
+        if github_token:
+            # #!git config --global user.email "jherna65@fau.edu"
+            subprocess.run(
+                    ["git", "config", "--global", "user.email", "jherna65@fau.edu"],
+                    check = True,
+            )
+
+            # #!git config --global user.name "bluefate"
+            subprocess.run(
+                    ["git", "config", "--global", "user.name", "bluefate"], check = True
+            )
+
+            clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
+
+            # #!git clone $clone_url
+            subprocess.run(["git", "clone", clone_url], check = True)
+            print("Repository cloned")
+        else:
+            print("ERROR: No token")
+    else:
+        print("Repository already exists")
+
+    # Set paths and pull latest
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        if github_token:
+            # #!git reset --hard HEAD
+            # #!git pull
+            subprocess.run(["git", "pull"], check = True)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, "src"))
+        print("Setup complete")
+
+    # Set paths
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, "src"))
+        print("Setup complete")
+
+    print("Requirements")
+    # Install packages
+    # # !pip install -r requirements.txt
+    subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check = True
+    )
+
+# %%
 import os
 import sys
 
@@ -27,7 +116,7 @@ from src.utils.config import Config
 from src.utils.helpers import c, init_notebook, p, t
 
 
-config = Config.load()
+config = Config.load(root = root)
 
 init_notebook(config.train.seed)
 
@@ -58,8 +147,7 @@ dataset = ImageMaskDataset(entries, train_dir, transform = val_tf)
 # #### Loading Model
 
 # %%
-def load_best_model(model_name: str, config):
-    from pathlib import Path
+def load_best_model( model_name: str, config ):
     from src.models.zoo import build_model
     from src.utils.versioning import VersionManager
 
@@ -96,9 +184,9 @@ def load_best_model(model_name: str, config):
     p("Using device", device)
 
     # Build model with correct device
-    model = build_model(model_name, in_channels=3, out_channels=3).to(device)
+    model = build_model(model_name, in_channels = 3, out_channels = 3).to(device)
 
-    state = torch.load(best_path, map_location=device)
+    state = torch.load(best_path, map_location = device)
     if "model" in state:
         model.load_state_dict(state["model"])
     else:
@@ -106,6 +194,7 @@ def load_best_model(model_name: str, config):
 
     model.eval()
     return model
+
 
 model = load_best_model("simple_cnn", config)
 
@@ -156,7 +245,7 @@ for p_val, r_val in zip(precision_vals, recall_vals):
     f1_vals.append(f1)
 
 # Display comprehensive metrics
-p("=== COMPREHENSIVE METRICS ===", color1=c.CYAN, bold=True)
+p("=== COMPREHENSIVE METRICS ===", color1 = c.CYAN, bold = True)
 p("")
 p("IoU (Intersection over Union):")
 p("  Mean IoU", f"{np.mean(iou_vals):.4f}")
@@ -189,7 +278,7 @@ p("  Std F1", f"{np.std(f1_vals):.4f}")
 p("")
 
 # Summary table
-p("=== SUMMARY TABLE ===", color1=c.GREEN, bold=True)
+p("=== SUMMARY TABLE ===", color1 = c.GREEN, bold = True)
 p(f"{'Metric':<12} {'Mean':<8} {'Std':<8}")
 p("-" * 28)
 p(f"{'IoU':<12} {np.mean(iou_vals):<8.4f} {np.std(iou_vals):<8.4f}")
@@ -236,7 +325,7 @@ for _ in range(5):
 
     # Handle multi-class output
     if pred.shape[1] == 3:  # Multi-class
-        pred_classes = torch.argmax(pred, dim=1).squeeze().numpy()
+        pred_classes = torch.argmax(pred, dim = 1).squeeze().numpy()
         pred_bin = (pred_classes > 0).astype(np.uint8)  # Any tree = 1
     else:  # Binary
         pred = torch.sigmoid(pred).squeeze().numpy()
@@ -246,12 +335,12 @@ for _ in range(5):
     orig_h, orig_w = original_shape[:2]
     if pred_classes.shape != (orig_h, orig_w):
         pred_classes_resized = cv2.resize(
-            pred_classes, (orig_w, orig_h),
-            interpolation=cv2.INTER_NEAREST
+                pred_classes, (orig_w, orig_h),
+                interpolation = cv2.INTER_NEAREST
         )
         pred_bin_resized = cv2.resize(
-            pred_bin, (orig_w, orig_h),
-            interpolation=cv2.INTER_NEAREST
+                pred_bin, (orig_w, orig_h),
+                interpolation = cv2.INTER_NEAREST
         )
     else:
         pred_classes_resized = pred_classes
@@ -260,18 +349,18 @@ for _ in range(5):
     # Resize ground truth mask to match if needed
     if mask.shape != (orig_h, orig_w):
         mask_resized = cv2.resize(
-            mask.astype(np.uint8), (orig_w, orig_h),
-            interpolation=cv2.INTER_NEAREST
+                mask.astype(np.uint8), (orig_w, orig_h),
+                interpolation = cv2.INTER_NEAREST
         )
     else:
         mask_resized = mask
 
     # Create colored masks for better visualization
-    mask_rgb = np.zeros((orig_h, orig_w, 3), dtype=np.uint8)
+    mask_rgb = np.zeros((orig_h, orig_w, 3), dtype = np.uint8)
     mask_rgb[mask_resized == 1] = (0, 255, 0)  # individual trees - green
     mask_rgb[mask_resized == 2] = (255, 255, 0)  # groups - yellow
 
-    pred_rgb = np.zeros((orig_h, orig_w, 3), dtype=np.uint8)
+    pred_rgb = np.zeros((orig_h, orig_w, 3), dtype = np.uint8)
     pred_rgb[pred_classes_resized == 1] = (0, 255, 0)  # individual trees - green
     pred_rgb[pred_classes_resized == 2] = (255, 255, 0)  # groups - yellow
 
@@ -281,9 +370,9 @@ for _ in range(5):
     titles = [f"Image {idx}", "Ground Truth", "Prediction", "Overlay"]
 
     show_side_by_side(
-        img_display, mask_rgb, pred_rgb, overlay,
-        titles=titles,
-        cmaps=[None, None, None, None]  # Fixed cmaps - no "gray" for RGB images
+            img_display, mask_rgb, pred_rgb, overlay,
+            titles = titles,
+            cmaps = [None, None, None, None]  # Fixed cmaps - no "gray" for RGB images
     )
 
 # %%

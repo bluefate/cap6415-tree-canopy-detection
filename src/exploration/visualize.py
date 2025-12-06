@@ -3,7 +3,6 @@ from typing import Optional, Tuple
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image
 
 
 def show_side_by_side(
@@ -92,8 +91,13 @@ def show_side_by_side(
         elif isinstance(img, np.ndarray):
             # Handle raw image arrays
             if not preserve_values:
-                # Default: clip to 0â€“255 and cast to uint8
-                img = np.clip(img, 0, 255).astype(np.uint8)
+                # Handle [0,1] range images properly
+                if img.max() <= 1.0:
+                    # Image is in [0,1] range - scale to [0,255]
+                    img = (img * 255).astype(np.uint8)
+                else:
+                    # Image is in larger range - clip to [0,255]
+                    img = np.clip(img, 0, 255).astype(np.uint8)
             # else: keep raw values (signed floats/ints)
 
         # ---------------------------------------------------
@@ -165,16 +169,20 @@ def show_image(
     """
     Show an image using matplotlib.
     """
-    # Convert float images safely
+    # Convert float images safely - handle [0,1] range properly
     if image.dtype != np.uint8:
-        img = np.clip(image, 0, 255).astype(np.uint8)
+        if image.max() <= 1.0:
+            # Image is in [0,1] range - convert to [0,255]
+            img = (image * 255).astype(np.uint8)
+        else:
+            # Image is in larger range - clip to [0,255]
+            img = np.clip(image, 0, 255).astype(np.uint8)
     else:
         img = image
 
     if return_img:
         return img
     else:
-
         plt.figure(figsize=(5, 5))
         if img.ndim == 2:
             plt.imshow(img, cmap=cmap)
@@ -189,25 +197,33 @@ def show_image(
 # using from PIL import Image to be able to show pure white and black
 def show_mask(mask: np.ndarray, title: str = "", return_img: bool = False, cmap="gray"):
     """
-    Show a binary mask as pure black and white.
-    Uses PIL to avoid Matplotlib auto scaling side effects.
+    Show a mask with proper handling of class indices.
     """
-
-    # normalize mask to 0 and 255
+    # Handle multi-class masks (class indices 0,1,2)
     if mask.dtype != np.uint8:
-        # convert float or int mask to binary (0 or 255)
-        mask_img = (mask > 0.5).astype(np.uint8) * 255
+        if mask.max() <= 2:
+            # Multi-class mask with indices [0,1,2] - scale to visible range
+            mask_img = (mask * 127).astype(np.uint8)  # 0->0, 1->127, 2->254
+        else:
+            # Binary mask [0,1] - convert to [0,255]
+            mask_img = (mask > 0.5).astype(np.uint8) * 255
     else:
-        if mask.max() <= 1:
+        if mask.max() <= 2:
+            # Already uint8 with class indices [0,1,2]
+            mask_img = mask * 127
+        elif mask.max() <= 1:
+            # Binary mask [0,1] as uint8
             mask_img = mask * 255
         else:
-            # if mask is uint8 but noisy, re-binarize
-            mask_img = (mask > 127).astype(np.uint8) * 255
+            # Already in proper range
+            mask_img = mask
 
     if return_img:
         return mask_img
 
     # use PIL for exact grayscale
+    from PIL import Image
+
     img = Image.fromarray(mask_img, mode="L")
 
     plt.figure(figsize=(5, 5))
@@ -228,31 +244,29 @@ def show_overlay(
     """
     Show an image with a red mask overlay.
     """
+    # Convert image to uint8
     if image.max() <= 1.0:
         img_u8 = (image * 255).astype(np.uint8)
     else:
         img_u8 = image.astype(np.uint8)
 
-    mask_u8 = (mask * 255).astype(np.uint8)
+    # Handle mask properly - don't multiply class indices by 255
+    if mask.max() <= 2:
+        # Multi-class mask [0,1,2] - convert to binary [0,1] then to [0,255]
+        mask_binary = (mask > 0).astype(np.float32)  # Any class > 0 = tree
+        mask_u8 = (mask_binary * 255).astype(np.uint8)
+    else:
+        # Already processed mask
+        mask_u8 = mask.astype(np.uint8)
+
     mask_rgb = np.zeros_like(img_u8)
-    mask_rgb[:, :, 0] = mask_u8
+    mask_rgb[:, :, 0] = mask_u8  # Red channel for trees
 
     overlay = cv2.addWeighted(img_u8, 1 - alpha, mask_rgb, alpha, 0)
 
     if return_img:
         return overlay
     else:
-        if image.max() <= 1.0:
-            img_u8 = (image * 255).astype(np.uint8)
-        else:
-            img_u8 = image.astype(np.uint8)
-
-        mask_u8 = (mask * 255).astype(np.uint8)
-        mask_rgb = np.zeros_like(img_u8)
-        mask_rgb[:, :, 0] = mask_u8
-
-        overlay = cv2.addWeighted(img_u8, 1 - alpha, mask_rgb, alpha, 0)
-
         plt.figure(figsize=(5, 5))
         plt.imshow(overlay)
         if title:

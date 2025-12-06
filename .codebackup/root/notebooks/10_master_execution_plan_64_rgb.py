@@ -1,51 +1,73 @@
 # %% [markdown]
-# <a href="https://colab.research.google.com/github/bluefate/CAP6415_F25_project-Tree-Canopy-Detection/blob/main/notebooks/10_master_execution_plan_64_rgb.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+# # Notebook: 10 Master Execution Plan
+# ### Purpose: Complete pipeline from data preparation to final submission
+#
 
 # %%
-import os
-import sys
+# # !git fetch origin
+# # !git reset --hard origin/main
 
-from IPython.display import HTML
+# subprocess.run(["git", "fetch", "origin"], check=True)
+# subprocess.run(["git", "reset", "--hard", "origin/main"], check=True)
+
+# %%
+
+from IPython import get_ipython
 
 
-if 'google.colab' in str(get_ipython()):
-    HTML(
-            """
-                <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-                <style>
-                    pre, code, .output pre {
-                        font-family: 'JetBrains Mono', monospace !important;
-                    }
-                </style>
-                """
-    )
+if not "google.colab" in str(get_ipython()):
+    from pathlib import Path
 
-    os.chdir('/content')
 
+    root = Path("C:/github/Tree-Canopy-Detection")
+
+else:
+    from pathlib import Path
+
+
+    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+
+    # noinspection PyUnresolvedReferences
     from google.colab import drive
 
+    import os
+    import subprocess
+    import sys
 
-    drive.mount('/content/drive')
+
+    os.chdir("/content")
+    drive.mount("/content/drive")
 
     # Load environment variables
-    env_path = '/content/drive/MyDrive/TreeCanopyProject/.env'
+    env_path = "/content/drive/MyDrive/TreeCanopyProject/.env"
     if os.path.exists(env_path):
-        with open(env_path, 'r') as f:
+        with open(env_path, "r") as f:
             for line in f:
-                if '=' in line and not line.startswith('#'):
-                    key, value = line.strip().split('=', 1)
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.strip().split("=", 1)
                     os.environ[key] = value
 
     # Clone repository
-    repo_path = '/content/CAP6415_F25_project-Tree-Canopy-Detection'
-    github_token = os.getenv('TOKEN')
+    repo_path = "/content/CAP6415_F25_project-Tree-Canopy-Detection"
+    github_token = os.getenv("TOKEN")
 
     if not os.path.exists(repo_path):
         if github_token:
-            # !git config --global user.email "jherna65@fau.edu"
-            # !git config --global user.name "bluefate"
+            # #!git config --global user.email "jherna65@fau.edu"
+            subprocess.run(
+                    ["git", "config", "--global", "user.email", "jherna65@fau.edu"],
+                    check = True,
+            )
+
+            # #!git config --global user.name "bluefate"
+            subprocess.run(
+                    ["git", "config", "--global", "user.name", "bluefate"], check = True
+            )
+
             clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
-            # !git clone $clone_url
+
+            # #!git clone $clone_url
+            subprocess.run(["git", "clone", clone_url], check = True)
             print("Repository cloned")
         else:
             print("ERROR: No token")
@@ -57,29 +79,25 @@ if 'google.colab' in str(get_ipython()):
         os.chdir(repo_path)
         if github_token:
             # #!git reset --hard HEAD
-            # !git pull
+            # #!git pull
+            subprocess.run(["git", "pull"], check = True)
         sys.path.insert(0, repo_path)
-        sys.path.insert(0, os.path.join(repo_path, 'src'))
+        sys.path.insert(0, os.path.join(repo_path, "src"))
         print("Setup complete")
 
     # Set paths
     if os.path.exists(repo_path):
         os.chdir(repo_path)
         sys.path.insert(0, repo_path)
-        sys.path.insert(0, os.path.join(repo_path, 'src'))
+        sys.path.insert(0, os.path.join(repo_path, "src"))
         print("Setup complete")
 
     print("Requirements")
     # Install packages
-    # !pip install -r requirements.txt
-
-# %%
-# # !git fetch origin
-# # !git reset --hard origin/main
-
-# %% [markdown]
-# # Notebook: 10 Master Execution Plan
-# ### Purpose: Complete pipeline from data preparation to final submission
+    # # !pip install -r requirements.txt
+    subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check = True
+    )
 
 # %%
 import sys
@@ -101,6 +119,7 @@ from src.exploration.class_explorer import (
     analyze_class_distribution, color_mask, create_experiment_tracker, mask_all, plot_training_history,
     update_tracker,
 )
+from src.training.trainer import create_splits
 from src.exploration.filter_utils import get_input_channels
 from src.exploration.visualize import show_side_by_side
 from src.models.zoo import build_model, MODEL_EXPERIMENTS
@@ -118,8 +137,9 @@ from src.data.enhance_masks import EnhancedImageMaskDataset
 from src.utils.versioning import VersionManager
 
 
-config = Config.load()
-config.train.image_size = 512
+config = Config.load(root = root)
+config.train.image_size = 64
+config.auto_adjust()
 #config = Config.load(Path("..").resolve() / "config_PROD.yaml")
 init_notebook(config.train.seed)
 config.show()
@@ -348,6 +368,7 @@ t("Train Experiments")
 # Running experiments
 results = { }
 analysis_printed = False
+train_entries, val_entries = create_splits(entries)
 for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("\n\n")
     t(f"Experiment {i}/{len(experiments)}")
@@ -356,13 +377,8 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("Filters", filters, color1 = c.ORANGE)
 
     try:
-        random.shuffle(entries)
-        # Prepare data
-        train_entries = entries[: int(0.8 * len(entries))]
-        val_entries = entries[int(0.8 * len(entries)):]
-
-        train_tf = get_train_augmentations(config.train.image_size)
-        val_tf = get_val_augmentations(config.train.image_size)
+        train_tf = get_train_augmentations(config.train.image_size, mode = mode)
+        val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
         train_ds = EnhancedImageMaskDataset(
                 train_entries,
@@ -380,12 +396,7 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
         )
         # Determine input channels
         sample_img, _ = train_ds[0]
-        in_channels = sample_img.shape[0]
-        # Skip 6-channel experiments not supported yet
-        if in_channels == 6 and model_name in ["simple_cnn", "unet"]:
-            # p("Warning", f"Skipping 6-channel experiment for {model_name}", color1 = c.ORANGE)
-            # continue
-            in_channels = get_input_channels(mode, filters)
+        in_channels = get_input_channels(mode, filters, model_name)
 
         train_loader = DataLoader(
                 train_ds,
@@ -1029,8 +1040,8 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
     val_entries = class_entries[split_idx:]
 
     # Create datasets with class filter
-    train_tf = get_train_augmentations(config.train.image_size)
-    val_tf = get_val_augmentations(config.train.image_size)
+    train_tf = get_train_augmentations(config.train.image_size, mode = mode)
+    val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
     train_ds = ImageMaskDataset(
             train_entries,
@@ -1165,7 +1176,7 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
     )
 
     # Run predictions
-    val_tf = get_val_augmentations(config.train.image_size)
+    val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
     results = predictor.run_on_folder(eval_dir, transform = val_tf)
 
@@ -1620,7 +1631,7 @@ def visualize_experiment_predictions( item, image_dir, num_samples = 3 ):
             model.load_state_dict(state)
         model.eval()
 
-        val_tf = get_val_augmentations(config.train.image_size)
+        val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
         # Get image files
         image_files = sorted(list(image_dir.glob("*.png")))
@@ -1769,7 +1780,7 @@ for e in sample_entries:
     try:
         img = load_image(image_dir, e)
         mask = mask_all(e)
-        mask_rgb = color_mask(e)
+        mask_rgb = color_mask(config, e)
         overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
 
         show_side_by_side(

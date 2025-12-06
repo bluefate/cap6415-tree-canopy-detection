@@ -2,6 +2,95 @@
 # # Notebook: 07 Data Analysis
 # ### Purpose: Analyze dataset characteristics, class distributions, and image properties
 
+# %%
+
+from IPython import get_ipython
+
+
+if not "google.colab" in str(get_ipython()):
+    from pathlib import Path
+
+
+    root = Path("C:/github/Tree-Canopy-Detection")
+
+else:
+    from pathlib import Path
+
+
+    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+
+    # noinspection PyUnresolvedReferences
+    from google.colab import drive
+
+    import os
+    import subprocess
+    import sys
+
+
+    os.chdir("/content")
+    drive.mount("/content/drive")
+
+    # Load environment variables
+    env_path = "/content/drive/MyDrive/TreeCanopyProject/.env"
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.strip().split("=", 1)
+                    os.environ[key] = value
+
+    # Clone repository
+    repo_path = "/content/CAP6415_F25_project-Tree-Canopy-Detection"
+    github_token = os.getenv("TOKEN")
+
+    if not os.path.exists(repo_path):
+        if github_token:
+            # #!git config --global user.email "jherna65@fau.edu"
+            subprocess.run(
+                    ["git", "config", "--global", "user.email", "jherna65@fau.edu"],
+                    check = True,
+            )
+
+            # #!git config --global user.name "bluefate"
+            subprocess.run(
+                    ["git", "config", "--global", "user.name", "bluefate"], check = True
+            )
+
+            clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
+
+            # #!git clone $clone_url
+            subprocess.run(["git", "clone", clone_url], check = True)
+            print("Repository cloned")
+        else:
+            print("ERROR: No token")
+    else:
+        print("Repository already exists")
+
+    # Set paths and pull latest
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        if github_token:
+            # #!git reset --hard HEAD
+            # #!git pull
+            subprocess.run(["git", "pull"], check = True)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, "src"))
+        print("Setup complete")
+
+    # Set paths
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, "src"))
+        print("Setup complete")
+
+    print("Requirements")
+    # Install packages
+    # # !pip install -r requirements.txt
+    subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check = True
+    )
+
 # %% [markdown]
 # #### Imports and setup
 
@@ -34,15 +123,14 @@ from src.utils.helpers import init_notebook, p, t, c
 from src.utils.versioning import VersionManager
 
 # %%
-config = Config.load()
+config = Config.load(root = root)
 init_notebook(config.train.seed)
 
 entries = load_json_annotations(config.paths.annotations)
-image_dir = config.paths.train_images
 
 
 # %%
-explore_bboxes(entries[42], image_dir)
+explore_bboxes(config, entries[42])
 
 # %% [markdown]
 # #### Step 1: Identify single class and group images
@@ -82,7 +170,7 @@ if sample_group:
 
 # %%
 t("Dataset Report")
-# dataset_report(entries, image_dir)
+# dataset_report(config, entries)
 
 # %%
 # t("Build Context-Aware Crops for Individual Trees")
@@ -956,7 +1044,7 @@ else:
     p("WARNING", "Trainer is None - training was skipped", color1 = c.ORANGE)
 
 # %%
-from prediction.validation import analyze_validation_metrics
+from src.prediction.validation import analyze_validation_metrics
 
 
 if trainer_final is not None:

@@ -1,48 +1,73 @@
+# %% [markdown]
+# # Notebook: 10 Master Execution Plan
+# ### Purpose: Complete pipeline from data preparation to final submission
+#
+
 # %%
-import os
-import sys
+# # !git fetch origin
+# # !git reset --hard origin/main
 
-from IPython.display import HTML
+# subprocess.run(["git", "fetch", "origin"], check=True)
+# subprocess.run(["git", "reset", "--hard", "origin/main"], check=True)
+
+# %%
+
+from IPython import get_ipython
 
 
-if 'google.colab' in str(get_ipython()):
-    HTML(
-            """
-                <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-                <style>
-                    pre, code, .output pre {
-                        font-family: 'JetBrains Mono', monospace !important;
-                    }
-                </style>
-                """
-    )
+if not "google.colab" in str(get_ipython()):
+    from pathlib import Path
 
-    os.chdir('/content')
 
+    root = Path("C:/github/Tree-Canopy-Detection")
+
+else:
+    from pathlib import Path
+
+
+    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+
+    # noinspection PyUnresolvedReferences
     from google.colab import drive
 
+    import os
+    import subprocess
+    import sys
 
-    drive.mount('/content/drive')
+
+    os.chdir("/content")
+    drive.mount("/content/drive")
 
     # Load environment variables
-    env_path = '/content/drive/MyDrive/TreeCanopyProject/.env'
+    env_path = "/content/drive/MyDrive/TreeCanopyProject/.env"
     if os.path.exists(env_path):
-        with open(env_path, 'r') as f:
+        with open(env_path, "r") as f:
             for line in f:
-                if '=' in line and not line.startswith('#'):
-                    key, value = line.strip().split('=', 1)
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.strip().split("=", 1)
                     os.environ[key] = value
 
     # Clone repository
-    repo_path = '/content/CAP6415_F25_project-Tree-Canopy-Detection'
-    github_token = os.getenv('TOKEN')
+    repo_path = "/content/CAP6415_F25_project-Tree-Canopy-Detection"
+    github_token = os.getenv("TOKEN")
 
     if not os.path.exists(repo_path):
         if github_token:
-            # !git config --global user.email "jherna65@fau.edu"
-            # !git config --global user.name "bluefate"
+            # #!git config --global user.email "jherna65@fau.edu"
+            subprocess.run(
+                    ["git", "config", "--global", "user.email", "jherna65@fau.edu"],
+                    check = True,
+            )
+
+            # #!git config --global user.name "bluefate"
+            subprocess.run(
+                    ["git", "config", "--global", "user.name", "bluefate"], check = True
+            )
+
             clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
-            # !git clone $clone_url
+
+            # #!git clone $clone_url
+            subprocess.run(["git", "clone", clone_url], check = True)
             print("Repository cloned")
         else:
             print("ERROR: No token")
@@ -54,29 +79,25 @@ if 'google.colab' in str(get_ipython()):
         os.chdir(repo_path)
         if github_token:
             # #!git reset --hard HEAD
-            # !git pull
+            # #!git pull
+            subprocess.run(["git", "pull"], check = True)
         sys.path.insert(0, repo_path)
-        sys.path.insert(0, os.path.join(repo_path, 'src'))
+        sys.path.insert(0, os.path.join(repo_path, "src"))
         print("Setup complete")
 
     # Set paths
     if os.path.exists(repo_path):
         os.chdir(repo_path)
         sys.path.insert(0, repo_path)
-        sys.path.insert(0, os.path.join(repo_path, 'src'))
+        sys.path.insert(0, os.path.join(repo_path, "src"))
         print("Setup complete")
 
     print("Requirements")
     # Install packages
-    # !pip install -r requirements.txt
-
-# %%
-# # !git fetch origin
-# # !git reset --hard origin/main
-
-# %% [markdown]
-# # Notebook: 10 Master Execution Plan
-# ### Purpose: Complete pipeline from data preparation to final submission
+    # # !pip install -r requirements.txt
+    subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check = True
+    )
 
 # %%
 import sys
@@ -86,7 +107,7 @@ from pathlib import Path
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
 
-#os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  #enable for debugging ONLY
+# os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  #enable for debugging ONLY
 import json
 import random
 import cv2
@@ -95,13 +116,22 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from src.data.image_loader import load_image, validate_image_directory
 from src.exploration.class_explorer import (
-    analyze_class_distribution, color_mask, create_experiment_tracker, mask_all, plot_training_history,
+    analyze_class_distribution,
+    color_mask,
+    create_experiment_tracker,
+    mask_all,
+    plot_training_history,
     update_tracker,
 )
 from src.exploration.filter_utils import get_input_channels
 from src.exploration.visualize import show_side_by_side
 from src.models.zoo import build_model, MODEL_EXPERIMENTS
-from src.training.running import get_available_filters, get_version_config, validate_filter_set
+from src.training.running import (
+    get_available_filters,
+    get_version_config,
+    validate_filter_set,
+)
+from src.training.trainer import create_splits
 from src.utils.helpers import estimate_runtime
 from src.utils.image_converter import ImageConverter
 from torch.utils.data import DataLoader
@@ -115,9 +145,10 @@ from src.data.enhance_masks import EnhancedImageMaskDataset
 from src.utils.versioning import VersionManager
 
 
-config = Config.load()
+config = Config.load(root = root)
 config.train.image_size = 512
-#config = Config.load(Path("..").resolve() / "config_PROD.yaml")
+config.auto_adjust()
+# config = Config.load(Path("..").resolve() / "config_PROD.yaml")
 init_notebook(config.train.seed)
 config.show()
 
@@ -125,13 +156,13 @@ config.show()
 
 # %% [markdown]
 # #### Step 1: Data Preparation
-#
+# #
 # - TIFF → PNG conversion (notebook 00_preprocess_images)
 # - Annotation loading
 # - Mask generation
 # - Data augmentation
-#
-#
+# #
+# #
 
 # %%
 t("Loading Annotations")
@@ -140,7 +171,9 @@ p("Total images", len(entries))
 
 if config.paths.eval_images and config.paths.eval_images.exists():
     # Check if conversion is needed
-    tiff_files = list(config.paths.eval_images.glob("*.tif")) + list(config.paths.eval_images.glob("*.tiff"))
+    tiff_files = list(config.paths.eval_images.glob("*.tif")) + list(
+            config.paths.eval_images.glob("*.tiff")
+    )
     png_files = list(config.paths.eval_images.glob("*.png"))
 
     p("TIFF files found", len(tiff_files), color1 = c.BLACK)
@@ -149,8 +182,7 @@ if config.paths.eval_images and config.paths.eval_images.exists():
     if len(tiff_files) > 0:
         p("Converting TIFF to PNG...", color1 = c.ORANGE)
         eval_converter = ImageConverter(
-                source_dir = config.paths.eval_images,
-                target_dir = config.paths.eval_images
+                source_dir = config.paths.eval_images, target_dir = config.paths.eval_images
         )
         eval_stats = eval_converter.convert_batch(overwrite = False)
         p("Converted", eval_stats.get("converted", 0), color1 = c.ORANGE)
@@ -166,8 +198,12 @@ else:
     p("Warning", "Eval images directory not found", color1 = c.ORANGE)
 
 # Analyze class distribution
-individual_count = sum(1 for e in entries if any(item.cls == "individual_tree" for item in e.items))
-group_count = sum(1 for e in entries if any(item.cls == "group_of_trees" for item in e.items))
+individual_count = sum(
+        1 for e in entries if any(item.cls == "individual_tree" for item in e.items)
+)
+group_count = sum(
+        1 for e in entries if any(item.cls == "group_of_trees" for item in e.items)
+)
 
 p("Images with individual trees", individual_count)
 p("Images with tree groups", group_count)
@@ -191,15 +227,15 @@ p("CUDA optimizations enabled")
 
 # %% [markdown]
 # #### Step 2: Filter Experimentation
-#
+# #
 # **Action:** Run and retrieve notebook 08 to identify top 3 filters
-#
+# #
 # **Expected Output:**
 # - Filter ranking CSV
 # - Top 3 filter names
 # - Visual comparisons
-#
-#
+# #
+# #
 
 # %% [markdown]
 # ##### Validate Available Filters
@@ -215,11 +251,11 @@ p("Sample filters", AVAILABLE_FILTERS, show = 15, color1 = c.ORANGE)
 
 # %% [markdown]
 # #### Step 3: Enhanced Dataset Creation
-#
+# #
 # - Create training dataset with filter-enhanced inputs
 # - Apply filters as additional channels.
-#
-#
+# #
+# #
 
 # %%
 t("Dataset modes")
@@ -228,36 +264,40 @@ val_transform = get_val_augmentations(config.train.image_size)
 sample_entries = entries[:5]
 
 # for mode in ['rgb', 'filtered', 'concat']:
-for mode in ['rgb', 'filtered']:
+for mode in ["rgb", "filtered"]:
     try:
         dataset = EnhancedImageMaskDataset(
                 sample_entries,
                 config.paths.train_images,
                 mode = mode,
-                transform = val_transform
+                transform = val_transform,
         )
 
         img_t, mask_t = dataset[0]
-        p(f"Mode {mode}", f"\n\tImage shape: {img_t.shape}, \n\tMask shape: {mask_t.shape}", color1 = c.ORANGE)
+        p(
+                f"Mode {mode}",
+                f"\n\tImage shape: {img_t.shape}, \n\tMask shape: {mask_t.shape}",
+                color1 = c.ORANGE,
+        )
     except Exception as e:
         p(f"Mode: {mode}", f"FAILED: {e}", color1 = c.RED, color2 = c.RED)
 
 
 # %% [markdown]
 # #### Step 4: Model Training Comparison
-#
+# #
 # **Experiment Design:**
 # Comparing model performance across input types:
 # 1. Baseline: RGB only
 # 2. Filtered: Top 3 filters as channels
 # 3. Concat: RGB + Filters (6 channels)
-#
+# #
 # **Models to test:**
 # - SimpleCNN (fast baseline)
 # - UNet (standard architecture)
 # - SMP UNet + ResNet34 (transfer learning)
-#
-#
+# #
+# #
 
 # %% [markdown]
 # ##### Experiment setup
@@ -267,11 +307,11 @@ t("Filter Sets")
 
 # Define filter combinations to test
 filter_sets = {
-    'classic':        ['laplacian', 'sobel', 'clahe'],
-    'gaussian':       ['gaussian_3x3', 'gaussian_5x5', 'gaussian_7x7'],
-    'kernel_sharpen': ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'],
-    'kernel_edge':    ['sobel_x', 'sobel_y', 'laplacian_3x3'],
-    'combined':       ['laplacian', 'gaussian_5x5', 'clahe'],
+    "classic":        ["laplacian", "sobel", "clahe"],
+    "gaussian":       ["gaussian_3x3", "gaussian_5x5", "gaussian_7x7"],
+    "kernel_sharpen": ["sharpen_basic", "high_pass_3x3", "edge_enhance"],
+    "kernel_edge":    ["sobel_x", "sobel_y", "laplacian_3x3"],
+    "combined":       ["laplacian", "gaussian_5x5", "clahe"],
 }
 
 # Validate all filter sets before proceeding
@@ -291,7 +331,12 @@ for set_name, filters in filter_sets.items():
 
 if not all_valid:
     p("")
-    p("WARNING", "Some filter sets have invalid filter names!", color1 = c.RED, color2 = c.RED)
+    p(
+            "WARNING",
+            "Some filter sets have invalid filter names!",
+            color1 = c.RED,
+            color2 = c.RED,
+    )
     p("", "Check filter names against AVAILABLE_FILTERS", color1 = c.ORANGE)
 
 p("")
@@ -311,12 +356,14 @@ p("All experiments", all_experiments, show = 100, color1 = c.ORANGE)
 # %%
 t("Setup experiments to run ")
 # SimpleCNN only ued for debugging pipeline wiring, not for actual results
-#experiments = [all_experiments[81]]  # 81: ('yolov8l', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
-#experiments = [all_experiments[67]]  # 67: ('yolov8s', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
-#experiments = all_experiments
+# experiments = [all_experiments[81]]  # 81: ('yolov8l', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
+# experiments = [all_experiments[67]]  # 67: ('yolov8s', 'filtered', ['sharpen_basic', 'high_pass_3x3', 'edge_enhance'])
+# experiments = all_experiments
 # experiments = [all_experiments[0]]
-#experiments = [exp for exp in all_experiments if exp[0] == 'simple_cnn']
-experiments = [exp for exp in all_experiments if exp[1] == 'rgb' and exp[0] != 'simple_cnn']
+# experiments = [exp for exp in all_experiments if exp[0] == 'simple_cnn']
+experiments = [
+    exp for exp in all_experiments if exp[1] == "rgb" and exp[0] != "simple_cnn"
+]
 
 p("Experiments to Run", experiments, show = 50, color1 = c.RED)
 
@@ -327,7 +374,7 @@ estimate_runtime(experiments, config, entries)
 # %%
 # Initialize best model tracker
 best_model_tracker = {
-    "best_val_loss":    float('inf'),
+    "best_val_loss":    float("inf"),
     "best_iou":         0.0,
     "best_experiment":  None,
     "best_model_path":  None,
@@ -345,6 +392,7 @@ t("Train Experiments")
 # Running experiments
 results = { }
 analysis_printed = False
+train_entries, val_entries = create_splits(entries)
 for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("\n\n")
     t(f"Experiment {i}/{len(experiments)}")
@@ -353,13 +401,8 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("Filters", filters, color1 = c.ORANGE)
 
     try:
-        random.shuffle(entries)
-        # Prepare data
-        train_entries = entries[: int(0.8 * len(entries))]
-        val_entries = entries[int(0.8 * len(entries)):]
-
-        train_tf = get_train_augmentations(config.train.image_size)
-        val_tf = get_val_augmentations(config.train.image_size)
+        train_tf = get_train_augmentations(config.train.image_size, mode = mode)
+        val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
         train_ds = EnhancedImageMaskDataset(
                 train_entries,
@@ -377,12 +420,7 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
         )
         # Determine input channels
         sample_img, _ = train_ds[0]
-        in_channels = sample_img.shape[0]
-        # Skip 6-channel experiments not supported yet
-        if in_channels == 6 and model_name in ["simple_cnn", "unet"]:
-            # p("Warning", f"Skipping 6-channel experiment for {model_name}", color1 = c.ORANGE)
-            # continue
-            in_channels = get_input_channels(mode, filters)
+        in_channels = get_input_channels(mode, filters, model_name)
 
         train_loader = DataLoader(
                 train_ds,
@@ -395,7 +433,9 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
         sample_img, sample_mask = next(iter(train_loader))
         print(f"Image range: [{sample_img.min():.3f}, {sample_img.max():.3f}]")
         print(f"Mask unique values: {torch.unique(sample_mask).tolist()}")
-        print(f"Mask value counts: {torch.bincount(sample_mask.flatten(), minlength = 3).tolist()}")
+        print(
+                f"Mask value counts: {torch.bincount(sample_mask.flatten(), minlength = 3).tolist()}"
+        )
 
         val_loader = DataLoader(
                 val_ds,
@@ -411,8 +451,23 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
             # weights = torch.tensor([1.00, 2.50, 6.00]) in prepare_criterion
             analysis = analyze_class_distribution(train_loader, val_loader)
 
-        key, version_root, exp_config, best_model_path, checkpoint_path_check, best_model_exists = get_version_config(
-                config, filters, "10", model_name, mode, in_channels, best_model_tracker, i, experiments
+        (
+            key,
+            version_root,
+            exp_config,
+            best_model_path,
+            checkpoint_path_check,
+            best_model_exists,
+        ) = get_version_config(
+                config,
+                filters,
+                "10",
+                model_name,
+                mode,
+                in_channels,
+                best_model_tracker,
+                i,
+                experiments,
         )
         if best_model_exists:
             continue
@@ -436,23 +491,35 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
             if checkpoint_path.exists():
                 try:
                     ckpt = torch.load(checkpoint_path, map_location = "cpu")
-                    val_loss = ckpt.get("best_val_loss", float('inf'))
+                    val_loss = ckpt.get("best_val_loss", float("inf"))
                     p("[Info]", f"Val Loss: {val_loss:.6f}", color1 = c.GREEN)
 
                     if val_loss < best_model_tracker["best_val_loss"]:
                         best_model_tracker["best_val_loss"] = val_loss
                         best_model_tracker["best_experiment"] = key
-                        best_model_tracker["best_model_path"] = version_dir / "best_model.pth"
+                        best_model_tracker["best_model_path"] = (
+                                version_dir / "best_model.pth"
+                        )
                         best_model_tracker["best_version_dir"] = version_dir
-                        p("\t\t🏆 NEW BEST MODEL", key, color1 = c.ORANGE, color2 = c.ORANGE, bold = True)
+                        p(
+                                "\t\t🏆 NEW BEST MODEL",
+                                key,
+                                color1 = c.ORANGE,
+                                color2 = c.ORANGE,
+                                bold = True,
+                        )
 
                     update_tracker(experiment_tracker, key, checkpoint_path)
                     # plot_experiment_results(experiment_tracker)
                     plot_training_history(trainer, title_prefix = key)
 
-
                 except Exception as e:
-                    p("Warning", f"Could not load checkpoint: {e}", color1 = c.ORANGE, color2 = c.ORANGE)
+                    p(
+                            "Warning",
+                            f"Could not load checkpoint: {e}",
+                            color1 = c.ORANGE,
+                            color2 = c.ORANGE,
+                    )
 
             p(f"COMPLETED {i}/{len(experiments)}", key, color1 = c.GREEN, color2 = c.GREEN)
         else:
@@ -469,7 +536,9 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
 
 # Summary
 t("Experiment Results Summary")
-successful = sum(1 for v in results.values() if not isinstance(v, dict) or v.get("status") != "ERROR")
+successful = sum(
+        1 for v in results.values() if not isinstance(v, dict) or v.get("status") != "ERROR"
+)
 failed = sum(1 for v in results.values() if isinstance(v, dict) and "status" in v)
 skipped = sum(1 for v in results.values() if v is None)
 
@@ -489,18 +558,18 @@ p("Failed", failed, color1 = c.RED if failed > 0 else c.RED)
 # %%
 # List of metrics to extract
 metrics_to_extract = [
-    'best_val_loss',
-    'epoch',
-    'final_epoch',
-    'train_loss',
-    'val_loss',
-    'val_accuracy',
-    'val_iou',
-    'iou',
-    'accuracy',
-    'f1_score',
-    'precision',
-    'recall',
+    "best_val_loss",
+    "epoch",
+    "final_epoch",
+    "train_loss",
+    "val_loss",
+    "val_accuracy",
+    "val_iou",
+    "iou",
+    "accuracy",
+    "f1_score",
+    "precision",
+    "recall",
 ]
 
 # %%
@@ -515,8 +584,23 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p()
     p(f"Experiment {i}: {model_name}, {mode}, {filters}", color1 = c.MAGENTA, bold = True)
 
-    key, version_root, exp_config, best_model_path, checkpoint_path_check, best_model_exists = get_version_config(
-            config, filters, "10", model_name, mode, in_channels, best_model_tracker, i, experiments
+    (
+        key,
+        version_root,
+        exp_config,
+        best_model_path,
+        checkpoint_path_check,
+        best_model_exists,
+    ) = get_version_config(
+            config,
+            filters,
+            "10",
+            model_name,
+            mode,
+            in_channels,
+            best_model_tracker,
+            i,
+            experiments,
     )
 
     # Check if directory exists
@@ -533,7 +617,10 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
 
     # Use LATEST version
     latest_version_dir = version_dirs[-1]
-    p(f"Found {len(version_dirs)} versions, using latest: {latest_version_dir.name}", color1 = c.GREEN)
+    p(
+            f"Found {len(version_dirs)} versions, using latest: {latest_version_dir.name}",
+            color1 = c.GREEN,
+    )
 
     # Look for checkpoint files
     checkpoint_files = []
@@ -566,53 +653,60 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
                 value = ckpt[metric]
 
             # Try nested in 'metrics'
-            elif 'metrics' in ckpt and metric in ckpt['metrics']:
-                value = ckpt['metrics'][metric]
+            elif "metrics" in ckpt and metric in ckpt["metrics"]:
+                value = ckpt["metrics"][metric]
 
             # Handle epoch/final_epoch aliases
-            elif metric == 'final_epoch' and 'epoch' in ckpt:
-                value = ckpt['epoch']
-            elif metric == 'epoch' and 'final_epoch' in ckpt:
-                value = ckpt['final_epoch']
+            elif metric == "final_epoch" and "epoch" in ckpt:
+                value = ckpt["epoch"]
+            elif metric == "epoch" and "final_epoch" in ckpt:
+                value = ckpt["final_epoch"]
 
             # Handle other aliases
-            elif metric == 'iou' and 'val_iou' in ckpt:
-                value = ckpt['val_iou']
-            elif metric == 'accuracy' and 'val_accuracy' in ckpt:
-                value = ckpt['val_accuracy']
+            elif metric == "iou" and "val_iou" in ckpt:
+                value = ckpt["val_iou"]
+            elif metric == "accuracy" and "val_accuracy" in ckpt:
+                value = ckpt["val_accuracy"]
 
             if value is not None:
                 metrics_dict[metric] = value
 
         # Get filter string
-        filters_str = str(filters) if filters else 'none'
+        filters_str = str(filters) if filters else "none"
 
         # Try to load config snapshot for extra info
         config_snapshot_path = latest_version_dir / "config_snapshot.json"
         additional_info = { }
         if config_snapshot_path.exists():
             try:
-                with open(config_snapshot_path, 'r') as f:
+                with open(config_snapshot_path, "r") as f:
                     snapshot = json.load(f)
-                    additional_info = snapshot.get('config', { }).get('extra', { }).get('experiment', { })
+                    additional_info = (
+                        snapshot.get("config", { })
+                        .get("extra", { })
+                        .get("experiment", { })
+                    )
             except Exception:
                 pass
 
         # Build result entry
         result_entry = {
-            'model':           model_name,
-            'mode':            mode,
-            'filters':         filters_str,
-            'version':         latest_version_dir.name,
-            'checkpoint_path': str(checkpoint_path),
-            'version_path':    str(latest_version_dir),
+            "model":           model_name,
+            "mode":            mode,
+            "filters":         filters_str,
+            "version":         latest_version_dir.name,
+            "checkpoint_path": str(checkpoint_path),
+            "version_path":    str(latest_version_dir),
             **additional_info,
-            **metrics_dict
+            **metrics_dict,
         }
 
         experiment_results.append(result_entry)
 
-        p(f"✓ Loaded successfully - Metrics: {len(metrics_dict)}/{len(metrics_to_extract)}", color1 = c.GREEN)
+        p(
+                f"✓ Loaded successfully - Metrics: {len(metrics_dict)}/{len(metrics_to_extract)}",
+                color1 = c.GREEN,
+        )
 
         # Show missing metrics
         missing = [m for m in metrics_to_extract if m not in metrics_dict]
@@ -637,15 +731,17 @@ if len(df_results) > 0:
     p("Available columns:", list(df_results.columns), show = 50, color1 = c.CYAN)
 
     # Select columns for display
-    display_columns = ['model', 'mode', 'filters', 'version']
-    for col in ['best_val_loss', 'final_epoch', 'val_accuracy', 'val_iou', 'iou']:
+    display_columns = ["model", "mode", "filters", "version"]
+    for col in ["best_val_loss", "final_epoch", "val_accuracy", "val_iou", "iou"]:
         if col in df_results.columns:
             display_columns.append(col)
 
     p("Displaying columns:", display_columns, color1 = c.CYAN)
 
     # Sort by best_val_loss if available
-    sort_column = 'best_val_loss' if 'best_val_loss' in df_results.columns else display_columns[0]
+    sort_column = (
+        "best_val_loss" if "best_val_loss" in df_results.columns else display_columns[0]
+    )
 
     try:
         df_sorted = df_results.sort_values(by = sort_column, ascending = True)
@@ -657,7 +753,9 @@ if len(df_results) > 0:
         display_df = df_sorted[display_columns].head(10).copy()
         for col in display_df.columns:
             if display_df[col].dtype == float:
-                display_df[col] = display_df[col].apply(lambda x: f"{x:.4f}" if pd.notnull(x) else "N/A")
+                display_df[col] = display_df[col].apply(
+                        lambda x: f"{x:.4f}" if pd.notnull(x) else "N/A"
+                )
 
         print(display_df.to_string(index = False))
 
@@ -673,29 +771,30 @@ else:
 agg_dict = { }
 for col in metrics_to_extract:
     if col in df_results.columns:
-        agg_dict[col] = ['min', 'mean', 'count']
+        agg_dict[col] = ["min", "mean", "count"]
 
 if agg_dict and len(df_results) > 0:
     p()
     p("Detailed Summary:", color1 = c.BLUE, bold = True)
 
-    summary = df_results.groupby(['model', 'mode']).agg(agg_dict).reset_index()
-    summary.columns = [' '.join(col).strip() for col in summary.columns.values]
+    summary = df_results.groupby(["model", "mode"]).agg(agg_dict).reset_index()
+    summary.columns = [" ".join(col).strip() for col in summary.columns.values]
 
     # Format floats
-    float_cols = [col for col in summary.columns if 'min' in col or 'mean' in col]
+    float_cols = [col for col in summary.columns if "min" in col or "mean" in col]
     for col in float_cols:
-        summary[col] = summary[col].apply(lambda x: f"{x:.4f}" if pd.notnull(x) else "N/A")
+        summary[col] = summary[col].apply(
+                lambda x: f"{x:.4f}" if pd.notnull(x) else "N/A"
+        )
 
     try:
-        summary = summary.sort_values('best_val_loss min', ascending = True)
+        summary = summary.sort_values("best_val_loss min", ascending = True)
     except:
         pass
 
     print(summary.to_string(index = False))
 else:
     p("No aggregatable data", color1 = c.ORANGE)
-
 
 
 
@@ -712,7 +811,7 @@ p("Total experiments found", len(df_results))
 p("Available columns:", list(df_results.columns), show = 50, color1 = c.RED)
 
 # Dynamically select columns based on available metrics
-display_columns = ['model', 'mode', 'filters']
+display_columns = ["model", "mode", "filters"]
 additional_cols = metrics_to_extract
 
 # Add additional columns that have non-None values
@@ -727,7 +826,9 @@ p("Columns to display:", display_columns, color1 = c.CYAN)
 t("Top 10 Experiments")
 
 # Check if we have any sortable columns
-sort_column = 'best_val_loss' if 'best_val_loss' in df_results.columns else display_columns[0]
+sort_column = (
+    "best_val_loss" if "best_val_loss" in df_results.columns else display_columns[0]
+)
 
 try:
     # Sort and select top 10 experiments
@@ -738,7 +839,9 @@ try:
     # Format float columns to limit decimal places
     float_cols = [col for col in display_columns if df_results[col].dtype == float]
     for col in float_cols:
-        sorted_results[col] = sorted_results[col].apply(lambda x: f"{x:.4f}" if pd.notnull(x) else x)
+        sorted_results[col] = sorted_results[col].apply(
+                lambda x: f"{x:.4f}" if pd.notnull(x) else x
+        )
 
     p(sorted_results.head(10).to_string(index = False), color1 = c.BLACK)
 
@@ -754,25 +857,25 @@ sorted_results
 agg_dict = { }
 for col in additional_cols:
     if col in df_results.columns:
-        agg_dict[col] = ['min', 'mean', 'count']
+        agg_dict[col] = ["min", "mean", "count"]
 
 if agg_dict:
     p("\nDetailed Summary:", color1 = c.BLUE, bold = True)
 
     # Create summary with dynamic columns
-    summary = df_results.groupby(['model', 'mode']).agg(agg_dict).reset_index()
+    summary = df_results.groupby(["model", "mode"]).agg(agg_dict).reset_index()
 
     # Flatten multi-level column names for readability
-    summary.columns = [' '.join(col).strip() for col in summary.columns.values]
+    summary.columns = [" ".join(col).strip() for col in summary.columns.values]
 
     # Format float columns to limit decimal places
-    float_cols = [col for col in summary.columns if 'min' in col or 'mean' in col]
+    float_cols = [col for col in summary.columns if "min" in col or "mean" in col]
     for col in float_cols:
         summary[col] = summary[col].apply(lambda x: f"{x:.4f}" if pd.notnull(x) else x)
 
     # Sort if possible
     try:
-        summary = summary.sort_values('best_val_loss min', ascending = True)
+        summary = summary.sort_values("best_val_loss min", ascending = True)
     except:
         pass
 
@@ -798,16 +901,16 @@ else:
     p("BEST MODEL", color1 = c.GREEN, bold = True)
     p("=" * 80, color1 = c.CYAN, bold = True)
     p("")
-    p("Model", best_row['model'], color1 = c.GREEN)
-    p("Input Mode", best_row['mode'], color1 = c.GREEN)
-    p("Filters", best_row['filters'], color1 = c.GREEN)
+    p("Model", best_row["model"], color1 = c.GREEN)
+    p("Input Mode", best_row["mode"], color1 = c.GREEN)
+    p("Filters", best_row["filters"], color1 = c.GREEN)
     p("Best Val Loss", f"{best_row['best_val_loss']:.6f}", color1 = c.GREEN)
-    p("Final Epoch", best_row['final_epoch'], color1 = c.GREEN)
+    p("Final Epoch", best_row["final_epoch"], color1 = c.GREEN)
     # Extract version from version_path if 'version' is not present
-    version = best_row.get('version', Path(best_row['version_path']).name)
+    version = best_row.get("version", Path(best_row["version_path"]).name)
     p("Version", version, color1 = c.GREEN)
 
-    p("Path", best_row['version_path'], color1 = c.BLUE)
+    p("Path", best_row["version_path"], color1 = c.BLUE)
     p("")
 
     # Check if this is better than previous best
@@ -817,25 +920,34 @@ else:
     improvement = None
 
     if previous_best_path.exists():
-        with open(previous_best_path, 'r') as f:
+        with open(previous_best_path, "r") as f:
             lines = f.readlines()
             prev_loss = None
             for line in lines:
                 if "best_val_loss:" in line:
                     try:
-                        prev_loss = float(line.split(':')[1].strip())
+                        prev_loss = float(line.split(":")[1].strip())
                         break
                     except:
                         pass
 
         if prev_loss is not None:
-            improvement = prev_loss - best_row['best_val_loss']
+            improvement = prev_loss - best_row["best_val_loss"]
 
-            if best_row['best_val_loss'] < prev_loss:
+            if best_row["best_val_loss"] < prev_loss:
                 is_new_best = True
-                p("IMPROVEMENT", f"{improvement:.6f} (lower is better)", color1 = c.GREEN, bold = True)
+                p(
+                        "IMPROVEMENT",
+                        f"{improvement:.6f} (lower is better)",
+                        color1 = c.GREEN,
+                        bold = True,
+                )
             else:
-                p("NO IMPROVEMENT", f"Previous best was {prev_loss:.6f}", color1 = c.ORANGE)
+                p(
+                        "NO IMPROVEMENT",
+                        f"Previous best was {prev_loss:.6f}",
+                        color1 = c.ORANGE,
+                )
     else:
         is_new_best = True
         p("FIRST RUN", "No previous best to compare", color1 = c.CYAN)
@@ -845,7 +957,7 @@ else:
         from datetime import datetime
 
 
-        with open(previous_best_path, 'w') as f:
+        with open(previous_best_path, "w") as f:
             f.write(f"model: {best_row['model']}\n")
             f.write(f"mode: {best_row['mode']}\n")
             f.write(f"filters: {best_row['filters']}\n")
@@ -859,7 +971,7 @@ else:
         p("✓ Saved new best model info", str(previous_best_path), color1 = c.GREEN)
 
         # Copy best model to top-level for easy access
-        best_model_src = Path(best_row['version_path']) / "best_model.pth"
+        best_model_src = Path(best_row["version_path"]) / "best_model.pth"
         best_model_dst = config.paths.models / "BEST_MODEL.pth"
 
         if best_model_src.exists():
@@ -875,46 +987,48 @@ t("Performance Comparison Visualization")
 if len(df_results) > 0:
     # Create comparison plots
     fig, axes = plt.subplots(2, 2, figsize = (15, 10))
-    fig.suptitle('Model Performance Comparison', fontsize = 16, fontweight = 'bold')
+    fig.suptitle("Model Performance Comparison", fontsize = 16, fontweight = "bold")
 
     # Plot 1: Validation Loss by Model
     ax1 = axes[0, 0]
-    df_pivot = df_results.pivot_table(values = 'best_val_loss', index = 'model', columns = 'mode', aggfunc = 'min')
-    df_pivot.plot(kind = 'bar', ax = ax1, color = ['#3498db', '#e74c3c'])
-    ax1.set_title('Best Validation Loss by Model & Mode')
-    ax1.set_ylabel('Validation Loss')
-    ax1.set_xlabel('Model')
-    ax1.legend(title = 'Input Mode')
+    df_pivot = df_results.pivot_table(
+            values = "best_val_loss", index = "model", columns = "mode", aggfunc = "min"
+    )
+    df_pivot.plot(kind = "bar", ax = ax1, color = ["#3498db", "#e74c3c"])
+    ax1.set_title("Best Validation Loss by Model & Mode")
+    ax1.set_ylabel("Validation Loss")
+    ax1.set_xlabel("Model")
+    ax1.legend(title = "Input Mode")
     ax1.grid(True, alpha = 0.3)
 
     # Plot 2: Loss Distribution
     ax2 = axes[0, 1]
-    df_results.boxplot(column = 'best_val_loss', by = 'model', ax = ax2)
-    ax2.set_title('Validation Loss Distribution by Model')
-    ax2.set_ylabel('Validation Loss')
-    ax2.set_xlabel('Model')
+    df_results.boxplot(column = "best_val_loss", by = "model", ax = ax2)
+    ax2.set_title("Validation Loss Distribution by Model")
+    ax2.set_ylabel("Validation Loss")
+    ax2.set_xlabel("Model")
     plt.sca(ax2)
     plt.xticks(rotation = 45)
 
     # Plot 3: Mode Comparison
     ax3 = axes[1, 0]
-    mode_stats = df_results.groupby('mode')['best_val_loss'].agg(['mean', 'min', 'max'])
-    mode_stats.plot(kind = 'bar', ax = ax3, color = ['#2ecc71', '#f39c12', '#e74c3c'])
-    ax3.set_title('Input Mode Performance')
-    ax3.set_ylabel('Validation Loss')
-    ax3.set_xlabel('Input Mode')
-    ax3.legend(['Mean', 'Min', 'Max'])
+    mode_stats = df_results.groupby("mode")["best_val_loss"].agg(["mean", "min", "max"])
+    mode_stats.plot(kind = "bar", ax = ax3, color = ["#2ecc71", "#f39c12", "#e74c3c"])
+    ax3.set_title("Input Mode Performance")
+    ax3.set_ylabel("Validation Loss")
+    ax3.set_xlabel("Input Mode")
+    ax3.legend(["Mean", "Min", "Max"])
     ax3.grid(True, alpha = 0.3)
 
     # Plot 4: Convergence Speed
     ax4 = axes[1, 1]
     for _, row in df_results.head(5).iterrows():
         label = f"{row['model']}-{row['mode']}"
-        ax4.scatter(row['final_epoch'], row['best_val_loss'], s = 100, label = label)
+        ax4.scatter(row["final_epoch"], row["best_val_loss"], s = 100, label = label)
 
-    ax4.set_title('Convergence: Epochs vs Loss (Top 5)')
-    ax4.set_xlabel('Final Epoch')
-    ax4.set_ylabel('Best Validation Loss')
+    ax4.set_title("Convergence: Epochs vs Loss (Top 5)")
+    ax4.set_xlabel("Final Epoch")
+    ax4.set_ylabel("Best Validation Loss")
     ax4.legend(fontsize = 8)
     ax4.grid(True, alpha = 0.3)
 
@@ -922,7 +1036,7 @@ if len(df_results) > 0:
 
     # Save figure
     plot_path = config.paths.models / "experiment_comparison.png"
-    plt.savefig(plot_path, dpi = 150, bbox_inches = 'tight')
+    plt.savefig(plot_path, dpi = 150, bbox_inches = "tight")
     p("✓ Saved comparison plot", str(plot_path), color1 = c.GREEN)
 
     plt.show()
@@ -941,7 +1055,7 @@ if len(df_results) > 0:
     # Create summary report
     summary_path = config.paths.models / "EXPERIMENT_SUMMARY.txt"
 
-    with open(summary_path, 'w') as f:
+    with open(summary_path, "w") as f:
         f.write("=" * 80 + "\n")
         f.write("EXPERIMENT SUMMARY\n")
         f.write("=" * 80 + "\n\n")
@@ -960,19 +1074,25 @@ if len(df_results) > 0:
         f.write("TOP 5 MODELS:\n")
         f.write("-" * 80 + "\n")
         for idx, row in df_results.head(5).iterrows():
-            f.write(f"{idx + 1}. {row['model']} ({row['mode']}) - Loss: {row['best_val_loss']:.6f}\n")
+            f.write(
+                    f"{idx + 1}. {row['model']} ({row['mode']}) - Loss: {row['best_val_loss']:.6f}\n"
+            )
             f.write(f"   Filters: {row['filters']}\n")
             f.write(f"   Path: {row['version_path']}\n\n")
 
         f.write("\nSTATISTICS BY MODEL:\n")
         f.write("-" * 80 + "\n")
-        model_stats = df_results.groupby('model')['best_val_loss'].agg(['count', 'mean', 'min', 'max'])
+        model_stats = df_results.groupby("model")["best_val_loss"].agg(
+                ["count", "mean", "min", "max"]
+        )
         f.write(model_stats.to_string())
         f.write("\n\n")
 
         f.write("STATISTICS BY MODE:\n")
         f.write("-" * 80 + "\n")
-        mode_stats = df_results.groupby('mode')['best_val_loss'].agg(['count', 'mean', 'min', 'max'])
+        mode_stats = df_results.groupby("mode")["best_val_loss"].agg(
+                ["count", "mean", "min", "max"]
+        )
         f.write(mode_stats.to_string())
 
     p("✓ Saved summary report", str(summary_path), color1 = c.GREEN)
@@ -985,24 +1105,26 @@ if len(df_results) > 0:
 
 # %%
 
+
+
 # %% [markdown]
 # #### Step 5: Class-Specific Training
-#
+# #
 # **Strategy:**
 # Trainning separate models for:
 # 1. Individual trees
 # 2. Groups of trees
 # 3. Combined predictions
-#
+# #
 # **Rationale:**
 # - Individual trees have distinct boundaries
 # - Tree groups have larger, more diffuse edges
 # - Specialized models may perform better
-#
-#
+# #
+# #
 
 # %%
-def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
+def train_class_specific_model( class_name, model_name = "simple_cnn" ):
     """
     Train a model for a specific class.
     """
@@ -1010,8 +1132,7 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
 
     # Filter entries by class
     class_entries = [
-        e for e in entries
-        if any(item.cls == class_name for item in e.items)
+        e for e in entries if any(item.cls == class_name for item in e.items)
     ]
 
     p(f"Images with {class_name}", len(class_entries))
@@ -1026,35 +1147,32 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
     val_entries = class_entries[split_idx:]
 
     # Create datasets with class filter
-    train_tf = get_train_augmentations(config.train.image_size)
-    val_tf = get_val_augmentations(config.train.image_size)
+    train_tf = get_train_augmentations(config.train.image_size, mode = mode)
+    val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
     train_ds = ImageMaskDataset(
             train_entries,
             config.paths.train_images,
             classes = [class_name],
-            transform = train_tf
+            transform = train_tf,
     )
 
     val_ds = ImageMaskDataset(
-            val_entries,
-            config.paths.train_images,
-            classes = [class_name],
-            transform = val_tf
+            val_entries, config.paths.train_images, classes = [class_name], transform = val_tf
     )
 
     train_loader = DataLoader(
             train_ds,
             batch_size = config.train.batch_size,
             shuffle = True,
-            num_workers = config.train.num_workers
+            num_workers = config.train.num_workers,
     )
 
     val_loader = DataLoader(
             val_ds,
             batch_size = config.train.batch_size,
             shuffle = False,
-            num_workers = config.train.num_workers
+            num_workers = config.train.num_workers,
     )
 
     # Train using config epochs
@@ -1064,13 +1182,14 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
             val_loader = val_loader,
             version_root = config.paths.models,
             model_name = model_name,
-            #in_channels = in_channels,
+            # in_channels = in_channels,
     )
 
     return trainer
 
 
 p("", "Class-specific training configured")
+
 
 
 # %%
@@ -1089,22 +1208,22 @@ p("", "Class-specific training configured")
 
 # %% [markdown]
 # #### Step 6: Ensemble Predictions
-#
+# #
 # **Approach:**
 # Combine predictions from multiple models:
 # 1. RGB-trained model
 # 2. Filter-enhanced model
 # 3. Class-specific models
-#
+# #
 # **Fusion methods:**
 # - Average (simple)
 # - Weighted average (based on validation IoU)
 # - Majority voting (threshold-based)
-#
-#
+# #
+# #
 
 # %%
-def ensemble_predict( models_and_weights, image_tensor, device = 'cpu' ):
+def ensemble_predict( models_and_weights, image_tensor, device = "cpu" ):
     """
     Combine predictions from multiple models.
     """
@@ -1134,11 +1253,11 @@ p("", "Ensemble prediction function ready")
 
 # %% [markdown]
 # #### Step 7: Submission Generation
-#
+# #
 # **Current Status:**
 # - Prediction pipeline exists (notebook 05)
 # - Submission export implemented (`export_submission`)
-#
+# #
 
 # %%
 p("eval_images", config.paths.eval_images)
@@ -1156,13 +1275,11 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
 
     # Initialize predictor
     predictor = Predictor(
-            model_path = model_path,
-            model_name = model_name,
-            image_size = config.train.image_size
+            model_path = model_path, model_name = model_name, image_size = config.train.image_size
     )
 
     # Run predictions
-    val_tf = get_val_augmentations(config.train.image_size)
+    val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
     results = predictor.run_on_folder(eval_dir, transform = val_tf)
 
@@ -1172,20 +1289,21 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
     export_submission(results, output_path)
     p("Submission saved", output_path)
 
-    with open(output_path, 'r') as f:
+    with open(output_path, "r") as f:
         data = json.load(f)
 
-    p("Images in submission", len(data.get('images', [])))
+    p("Images in submission", len(data.get("images", [])))
 
     # Check first entry structure
-    if data.get('images'):
-        first_img = data['images'][0]
+    if data.get("images"):
+        first_img = data["images"][0]
         p("Sample entry keys", list(first_img.keys()), show = 15)
-        if first_img.get('annotations'):
-            first_ann = first_img['annotations'][0]
+        if first_img.get("annotations"):
+            first_ann = first_img["annotations"][0]
             p("Sample annotation keys", list(first_ann.keys()))
 
     return output_path
+
 
 
 # %%
@@ -1203,7 +1321,11 @@ else:
     df_exp = pd.read_csv(csv_path)
 
     if len(df_exp) == 0:
-        p("Warning", "all_experiments.csv is empty, no experiments to export", color1 = c.ORANGE)
+        p(
+                "Warning",
+                "all_experiments.csv is empty, no experiments to export",
+                color1 = c.ORANGE,
+        )
     else:
         num_ok = 0
         num_missing = 0
@@ -1281,16 +1403,16 @@ t("Generating Final Submission with Best Model")
 best_model_info_path = config.paths.models / "BEST_MODEL.txt"
 
 if best_model_info_path.exists():
-    with open(best_model_info_path, 'r') as f:
+    with open(best_model_info_path, "r") as f:
         lines = f.readlines()
         best_model_name = None
         best_model_path = None
 
         for line in lines:
             if "model:" in line:
-                best_model_name = line.split(':')[1].strip()
+                best_model_name = line.split(":")[1].strip()
             elif "path:" in line:
-                best_model_path = Path(line.split(':', 1)[1].strip())
+                best_model_path = Path(line.split(":", 1)[1].strip())
 
         if best_model_path and best_model_name:
             model_weights = best_model_path / "best_model.pth"
@@ -1302,17 +1424,22 @@ if best_model_info_path.exists():
             # timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
             # Generate submission
-            #output_file = config.paths.models / f"FINAL_SUBMISSION_{timestamp}.json"
+            # output_file = config.paths.models / f"FINAL_SUBMISSION_{timestamp}.json"
             output_file = config.paths.models / "FINAL_SUBMISSION.json"
 
             generate_submission(
                     model_path = model_weights,
                     model_name = best_model_name,
                     eval_dir = config.paths.eval_images,
-                    output_path = output_file
+                    output_path = output_file,
             )
 
-            p("✓ Final submission generated", str(output_file), color1 = c.GREEN, bold = True)
+            p(
+                    "✓ Final submission generated",
+                    str(output_file),
+                    color1 = c.GREEN,
+                    bold = True,
+            )
 else:
     p("Warning", "No best model info found, skipping final submission", color1 = c.ORANGE)
 
@@ -1345,14 +1472,18 @@ for model_name in all_model_names:
             if model_path.exists():
                 output_file = latest_version / "submission.json"
 
-                p("Generating submission", f"{model_name}/{input_mode}", color1 = c.MAGENTA)
+                p(
+                        "Generating submission",
+                        f"{model_name}/{input_mode}",
+                        color1 = c.MAGENTA,
+                )
 
                 try:
                     generate_submission(
                             model_path = model_path,
                             model_name = model_name,
                             eval_dir = config.paths.eval_images,
-                            output_path = output_file
+                            output_path = output_file,
                     )
 
                     best_submissions.append(
@@ -1361,7 +1492,7 @@ for model_name in all_model_names:
                                 "mode":       input_mode,
                                 "filters":    None,
                                 "version":    str(latest_version),
-                                "submission": str(output_file)
+                                "submission": str(output_file),
                             }
                     )
                     p("Saved submission", str(output_file), color1 = c.GREEN)
@@ -1370,11 +1501,11 @@ for model_name in all_model_names:
                     p("Failed", str(e), color1 = c.RED)
 
         # Check for filter subdirectories (for 'filtered' mode)
-        if input_mode == 'filtered':
+        if input_mode == "filtered":
             for filter_subdir in base_path.iterdir():
                 if not filter_subdir.is_dir():
                     continue
-                if filter_subdir.name.startswith('v'):
+                if filter_subdir.name.startswith("v"):
                     continue
 
                 vm_filter = VersionManager(filter_subdir)
@@ -1390,14 +1521,18 @@ for model_name in all_model_names:
                 output_file = latest_filter_version / "submission.json"
                 filter_name = filter_subdir.name
 
-                p("Generating submission", f"{model_name}/{input_mode}/{filter_name}", color1 = c.MAGENTA)
+                p(
+                        "Generating submission",
+                        f"{model_name}/{input_mode}/{filter_name}",
+                        color1 = c.MAGENTA,
+                )
 
                 try:
                     generate_submission(
                             model_path = model_path,
                             model_name = model_name,
                             eval_dir = config.paths.eval_images,
-                            output_path = output_file
+                            output_path = output_file,
                     )
 
                     best_submissions.append(
@@ -1406,7 +1541,7 @@ for model_name in all_model_names:
                                 "mode":       input_mode,
                                 "filters":    filter_name,
                                 "version":    str(latest_filter_version),
-                                "submission": str(output_file)
+                                "submission": str(output_file),
                             }
                     )
                     p("Saved submission", str(output_file), color1 = c.GREEN)
@@ -1440,7 +1575,7 @@ for item in best_submissions:
                 "mode":          item["mode"],
                 "version":       item["version"],
                 "submission":    item["submission"],
-                "best_val_loss": val_loss
+                "best_val_loss": val_loss,
             }
     except Exception as e:
         p("Warning", f"Could not load checkpoint {ckpt_path}: {e}", color1 = c.ORANGE)
@@ -1460,7 +1595,7 @@ if best_overall:
                     "version":       best_overall["version"],
                     "submission":    best_overall["submission"],
                     "best_val_loss": best_overall["best_val_loss"],
-                    "overall_best":  True
+                    "overall_best":  True,
                 }
         )
     else:
@@ -1508,7 +1643,7 @@ for item in best_submissions:
                 "filters":       item.get("filters"),
                 "version":       item["version"],
                 "submission":    item["submission"],
-                "best_val_loss": val_loss
+                "best_val_loss": val_loss,
             }
     except Exception as e:
         p("Warning", f"Could not load checkpoint {ckpt_path}: {e}", color1 = c.ORANGE)
@@ -1529,7 +1664,7 @@ if best_overall:
                     "version":       best_overall["version"],
                     "submission":    best_overall["submission"],
                     "best_val_loss": best_overall["best_val_loss"],
-                    "overall_best":  True
+                    "overall_best":  True,
                 }
         )
     else:
@@ -1565,7 +1700,7 @@ def visualize_experiment_predictions( item, image_dir, num_samples = 3 ):
                 except:
                     filters = [filters_str.strip("[]'\" ")]
             else:
-                suffixes = { 'x', 'y', '3x3', '5x5', '7x7' }
+                suffixes = { "x", "y", "3x3", "5x5", "7x7" }
                 parts = filters_str.split("_")
                 filters = []
                 i = 0
@@ -1607,7 +1742,9 @@ def visualize_experiment_predictions( item, image_dir, num_samples = 3 ):
             in_channels = 3  # RGB or filtered RGB
 
         # Build model with correct input channels
-        model = build_model(model_name, in_channels = in_channels, out_channels = 3).to(device)
+        model = build_model(model_name, in_channels = in_channels, out_channels = 3).to(
+                device
+        )
 
         # Load weights
         state = torch.load(model_path, map_location = device)
@@ -1617,7 +1754,7 @@ def visualize_experiment_predictions( item, image_dir, num_samples = 3 ):
             model.load_state_dict(state)
         model.eval()
 
-        val_tf = get_val_augmentations(config.train.image_size)
+        val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
         # Get image files
         image_files = sorted(list(image_dir.glob("*.png")))
@@ -1687,7 +1824,9 @@ def visualize_experiment_predictions( item, image_dir, num_samples = 3 ):
             if pred.shape[1] == 3:  # Multi-class
                 pred_classes = torch.argmax(pred, dim = 1).squeeze().cpu().numpy()
             else:  # Binary
-                pred_classes = (torch.sigmoid(pred).squeeze().cpu().numpy() > 0.5).astype(np.uint8)
+                pred_classes = (
+                        torch.sigmoid(pred).squeeze().cpu().numpy() > 0.5
+                ).astype(np.uint8)
 
             pred_mask = pred_classes.astype(np.uint8)
 
@@ -1695,8 +1834,7 @@ def visualize_experiment_predictions( item, image_dir, num_samples = 3 ):
             orig_h, orig_w = original_shape[:2]
             if pred_mask.shape != (orig_h, orig_w):
                 pred_mask_resized = cv2.resize(
-                        pred_mask, (orig_w, orig_h),
-                        interpolation = cv2.INTER_NEAREST
+                        pred_mask, (orig_w, orig_h), interpolation = cv2.INTER_NEAREST
                 )
             else:
                 pred_mask_resized = pred_mask
@@ -1711,8 +1849,16 @@ def visualize_experiment_predictions( item, image_dir, num_samples = 3 ):
 
             # Show results with properly sized components
             show_side_by_side(
-                    img_rgb, pred_mask_resized, mask_rgb, overlay,
-                    titles = (f"Original: {img_path.name}", "Pred Classes", "Color Mask", "Overlay"),
+                    img_rgb,
+                    pred_mask_resized,
+                    mask_rgb,
+                    overlay,
+                    titles = (
+                        f"Original: {img_path.name}",
+                        "Pred Classes",
+                        "Color Mask",
+                        "Overlay",
+                    ),
                     cmaps = [None, "gray", None, None],
                     maxcolumns = 4,
             )
@@ -1766,13 +1912,16 @@ for e in sample_entries:
     try:
         img = load_image(image_dir, e)
         mask = mask_all(e)
-        mask_rgb = color_mask(e)
+        mask_rgb = color_mask(config, e)
         overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
 
         show_side_by_side(
-                img, mask, mask_rgb, overlay,
+                img,
+                mask,
+                mask_rgb,
+                overlay,
                 titles = ("Original", "Mask", "Color Mask", "Overlay"),
-                maxcolumns = 4
+                maxcolumns = 4,
         )
     except Exception as e_viz:
         p("Failed to visualize", str(e_viz), color1 = c.ORANGE)
@@ -1810,7 +1959,9 @@ def find_available_model_weights( config, preferred_model = None ):
 
 
 # Try to find model weights
-test_model_weights, test_version_dir = find_available_model_weights(config, "simple_cnn")
+test_model_weights, test_version_dir = find_available_model_weights(
+        config, "simple_cnn"
+)
 
 if test_model_weights is None:
     p("No trained models found!", color1 = c.RED, bold = True)
@@ -1871,7 +2022,9 @@ else:
         in_channels = 6 if test_mode == "concat" and test_filters else 3
 
         # Build model
-        model = build_model(test_best_model_name, in_channels = in_channels, out_channels = 3).to(device)
+        model = build_model(
+                test_best_model_name, in_channels = in_channels, out_channels = 3
+        ).to(device)
 
         # Load weights
         state = torch.load(test_model_weights, map_location = device)
@@ -1896,7 +2049,7 @@ else:
                     "model":   test_best_model_name,
                     "mode":    test_mode,
                     "filters": test_filters,
-                    "version": str(test_version_dir)
+                    "version": str(test_version_dir),
                 }
 
                 # Use the updated visualization function
@@ -1912,6 +2065,7 @@ else:
 
 
         traceback.print_exc()
+
 
 
 # %%
@@ -1958,7 +2112,10 @@ def test_best_models_by_version( config, eval_dir, num_samples = 2 ):
         # Prioritize best_model.pth over checkpoint.pth
         if exp_key not in experiments:
             experiments[exp_key] = model_path
-        elif model_path.name == "best_model.pth" and experiments[exp_key].name == "checkpoint.pth":
+        elif (
+                model_path.name == "best_model.pth"
+                and experiments[exp_key].name == "checkpoint.pth"
+        ):
             experiments[exp_key] = model_path
 
     print(f"Found {len(experiments)} unique experiments:")
@@ -1984,14 +2141,16 @@ def test_best_models_by_version( config, eval_dir, num_samples = 2 ):
             if mode == "concat":
                 in_channels = 6
 
-            model = build_model(model_name, in_channels = in_channels, out_channels = 3).to(device)
+            model = build_model(model_name, in_channels = in_channels, out_channels = 3).to(
+                    device
+            )
 
             state = torch.load(model_path, map_location = device)
             if "model" in state:
                 model.load_state_dict(state["model"])
-                if 'val_loss' in state:
+                if "val_loss" in state:
                     print(f"Validation loss: {state['val_loss']:.4f}")
-                if 'epoch' in state:
+                if "epoch" in state:
                     print(f"Trained for {state['epoch']} epochs")
             else:
                 model.load_state_dict(state)
@@ -1999,7 +2158,9 @@ def test_best_models_by_version( config, eval_dir, num_samples = 2 ):
             model.eval()
 
             # Test predictions
-            fig, axes = plt.subplots(len(sample_images), 3, figsize = (12, 4 * len(sample_images)))
+            fig, axes = plt.subplots(
+                    len(sample_images), 3, figsize = (12, 4 * len(sample_images))
+            )
             if len(sample_images) == 1:
                 axes = axes.reshape(1, -1)
 
@@ -2010,7 +2171,7 @@ def test_best_models_by_version( config, eval_dir, num_samples = 2 ):
                 img_float = img_rgb.astype(np.float32) / 255.0
 
                 transform = get_val_augmentations(config.train.image_size)
-                img_transformed = transform(image = img_float)['image']
+                img_transformed = transform(image = img_float)["image"]
 
                 # Predict
                 with torch.no_grad():
@@ -2027,18 +2188,18 @@ def test_best_models_by_version( config, eval_dir, num_samples = 2 ):
                 # Plot
                 axes[i, 0].imshow(img_rgb)
                 axes[i, 0].set_title(f"{img_path.name}")
-                axes[i, 0].axis('off')
+                axes[i, 0].axis("off")
 
-                axes[i, 1].imshow(pred_np, cmap = 'viridis')
+                axes[i, 1].imshow(pred_np, cmap = "viridis")
                 axes[i, 1].set_title(f"Prediction\nTrees: {tree_pct:.1f}%")
-                axes[i, 1].axis('off')
+                axes[i, 1].axis("off")
 
                 # Tree probability
                 tree_prob = torch.max(pred_probs[0, 1:], dim = 0)[0].cpu().numpy()
                 axes[i, 2].imshow(img_rgb)
-                axes[i, 2].imshow(tree_prob, alpha = 0.6, cmap = 'hot')
+                axes[i, 2].imshow(tree_prob, alpha = 0.6, cmap = "hot")
                 axes[i, 2].set_title("Tree Confidence")
-                axes[i, 2].axis('off')
+                axes[i, 2].axis("off")
 
             plt.suptitle(exp_key)
             plt.tight_layout()
@@ -2051,8 +2212,9 @@ def test_best_models_by_version( config, eval_dir, num_samples = 2 ):
 # Run the test
 test_best_models_by_version(config, eval_dir, num_samples = 2)
 
-
 # %%
+
+
 
 # %%
 def fix_submission_visualization( submission_results, image_dir ):
@@ -2084,7 +2246,7 @@ def fix_submission_visualization( submission_results, image_dir ):
             pred_mask_resized = cv2.resize(
                     pred_mask.astype(np.uint8),
                     (orig_w, orig_h),
-                    interpolation = cv2.INTER_NEAREST
+                    interpolation = cv2.INTER_NEAREST,
             )
         else:
             pred_mask_resized = pred_mask
@@ -2156,12 +2318,14 @@ try:
                         "name":    fname,
                         "mask":    mask,
                         "image":   None,  # Will be loaded in fix function
-                        "overlay": None  # Will be created in fix function
+                        "overlay": None,  # Will be created in fix function
                     }
             )
 
         # Fix sizing issues
-        fixed_results = fix_submission_visualization(submission_results, config.paths.eval_images)
+        fixed_results = fix_submission_visualization(
+                submission_results, config.paths.eval_images
+        )
 
         # Visualize the fixed results
         for result in fixed_results:
@@ -2195,11 +2359,11 @@ best_model_info_path = config.paths.models / "BEST_MODEL.txt"
 best_model_name = "simple_cnn"  # default fallback
 
 if best_model_info_path.exists():
-    with open(best_model_info_path, 'r') as f:
+    with open(best_model_info_path, "r") as f:
         lines = f.readlines()
         for line in lines:
             if "model:" in line:
-                best_model_name = line.split(':')[1].strip()
+                best_model_name = line.split(":")[1].strip()
                 break
 
 if trainer is not None:
@@ -2219,5 +2383,6 @@ if trainer is not None:
                 individual_tree_iou = ckpt.get("val_iou_individual", 0),
                 group_tree_iou = ckpt.get("val_iou_group", 0),
                 dice = ckpt.get("val_dice", ckpt.get("dice", 0)),
-                model_name = best_model_name
+                model_name = best_model_name,
         )
+

@@ -229,7 +229,6 @@ class UNet(nn.Module):
 # From C:\github\Tree-Canopy-Detection\src\models\yolov8_seg.py
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
 # Check if ultralytics is available
@@ -354,7 +353,7 @@ class YOLOv8SegmentationWrapper(nn.Module):
         seg_logits = self.seg_head(features)
 
         # Upsample to original resolution
-        seg_logits = F.interpolate(
+        seg_logits = torch.nn.functional.interpolate(
             seg_logits, size=(H, W), mode="bilinear", align_corners=False
         )
 

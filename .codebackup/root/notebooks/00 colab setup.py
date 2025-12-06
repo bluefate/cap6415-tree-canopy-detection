@@ -13,15 +13,16 @@
 # - Project structure setup
 #
 # **Author:** jherna65
-# **Course:** CAP6415 F25
+#
+# **Course:** CAP6415 - 2025
+#
 # **Project:** Tree Canopy Detection
 
 # %% [markdown]
-# ## Step 1: System Information and GPU Check
+# ## System Information and GPU Check
 
 # %%
 # Check system information and GPU availability
-import os
 import platform
 from datetime import datetime
 
@@ -66,122 +67,91 @@ else:
 
 
 
-# %% [markdown]
-# # Step 2: Google Drive Integration
-
 # %%
-# Go to the Colab root
-# %cd /content
 
-# Confirm where you are
-# !pwd
-
-# See what is there
-# !ls
+from IPython import get_ipython
 
 
-# %%
-from google.colab import drive
+if not "google.colab" in str(get_ipython()):
+    from pathlib import Path
 
 
-drive.mount('/content/drive')
+    root = Path("C:/github/Tree-Canopy-Detection")
 
-# Create project backup directory in Drive
-drive_project_path = '/content/drive/MyDrive/TreeCanopyProject'
-os.makedirs(drive_project_path, exist_ok = True)
-
-# Create subdirectories for organization
-subdirs = [
-    'data',
-    'models',
-    'checkpoints',
-    'outputs',
-    'logs',
-    'backups'
-]
-
-for subdir in subdirs:
-    path = os.path.join(drive_project_path, subdir)
-    os.makedirs(path, exist_ok = True)
-    print(f"Created: {path}")
-
-
-
-# %% [markdown]
-# # Step 3: GitHub Repository Setup
-
-# %%
-# Go to the Colab root
-# %cd /content
-
-# !ls /content/drive/MyDrive/TreeCanopyProject
-
-
-# %%
-import os
-
-
-env_path = '/content/drive/MyDrive/TreeCanopyProject/.env'
-
-if os.path.exists(env_path):
-    with open(env_path, 'r') as f:
-        for line in f:
-            if '=' in line and not line.startswith('#'):
-                key, value = line.strip().split('=', 1)
-                os.environ[key] = value
-    print("✅ Environment variables loaded")
 else:
-    print("❌ .env file not found")
-
-github_token = os.getenv('TOKEN')
-
-# %cd /content
-if github_token:
-    # !git config --global user.email "jherna65@fau.edu"
-    # !git config --global user.name "bluefate"
-
-    print()
-    clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
-
-    print("\nClonning...")
-    # !git clone $clone_url
-    # %cd CAP6415_F25_project-Tree-Canopy-Detection
-
-    print("\nPulling...")
-    # !git pull
-
-    print("✅ Setup complete")
-else:
-    print("❌ Add GITHUB_TOKEN to .env file")
-
-print()
-# !ls /content/drive/MyDrive/TreeCanopyProject
+    from pathlib import Path
 
 
-# %% [markdown]
-# # Step 4: Installing Requirements
+    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
 
-# %%
-# # !pip install -r requirements.txt
+    # noinspection PyUnresolvedReferences
+    from google.colab import drive
+
+    import os
+    import subprocess
+    import sys
 
 
-# %%
-from pathlib import Path
+    os.chdir("/content")
+    drive.mount("/content/drive")
 
+    # Load environment variables
+    env_path = "/content/drive/MyDrive/TreeCanopyProject/.env"
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.strip().split("=", 1)
+                    os.environ[key] = value
 
-#root_dir = Path("/content/drive/MyDrive/TreeCanopyProject")
-root_dir = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
-extensions = [".py", ".ipynb"]
+    # Clone repository
+    repo_path = "/content/CAP6415_F25_project-Tree-Canopy-Detection"
+    github_token = os.getenv("TOKEN")
 
-prev_parent = None
-for path in sorted(root_dir.rglob("*")):
-    if path.is_file() and path.suffix in extensions:
-        # new directory → print an empty line
-        if path.parent != prev_parent:
-            if prev_parent is not None:
-                print()  # empty line between directories
-            prev_parent = path.parent
-            # optional: print the directory name
-            print(f"{path.parent.relative_to(root_dir)}/")
-        print(f"   {path.name}")
+    if not os.path.exists(repo_path):
+        if github_token:
+            # #!git config --global user.email "jherna65@fau.edu"
+            subprocess.run(
+                    ["git", "config", "--global", "user.email", "jherna65@fau.edu"],
+                    check = True,
+            )
 
+            # #!git config --global user.name "bluefate"
+            subprocess.run(
+                    ["git", "config", "--global", "user.name", "bluefate"], check = True
+            )
+
+            clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
+
+            # #!git clone $clone_url
+            subprocess.run(["git", "clone", clone_url], check = True)
+            print("Repository cloned")
+        else:
+            print("ERROR: No token")
+    else:
+        print("Repository already exists")
+
+    # Set paths and pull latest
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        if github_token:
+            # #!git reset --hard HEAD
+            # #!git pull
+            subprocess.run(["git", "pull"], check = True)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, "src"))
+        print("Setup complete")
+
+    # Set paths
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, "src"))
+        print("Setup complete")
+
+    print("Requirements")
+    # Install packages
+    # # !pip install -r requirements.txt
+    subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check = True
+    )

@@ -3,6 +3,95 @@
 # ### Purpose: load a trained model, run inference, preview overlays, and optionally export a submission JSON.
 
 # %%
+
+from IPython import get_ipython
+
+
+if not "google.colab" in str(get_ipython()):
+    from pathlib import Path
+
+
+    root = Path("C:/github/Tree-Canopy-Detection")
+
+else:
+    from pathlib import Path
+
+
+    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+
+    # noinspection PyUnresolvedReferences
+    from google.colab import drive
+
+    import os
+    import subprocess
+    import sys
+
+
+    os.chdir("/content")
+    drive.mount("/content/drive")
+
+    # Load environment variables
+    env_path = "/content/drive/MyDrive/TreeCanopyProject/.env"
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.strip().split("=", 1)
+                    os.environ[key] = value
+
+    # Clone repository
+    repo_path = "/content/CAP6415_F25_project-Tree-Canopy-Detection"
+    github_token = os.getenv("TOKEN")
+
+    if not os.path.exists(repo_path):
+        if github_token:
+            # #!git config --global user.email "jherna65@fau.edu"
+            subprocess.run(
+                    ["git", "config", "--global", "user.email", "jherna65@fau.edu"],
+                    check = True,
+            )
+
+            # #!git config --global user.name "bluefate"
+            subprocess.run(
+                    ["git", "config", "--global", "user.name", "bluefate"], check = True
+            )
+
+            clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
+
+            # #!git clone $clone_url
+            subprocess.run(["git", "clone", clone_url], check = True)
+            print("Repository cloned")
+        else:
+            print("ERROR: No token")
+    else:
+        print("Repository already exists")
+
+    # Set paths and pull latest
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        if github_token:
+            # #!git reset --hard HEAD
+            # #!git pull
+            subprocess.run(["git", "pull"], check = True)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, "src"))
+        print("Setup complete")
+
+    # Set paths
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, "src"))
+        print("Setup complete")
+
+    print("Requirements")
+    # Install packages
+    # # !pip install -r requirements.txt
+    subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check = True
+    )
+
+# %%
 import os
 import sys
 
@@ -19,7 +108,7 @@ from src.utils.helpers import c, init_notebook, p
 from src.utils.versioning import VersionManager
 
 
-config = Config.load()
+config = Config.load(root = root)
 
 init_notebook(config.train.seed)
 
@@ -51,23 +140,23 @@ vm = None
 # Try structured paths first
 for path in structured_paths:
     if path.exists():
-        p(f"Checking path: {path}", color1=c.CYAN)
+        p(f"Checking path: {path}", color1 = c.CYAN)
         vm = VersionManager(path)
         version_dir = vm.find_latest()
         if version_dir is not None:
-            p(f"Found model in: {path}", color1=c.GREEN)
+            p(f"Found model in: {path}", color1 = c.GREEN)
             break
 
 # Fallback to general search
 if version_dir is None:
-    p("Structured paths not found, searching generally...", color1=c.ORANGE)
+    p("Structured paths not found, searching generally...", color1 = c.ORANGE)
     vm = VersionManager(config.paths.models)
     version_dir = vm.find_latest()
 
 # Add null check for missing models
 if version_dir is None:
-    p("No trained models found!", color1=c.RED, bold=True)
-    p("Available directories:", color1=c.ORANGE)
+    p("No trained models found!", color1 = c.RED, bold = True)
+    p("Available directories:", color1 = c.ORANGE)
     models_dir = config.paths.models
     if models_dir.exists():
         p("Top-level directories:")
@@ -87,12 +176,12 @@ if version_dir is None:
 
     p("\nTo fix this issue:")
     p("1. Run notebook 03 (training) first, OR")
-    p("2. Run notebook 10 with a simple experiment like:", color1=c.CYAN)
-    p("   experiments = [('simple_cnn', 'rgb', None)]", color1=c.CYAN)
+    p("2. Run notebook 10 with a simple experiment like:", color1 = c.CYAN)
+    p("   experiments = [('simple_cnn', 'rgb', None)]", color1 = c.CYAN)
 
     raise RuntimeError("No trained models found. Please run training first.")
 
-p(f"Using model from: {version_dir}", color1=c.GREEN)
+p(f"Using model from: {version_dir}", color1 = c.GREEN)
 
 model_path = version_dir / "best_model.pth"
 
@@ -100,15 +189,15 @@ model_path = version_dir / "best_model.pth"
 if not model_path.exists():
     checkpoint_path = version_dir / "checkpoint.pth"
     if checkpoint_path.exists():
-        p("Using checkpoint instead of best_model", color1=c.ORANGE)
+        p("Using checkpoint instead of best_model", color1 = c.ORANGE)
         model_path = checkpoint_path
     else:
         raise RuntimeError(f"No model weights found in {version_dir}")
 
 predictor = Predictor(
-    model_path=model_path,
-    model_name=model_name,
-    image_size=config.train.image_size,
+        model_path = model_path,
+        model_name = model_name,
+        image_size = config.train.image_size,
 )
 
 # %% [markdown]
@@ -152,7 +241,7 @@ vm = VersionManager(config.paths.models)
 version_folder = vm.find_latest()
 
 if version_folder is None:
-    p("No model version found for export", color1=c.RED)
+    p("No model version found for export", color1 = c.RED)
 else:
     p("Exporting submission for version:", version_folder.name)
 

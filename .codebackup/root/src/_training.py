@@ -2,8 +2,11 @@
 from pathlib import Path
 
 import torch
+from torch.nn import CrossEntropyLoss
 
+from src.data.masks import CLASS_TO_ID
 from src.models.zoo import build_model
+from src.prediction.validation import validate_data_loader
 from src.training.trainer import Trainer
 from src.utils.config import Config
 
@@ -23,20 +26,14 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 
 def prepare_criterion():
     """Weighted cross entropy for imbalanced 3-class segmentation."""
-    # weights = torch.tensor([1.00, 2.50, 7.00])  # [background, individual, group]
-    weights = torch.tensor([1.0, 5.0, 5.0])  # [background, individual, group]
-    return torch.nn.CrossEntropyLoss(
-        weight=weights.cuda() if torch.cuda.is_available() else weights
-    )
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    # weights = torch.tensor([1.00, 2.50, 7.00], device=device)  # [background, individual, group]
+    # weights = torch.tensor([1.0, 5.0, 5.0], device=device)  # [background, individual, group]
+    weights = torch.tensor(
+        [0.5, 2.0, 3.0], device=device
+    )  # [background, individual, group]
 
-
-# look for this after train_loader to verify class inbalance
-# all_masks = []
-# for _, mask in train_loader:
-#     all_masks.append(mask.flatten())
-# all_masks = torch.cat(all_masks)
-# print(f"Class distribution: {torch.bincount(all_masks, minlength=3)}")
-# print(f"Class percentages: {torch.bincount(all_masks, minlength=3).float() / len(all_masks) * 100}")
+    return CrossEntropyLoss(weight=weights)
 
 
 def run_training(
@@ -53,9 +50,10 @@ def run_training(
     image_size = config.train.image_size
     lr = config.train.learning_rate
 
-    n_classes = len(
-        torch.unique(torch.cat([m.flatten() for _, m in train_loader.dataset]))
-    )
+    validate_data_loader(train_loader, "Training")
+    validate_data_loader(val_loader, "Validation")
+
+    n_classes = len(CLASS_TO_ID) + 1  # +1 for background
 
     model = build_model(model_name, in_channels=in_channels, out_channels=n_classes)
     optimizer = prepare_optimizer(model, lr)
@@ -78,7 +76,6 @@ def run_training(
 # From C:\github\Tree-Canopy-Detection\src\training\metrics.py
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 
 def _to_numpy(pred: torch.Tensor, true: torch.Tensor):
@@ -127,7 +124,7 @@ def compute_metrics(pred: torch.Tensor, true: torch.Tensor):
 
     # Resize prediction to match target size if needed
     if pred.shape[-2:] != target_size:
-        pred = F.interpolate(
+        pred = torch.nn.functional.interpolate(
             pred, size=target_size, mode="bilinear", align_corners=False
         )
 
@@ -180,7 +177,7 @@ def compute_metrics_multiclass(
 
     # Resize prediction to match target size if needed
     if pred.shape[-2:] != target_size:
-        pred = F.interpolate(
+        pred = torch.nn.functional.interpolate(
             pred, size=target_size, mode="bilinear", align_corners=False
         )
 
@@ -222,10 +219,10 @@ def compute_metrics_multiclass(
             "recall": tp / (tp + fn + 1e-8),
         }
 
-    # MULTI-CLASS MODE: If pred has C > 1 channels
+    # MULTI-CLASS MODE: If pred > 1 channels
     # Convert logits to class predictions
     if isinstance(pred, torch.Tensor):
-        pred = F.softmax(pred, dim=1)
+        pred = torch.nn.functional.softmax(pred, dim=1)
         pred_classes = torch.argmax(pred, dim=1).detach().cpu().numpy()  # [B, H, W]
     else:
         pred_classes = np.argmax(pred, axis=1)
@@ -301,8 +298,8 @@ import copy
 
 import torch
 
-from data.enhance_masks import EnhancedImageMaskDataset
-from utils.helpers import c, p
+from src.data.enhance_masks import EnhancedImageMaskDataset
+from src.utils.helpers import c, p
 
 
 def get_version_config(
@@ -439,6 +436,7 @@ def validate_filter_set(filter_names, available_filters):
 
 
 # From C:\github\Tree-Canopy-Detection\src\training\trainer.py
+import random
 from pathlib import Path
 from typing import Any, Dict
 
@@ -449,6 +447,19 @@ from torch.utils.data import DataLoader
 from src.training.metrics import compute_metrics_multiclass
 from src.utils.logging import Logger
 from src.utils.versioning import VersionManager
+
+
+def create_splits(entries, seed=42):
+    """Create consistent train/val splits for all experiments."""
+    random.seed(seed)
+    shuffled_entries = entries.copy()
+    random.shuffle(shuffled_entries)
+
+    split_idx = int(0.8 * len(shuffled_entries))
+    train_entries = shuffled_entries[:split_idx]
+    val_entries = shuffled_entries[split_idx:]
+
+    return train_entries, val_entries
 
 
 class Trainer:
@@ -472,7 +483,7 @@ class Trainer:
 
         self.model = model.to(self.device)
         self.optimizer = optimizer
-        self.criterion = criterion
+        self.criterion = criterion.to(self.device)
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.cfg = config

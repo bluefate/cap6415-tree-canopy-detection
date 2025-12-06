@@ -115,52 +115,67 @@ from albumentations.pytorch import ToTensorV2
 # CLAHE (Contrast Limited AHE): Improves on AHE by limiting contrast amplification. This prevents noise in uniform areas (like sky or skin) from being exaggerated
 
 
-def get_train_augmentations(image_size: int = 256):
+# def get_train_augmentations(image_size: int = 256, mode: str = "rgb", num_channels: int = 3):
+def get_train_augmentations(image_size: int = 256, mode: str = "rgb"):
     """
     Build augmentation pipeline for training.
     Includes flips, brightness changes, distortions, and resizing.
     """
-    return A.Compose(
-        [
-            A.PadIfNeeded(
-                min_height=image_size,
-                min_width=image_size,
-                border_mode=cv2.BORDER_CONSTANT,
-                value=0,
-            ),
-            A.Resize(image_size, image_size),
-            # A.RandomCrop(height=image_size, width=image_size),
-            A.HorizontalFlip(p=0.5),
-            A.VerticalFlip(p=0.5),
-            A.RandomRotate90(p=0.5),
-            # A.ShiftScaleRotate(
-            #         shift_limit = 0.1,
-            #         scale_limit = 0.1,
-            #         rotate_limit = 15,
-            #         p = 0.5,
-            # ),
-            # A.Affine(
-            #     scale=(0.9, 1.1),
-            #     rotate=(-15, 15),
-            #     shear=(-10, 10),
-            #     p=0.5,
-            # ),
+    # Base transforms that work with any number of channels
+    base_transforms = [
+        A.Resize(image_size, image_size),
+        A.HorizontalFlip(p=0.5),
+        A.VerticalFlip(p=0.5),
+        A.RandomRotate90(p=0.5),
+    ]
+    # Color transforms only work with RGB (3 channels)
+    if mode in ["rgb", "filtered"]:
+        color_transforms = [
             A.RandomBrightnessContrast(p=0.5),
             A.HueSaturationValue(p=0.3),
-            # A.CLAHE(p=0.5), #alrady used as a filter
-            # A.ElasticTransform(alpha=0.1, p=0.1),
-            # A.GridDistortion(p=0.1),
-            # A.OpticalDistortion(p=0.1),
-            A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-            ToTensorV2(),
-        ],
-    )
+        ]
+        base_transforms.extend(color_transforms)
+
+    final_transforms = [
+        A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+        ToTensorV2(),
+    ]
+
+    # if num_channels == 3:
+    #     # RGB mode - full augmentations
+    #     color_transforms = [
+    #         A.RandomBrightnessContrast(p=0.5),
+    #         A.HueSaturationValue(p=0.3),
+    #     ]
+    #     base_transforms.extend(color_transforms)
+    #
+    #     # Standard ImageNet normalization
+    #     final_transforms = [
+    #         A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
+    #         ToTensorV2(),
+    #     ]
+    # elif num_channels == 6:
+    #     # Concat mode - custom normalization
+    #     # Normalize first 3 channels (RGB) with ImageNet stats
+    #     # Normalize last 3 channels (filters) differently
+    #     final_transforms = [
+    #         CustomNormalize6Channel(),
+    #         ToTensorV2(),
+    #     ]
+    # else:
+    #     # Fallback
+    #     final_transforms = [
+    #         A.Normalize(mean=(0.5,) * num_channels, std=(0.5,) * num_channels),
+    #         ToTensorV2(),
+    #     ]
+
+    base_transforms.extend(final_transforms)
+    return A.Compose(base_transforms)
 
 
-def get_val_augmentations(image_size: int = 256):
+def get_val_augmentations(image_size: int = 256, mode: str = "rgb"):
     """
     Build validation and inference augmentation pipeline.
-    Only resize and tensor conversion.
     """
     return A.Compose(
         [
@@ -168,7 +183,6 @@ def get_val_augmentations(image_size: int = 256):
                 min_height=image_size,
                 min_width=image_size,
                 border_mode=cv2.BORDER_CONSTANT,
-                value=0,
             ),
             # A.CenterCrop(height=image_size, width=image_size),
             A.Resize(image_size, image_size),
@@ -178,12 +192,45 @@ def get_val_augmentations(image_size: int = 256):
     )
 
 
+# From C:\github\Tree-Canopy-Detection\src\data\CustomNormalize6Channel.py
+class CustomNormalize6Channel:
+    """Custom normalization for 6-channel images (RGB + 3 filters)."""
+
+    def __init__(self):
+        # ImageNet stats for RGB channels
+        self.rgb_mean = [0.485, 0.456, 0.406]
+        self.rgb_std = [0.229, 0.224, 0.225]
+
+        # Custom stats for filter channels (you might want to compute these)
+        self.filter_mean = [0.5, 0.5, 0.5]
+        self.filter_std = [0.5, 0.5, 0.5]
+
+    def __call__(self, image, **kwargs):
+        if len(image.shape) == 3 and image.shape[2] == 6:
+            # Normalize RGB channels (0:3)
+            for i in range(3):
+                image[:, :, i] = (
+                    image[:, :, i] / 255.0 - self.rgb_mean[i]
+                ) / self.rgb_std[i]
+
+            # Normalize filter channels (3:6)
+            for i in range(3, 6):
+                image[:, :, i] = (
+                    image[:, :, i] / 255.0 - self.filter_mean[i - 3]
+                ) / self.filter_std[i - 3]
+
+        return {"image": image}
+
+
 # From C:\github\Tree-Canopy-Detection\src\data\enhance_masks.py
+import albumentations as A
 import cv2
 import numpy as np
 import torch
+from albumentations import ToTensorV2
 
 from src.data.loaders import ImageMaskDataset
+from src.data.masks import build_multiclass_mask
 
 
 class EnhancedImageMaskDataset(ImageMaskDataset):
@@ -210,7 +257,6 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         self.filter_names = filter_names or ["laplacian", "sobel", "clahe"]
 
     def __getitem__(self, idx: int):
-        """Override to ensure mask dtype is float for BCEWithLogitsLoss."""
         entry = self.entries[idx]
         img_path = self.image_dir / entry.image_path.name
 
@@ -221,12 +267,9 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
 
         # Build mask
         if self.classes is None:
-            from src.data.masks import build_multiclass_mask
-
             mask = build_multiclass_mask(entry)
         else:
             from src.data.annotations import AnnotationEntry
-            from src.data.masks import build_multiclass_mask
 
             filtered_items = [item for item in entry.items if item.cls in self.classes]
             filtered_entry = AnnotationEntry(
@@ -234,9 +277,40 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             )
             mask = build_multiclass_mask(filtered_entry)
 
-        # Apply transforms first
+        # Apply filters BEFORE transforms to avoid double normalization
+        if self.mode == "filtered":
+            image = self.apply_filters_to_enhanced_image(image)
+        elif self.mode == "concat":
+            filtered_img = self.apply_filters_to_enhanced_image(image)
+            image = np.concatenate([image, filtered_img], axis=2)
+
+        # Apply transforms with mode awareness
         if self.transform:
-            processed = self.transform(image=image, mask=mask)
+            # Check if transform function accepts mode parameter
+            try:
+                if hasattr(self.transform, "transforms"):
+                    # It's an Albumentations compose - apply directly
+                    processed = self.transform(image=image, mask=mask)
+                else:
+                    # It's our custom function - this shouldn't happen with current code
+                    processed = self.transform(image=image, mask=mask)
+            except TypeError as e:
+                if "HueSaturationValue" in str(e):
+                    print(f"Skipping problematic transform for {self.mode} mode")
+                    # Apply minimal transforms only
+                    minimal_transform = A.Compose(
+                        [
+                            A.Resize(256, 256),
+                            A.Normalize(
+                                mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
+                            ),
+                            ToTensorV2(),
+                        ]
+                    )
+                    processed = minimal_transform(image=image, mask=mask)
+                else:
+                    raise e
+
             image = processed["image"]
             mask = processed["mask"]
 
@@ -244,41 +318,28 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             if mask.max() > 2:
                 mask = (mask / 255).astype(np.uint8)
 
-            # back to numpy HWC uint8 (0â€“255) for filter step
-            image = (image.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-
-        # Apply filters based on mode
-        if self.mode == "filtered":
-            image = self.apply_filters_to_enhanced_image(image)
-        elif self.mode == "concat":
-            filtered_img = self.apply_filters_to_enhanced_image(image)
-            # Concatenate RGB + filtered
-            image = np.concatenate([image, filtered_img], axis=2)
-
-        # Convert image to tensor
-        if isinstance(image, torch.Tensor):
-            img_t = image.float()
-            if img_t.ndim == 3 and img_t.shape[0] != 3:
-                img_t = img_t.permute(2, 0, 1)
-            if img_t.max() > 1.0:
-                img_t = img_t / 255.0
+        # Safety check: Convert image to tensor if not already done
+        if not isinstance(image, torch.Tensor):
+            image = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
         else:
-            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
+            # Ensure proper format if already tensor
+            if image.ndim == 3 and image.shape[0] not in [3, 6]:  # Not CHW format
+                image = image.permute(2, 0, 1)
+            if image.max() > 1.0:  # Not normalized
+                image = image / 255.0
 
-        # Convert mask to tensor - LONG for CrossEntropyLoss (multi-class)
+        # Convert mask to tensor
         if isinstance(mask, torch.Tensor):
             mask_t = mask.long()
         else:
             mask_t = torch.from_numpy(mask).long()
 
-        # Ensure mask is [H, W] for multi-class CrossEntropyLoss
         while mask_t.ndim > 2:
             mask_t = mask_t.squeeze(0)
 
-        # Verify shape is correct
         assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}"
 
-        return img_t, mask_t
+        return image, mask_t
 
     def apply_filters_to_enhanced_image(self, img):
         """
@@ -331,7 +392,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from data.annotations import AnnotationEntry
+from src.data.annotations import AnnotationEntry
 from src.utils.helpers import c, p
 
 
@@ -655,7 +716,6 @@ class ImageMaskDataset(Dataset):
     Neded for segmentation training.
     """
 
-    # -----------------------
     def __init__(
         self,
         entries: List[AnnotationEntry],
@@ -668,11 +728,9 @@ class ImageMaskDataset(Dataset):
         self.classes = classes
         self.transform = transform
 
-    # -----------------------
     def __len__(self) -> int:
         return len(self.entries)
 
-    # -----------------------
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         entry = self.entries[idx]
         img_path = self.image_dir / entry.image_path.name
@@ -682,9 +740,6 @@ class ImageMaskDataset(Dataset):
             raise RuntimeError(f"Failed to read {img_path}")
 
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        H, W = image.shape[:2]
-
-        # Build multi-class mask (values: 0=background, 1=individual, 2=group)
         mask = build_multiclass_mask(entry)
 
         if self.transform:
@@ -696,29 +751,26 @@ class ImageMaskDataset(Dataset):
             if mask.max() > 2:
                 mask = (mask / 255).astype(np.uint8)
 
-        # Convert image to tensor
-        if isinstance(image, torch.Tensor):
+        # Safety check: Convert image to tensor if not already done
+        if not isinstance(image, torch.Tensor):
+            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
+        else:
             img_t = image.float()
             if img_t.ndim == 3 and img_t.shape[0] != 3:
                 img_t = img_t.permute(2, 0, 1)
             if img_t.max() > 1.0:
                 img_t = img_t / 255.0
-        else:
-            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
-        # Convert mask to tensor [H, W] -> [1, H, W]
+        # Convert mask to tensor
         if isinstance(mask, torch.Tensor):
             mask_t = mask.long()
         else:
             mask_t = torch.from_numpy(mask).long()
 
-        # Ensure mask has shape [H, W] for multi-class CrossEntropyLoss
         while mask_t.ndim > 2:
             mask_t = mask_t.squeeze(0)
 
         assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}"
-
-        # -----------------------
         return img_t, mask_t
 
 
@@ -742,7 +794,6 @@ class ImageOnlyDataset(Dataset):
     Used only for inference
     """
 
-    # -----------------------
     def __init__(
         self,
         image_dir: Path,
@@ -754,32 +805,27 @@ class ImageOnlyDataset(Dataset):
             [f for f in self.image_dir.glob("*.*") if f.suffix.lower() in [".png"]],
         )
 
-    # -----------------------
     def __len__(self) -> int:
         return len(self.files)
 
-    # -----------------------
     def __getitem__(self, idx: int) -> Tuple[str, torch.Tensor]:
-
         path = self.files[idx]
-
         image = self._load_image(path)
 
         if self.transform:
             processed = self.transform(image=image)
             image = processed["image"]
 
-        # Convert image to tensor
-        if isinstance(image, torch.Tensor):
+        # Safety check: Convert image to tensor if not already done
+        if not isinstance(image, torch.Tensor):
+            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
+        else:
             img_t = image.float()
             if img_t.ndim == 3 and img_t.shape[0] != 3:
                 img_t = img_t.permute(2, 0, 1)
             if img_t.max() > 1.0:
                 img_t = img_t / 255.0
-        else:
-            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
-        # -----------------------
         return path.name, img_t
 
     def _load_image(
@@ -841,6 +887,7 @@ def build_binary_mask(segmentation: List[float], width: int, height: int) -> np.
 def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
     """
     Build mask with class indices for multi-class segmentation.
+    Background=0, individual_tree=1, group_of_trees=2
     """
     if class_to_id is None:
         class_to_id = CLASS_TO_ID
@@ -852,8 +899,11 @@ def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
         if seg is None or len(seg) < 6:
             continue
 
-        # Get class ID (0 if unknown class)
-        class_id = class_to_id.get(item.cls, 0)
+        # Get class ID, skip unknown classes (don't assign to background)
+        class_id = class_to_id.get(item.cls, None)
+        if class_id is None:
+            # Skip unknown classes instead of assigning to background
+            continue
 
         poly = np.array(seg, dtype=np.int32).reshape(-1, 2)
         cv2.fillPoly(mask, [poly], class_id)

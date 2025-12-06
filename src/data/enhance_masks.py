@@ -100,7 +100,13 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             # Ensure proper format if already tensor
             if image.ndim == 3 and image.shape[0] not in [3, 6]:  # Not CHW format
                 image = image.permute(2, 0, 1)
-            if image.max() > 1.0:  # Not normalized
+            # Only normalize if not already normalized by Albumentations
+            min_val = image.min().item()
+            max_val = image.max().item()
+            is_already_normalized = (min_val >= -5.0 and max_val <= 5.0) or (
+                min_val < 0 and max_val <= 10.0
+            )
+            if not is_already_normalized and image.max() > 1.0:
                 image = image / 255.0
 
         # Convert mask to tensor

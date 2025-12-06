@@ -1,6 +1,4 @@
 # From C:\github\Tree-Canopy-Detection\src\exploration\class_explorer.py
-from pathlib import Path
-
 import cv2
 import numpy as np
 import torch
@@ -11,14 +9,12 @@ from src.data.image_loader import load_image
 from src.exploration.visualize import (
     show_side_by_side,
 )
-from src.utils.config import Config
 from src.utils.helpers import p, t
 
 
 # -----------------------------------------------------------
 # Core helpers
 # -----------------------------------------------------------
-config = Config.load()
 CLASS_NAMES = ["individual_tree", "group_of_trees"]
 
 
@@ -65,7 +61,7 @@ def mask_all(entry: AnnotationEntry):
 # -----------------------------------------------------------
 
 
-def color_mask(entry: AnnotationEntry):
+def color_mask(config, entry: AnnotationEntry):
     H = entry.height
     W = entry.width
     mask_rgb = np.zeros((H, W, 3), dtype=np.uint8)
@@ -135,8 +131,8 @@ def draw_bboxes_for_class(img, entry: AnnotationEntry, cls: str):
     return out
 
 
-def explore_image(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def explore_image(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
 
     mask_ind = mask_for_class(entry, "individual_tree")
     mask_grp = mask_for_class(entry, "group_of_trees")
@@ -272,8 +268,8 @@ def analyze_class_distribution(train_loader, val_loader=None):
     }
 
 
-def show_single_class(entry: AnnotationEntry, image_dir: Path, cls: str):
-    img = load_image(image_dir, entry)
+def show_single_class(config, entry: AnnotationEntry, cls: str):
+    img = load_image(config.paths.train_images, entry)
     mask = mask_for_class(entry, cls)
     show_side_by_side(
         img,
@@ -283,14 +279,14 @@ def show_single_class(entry: AnnotationEntry, image_dir: Path, cls: str):
     )
 
 
-def show_all_classes(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def show_all_classes(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
 
     # build combined mask for both classes
     mask = mask_all(entry)
 
     # build colored mask (per polygon, per class)
-    mask_rgb = color_mask(entry)
+    mask_rgb = color_mask(config, entry)
 
     # overlay with mask colors
     overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
@@ -304,8 +300,8 @@ def show_all_classes(entry: AnnotationEntry, image_dir: Path):
     )
 
 
-def show_per_class(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def show_per_class(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
     classes = ["individual_tree", "group_of_trees"]
 
     # masks must be tuples (mask, class_name) for coloring
@@ -320,10 +316,10 @@ def show_per_class(entry: AnnotationEntry, image_dir: Path):
     )
 
 
-def show_overlay_all(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def show_overlay_all(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
     # mask = mask_all(entry)
-    mask = color_mask(entry)
+    mask = color_mask(config, entry)
 
     # show_overlay(img, mask, title="Overlay All")
     overlay = cv2.addWeighted(img, 0.6, mask, 0.4, 0)
@@ -335,8 +331,8 @@ def show_overlay_all(entry: AnnotationEntry, image_dir: Path):
     )
 
 
-def show_overlay_by_class(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def show_overlay_by_class(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
 
     m_ind = mask_for_class(entry, "individual_tree")
     m_grp = mask_for_class(entry, "group_of_trees")
@@ -368,9 +364,9 @@ def show_overlay_by_class(entry: AnnotationEntry, image_dir: Path):
 # -----------------------------------------------------------
 
 
-def explore_color_overlay(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
-    mask_rgb = color_mask(entry)
+def explore_color_overlay(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
+    mask_rgb = color_mask(config, entry)
     overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
 
     show_side_by_side(
@@ -378,8 +374,8 @@ def explore_color_overlay(entry: AnnotationEntry, image_dir: Path):
     )
 
 
-def explore_bboxes(entry: AnnotationEntry, image_dir: Path):
-    img = load_image(image_dir, entry)
+def explore_bboxes(config, entry: AnnotationEntry):
+    img = load_image(config.paths.train_images, entry)
     b_all = draw_bboxes(img, entry)
     b_ind = draw_bboxes_for_class(img, entry, "individual_tree")
     b_grp = draw_bboxes_for_class(img, entry, "group_of_trees")
@@ -417,7 +413,7 @@ def class_distribution(entries):
     return total
 
 
-def dataset_report(entries, image_dir: Path, sample_count=3):
+def dataset_report(config, entries, sample_count=3):
     dist = class_distribution(entries)
     p("Class counts:", dist)
 
@@ -428,9 +424,9 @@ def dataset_report(entries, image_dir: Path, sample_count=3):
 
     for e in samples:
         p("Image:", e.image_path.name)
-        explore_color_overlay(e, image_dir)
-        explore_bboxes(e, image_dir)
-        explore_image(e, image_dir)
+        explore_color_overlay(config, e)
+        explore_bboxes(config, e)
+        explore_image(config, e)
 
 
 def create_experiment_tracker():
@@ -957,12 +953,26 @@ import numpy as np
 from src.utils.helpers import c, p
 
 
-def get_input_channels(mode, filters):
-    """Determine input channels based on mode."""
-    if mode == "concat" and filters:
-        return 6  # RGB + 3 filters
+def get_input_channels(mode, filters, model_name):
+    """Get correct input channels for model and mode combination."""
+    if mode == "rgb":
+        return 3
+    elif mode == "filtered":
+        return 3  # Filters replace RGB channels
+    elif mode == "concat":
+        if model_name in ["simple_cnn", "unet"]:
+            # These models don't support 6 channels - use RGB instead
+            p(
+                "WARNING",
+                f"{model_name} doesn't support concat mode, using RGB",
+                color1=c.ORANGE,
+            )
+            return 3
+        else:
+            num_filters = len(filters) if filters else 0
+            return 3 + num_filters  # RGB + actual filter count
     else:
-        return 3  # RGB or filtered RGB
+        return 3  # Default fallback
 
 
 def normalize_filter_output(filtered, target_shape, dtype=np.uint8):
@@ -1148,30 +1158,6 @@ def test_filter_pipeline(img_path, filter_names=["laplacian", "sobel", "clahe"])
     filter_outputs = apply_filters_safe(img, filter_registry)
 
     return img, enhanced, filter_outputs
-
-
-if __name__ == "__main__":
-    # Quick test
-    from src.utils.config import Config
-    from src.data.annotations import load_json_annotations
-
-    config = Config.load()
-    entries = load_json_annotations(config.paths.annotations)
-
-    # Test on first image
-    img_path = config.paths.train_images / entries[0].image_path.name
-
-    t("Testing filter pipeline")
-
-    original, enhanced, filters = test_filter_pipeline(img_path)
-
-    p("Original shape", original.shape)
-    p("Enhanced shape", enhanced.shape)
-    p("Filter outputs")
-    for name, output in filters.items():
-        p("", f"  {name}: {output.shape}")
-
-    p("SUCCESS", "Filter pipeline working correctly", color1=c.GREEN)
 
 
 # From C:\github\Tree-Canopy-Detection\src\exploration\kernels.py

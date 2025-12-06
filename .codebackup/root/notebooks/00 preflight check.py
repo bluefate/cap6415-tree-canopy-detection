@@ -1,280 +1,130 @@
 # %% [markdown]
 # <a href="https://colab.research.google.com/github/bluefate/CAP6415_F25_project-Tree-Canopy-Detection/blob/main/notebooks/00%20preflight%20check.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
 
-# %%
-if 'google.colab' in str(get_ipython()):
-    # %cd / content / CAP6415_F25_project-Tree-Canopy-Detection
-
 # %% [markdown]
 # # Notebook: 00 Pre-Flight Check Script
 # ### Purpose: Test full pipeline to catch issues early
 #
 
 # %%
-import os
-import shutil
-import sys
 import traceback
-from pathlib import Path
 
-import cv2
+from IPython import get_ipython
 
-from src.data.augmentations import get_val_augmentations
-from src.data.loaders import ImageMaskDataset
+
+if not "google.colab" in str(get_ipython()):
+    from pathlib import Path
+
+
+    root = Path("C:/github/Tree-Canopy-Detection")
+
+else:
+    from pathlib import Path
+
+
+    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+
+    # noinspection PyUnresolvedReferences
+    from google.colab import drive
+
+    import os
+    import subprocess
+    import sys
+
+
+    os.chdir("/content")
+    drive.mount("/content/drive")
+
+    # Load environment variables
+    env_path = "/content/drive/MyDrive/TreeCanopyProject/.env"
+    if os.path.exists(env_path):
+        with open(env_path, "r") as f:
+            for line in f:
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.strip().split("=", 1)
+                    os.environ[key] = value
+
+    # Clone repository
+    repo_path = "/content/CAP6415_F25_project-Tree-Canopy-Detection"
+    github_token = os.getenv("TOKEN")
+
+    if not os.path.exists(repo_path):
+        if github_token:
+            # #!git config --global user.email "jherna65@fau.edu"
+            subprocess.run(
+                    ["git", "config", "--global", "user.email", "jherna65@fau.edu"],
+                    check = True,
+            )
+
+            # #!git config --global user.name "bluefate"
+            subprocess.run(
+                    ["git", "config", "--global", "user.name", "bluefate"], check = True
+            )
+
+            clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
+
+            # #!git clone $clone_url
+            subprocess.run(["git", "clone", clone_url], check = True)
+            print("Repository cloned")
+        else:
+            print("ERROR: No token")
+    else:
+        print("Repository already exists")
+
+    # Set paths and pull latest
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        if github_token:
+            # #!git reset --hard HEAD
+            # #!git pull
+            subprocess.run(["git", "pull"], check = True)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, "src"))
+        print("Setup complete")
+
+    # Set paths
+    if os.path.exists(repo_path):
+        os.chdir(repo_path)
+        sys.path.insert(0, repo_path)
+        sys.path.insert(0, os.path.join(repo_path, "src"))
+        print("Setup complete")
+
+    print("Requirements")
+    # Install packages
+    # # !pip install -r requirements.txt
+    subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check = True
+    )
+
+# %%
+import os
+import sys
 
 
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
-import torch
+from src.utils.preflight import check_config, check_data, check_gpu, check_model, check_dataset, check_disk_space
 from src.utils.config import Config
+from src.utils.helpers import init_notebook
 from src.utils.helpers import c, p, simple_estimate_runtime, t
-from src.models.zoo import build_model
-from src.data.annotations import load_json_annotations
+
+
+config = Config.load(root = root)
+init_notebook(config.train.seed)
+
+
 
 # %%
 t("PRE-FLIGHT CHECK")
 
-
 # %%
-def check_config():
-    """Verify config loads correctly."""
-    t("Checking Configuration")
-    try:
-        config = Config.load()
-        p("✓ Config loaded", config.paths.root, color1 = c.GREEN)
-
-        # Check critical paths
-        checks = [
-            ('annotations', config.paths.annotations),
-            ('train_images', config.paths.train_images),
-            ('eval_images', config.paths.eval_images),
-            ('models', config.paths.models),
-        ]
-
-        for name, path in checks:
-            if path and Path(path).exists():
-                p(f"✓ {name}", "exists", color1 = c.GREEN)
-            else:
-                p(f"✗ {name}", f"missing: {path}", color1 = c.RED)
-
-        return True
-
-    except Exception as e:
-        p("✗ Config failed", str(e), color1 = c.RED)
-        return False
-
-
-def check_gpu():
-    """Check GPU availability."""
-    t("Checking GPU")
-
-    if torch.cuda.is_available():
-        p("✓ CUDA available", torch.cuda.get_device_name(0), color1 = c.GREEN)
-        p("GPU count", torch.cuda.device_count())
-
-        # Check memory
-        total = torch.cuda.get_device_properties(0).total_memory / 1e9
-        p("GPU memory", f"{total:.1f} GB")
-
-        # Test allocation
-        try:
-            test = torch.zeros((1000, 1000)).cuda()
-            del test
-            torch.cuda.empty_cache()
-            p("✓ GPU allocation", "working", color1 = c.GREEN)
-        except Exception as e:
-            p("✗ GPU allocation", str(e), color1 = c.RED)
-
-        return True
-    else:
-        p("✗ CUDA not available", "will use CPU (slow)", color1 = c.ORANGE)
-        return False
-
-
-def check_data():
-    """Check data can be loaded."""
-    t("Checking Data")
-
-    try:
-
-
-        config = Config.load()
-        entries = load_json_annotations(config.paths.annotations)
-
-        p("✓ Annotations loaded", f"{len(entries)} images", color1 = c.GREEN)
-
-        # Check first entry
-        entry = entries[0]
-        img_path = config.paths.train_images / entry.image_path.name
-
-        if img_path.exists():
-            p("✓ Sample image", "found", color1 = c.GREEN)
-
-            img = cv2.imread(str(img_path))
-            if img is not None:
-                p("✓ Image loading", f"shape={img.shape}", color1 = c.GREEN)
-            else:
-                p("✗ Image loading", "failed", color1 = c.RED)
-        else:
-            p("✗ Sample image", f"not found: {img_path}", color1 = c.RED)
-
-        return True
-
-    except Exception as e:
-        p("✗ Data check failed", str(e), color1 = c.RED)
-        return False
-
-
-def check_dataset():
-    """Test dataset creation."""
-    t("Checking Dataset")
-
-    try:
-
-
-        config = Config.load()
-        entries = load_json_annotations(config.paths.annotations)
-        transform = get_val_augmentations(config.train.image_size)
-
-        dataset = ImageMaskDataset(
-                entries[:5],
-                config.paths.train_images,
-                transform = transform
-        )
-
-        p("✓ Dataset created", f"{len(dataset)} samples", color1 = c.GREEN)
-
-        # Test loading
-        img_t, mask_t = dataset[0]
-
-        p("✓ Image shape", img_t.shape, color1 = c.GREEN)
-        p("✓ Mask shape", mask_t.shape, color1 = c.GREEN)
-
-        # Verify shapes
-        if img_t.ndim == 3 and img_t.shape[0] == 3:
-            p("✓ Image format", "correct [3, H, W]", color1 = c.GREEN)
-        else:
-            p("✗ Image format", f"wrong: {img_t.shape}", color1 = c.RED)
-
-        # if mask_t.ndim == 3 and mask_t.shape[0] == 1:
-        #     p("✓ Mask format", "correct [1, H, W]", color1 = c.GREEN)
-        # else:
-        #     p("✗ Mask format", f"wrong: {mask_t.shape}", color1 = c.RED)
-
-        # Multi-class segmentation: masks should be [H, W] with class indices (0, 1, 2)
-        if mask_t.ndim == 2:
-            p("✓ Mask format", f"correct [H, W] for multi-class", color1 = c.GREEN)
-            unique_vals = torch.unique(mask_t)
-            if torch.all((unique_vals >= 0) & (unique_vals <= 2)):
-                p("✓ Mask values", f"valid classes: {unique_vals.tolist()}", color1 = c.GREEN)
-            else:
-                p("✗ Mask values", f"invalid: {unique_vals.tolist()}", color1 = c.RED)
-        elif mask_t.ndim == 3 and mask_t.shape[0] == 1:
-            p("⚠ Mask format", "[1, H, W] - should be [H, W] for CrossEntropyLoss", color1 = c.ORANGE)
-        else:
-            p("✗ Mask format", f"wrong: {mask_t.shape}", color1 = c.RED)
-
-        return True
-
-    except Exception as e:
-        p("✗ Dataset check failed", str(e), color1 = c.RED)
-
-        traceback.print_exc()
-        return False
-
-
-def check_model():
-    """Test model creation."""
-    t("Checking Model")
-
-    try:
-        model = build_model('simple_cnn', in_channels = 3, out_channels = 3)
-
-        p("✓ Model created", "simple_cnn", color1 = c.GREEN)
-
-        # Count parameters
-        total_params = sum(p.numel() for p in model.parameters())
-        p("Model parameters", f"{total_params:,}")
-
-        # Test forward pass
-        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        model = model.to(device)
-
-        test_input = torch.randn(2, 3, 256, 256).to(device)
-
-        with torch.no_grad():
-            output = model(test_input)
-
-        p("✓ Forward pass", f"output shape={output.shape}", color1 = c.GREEN)
-
-        # if output.shape == (2, 1, 256, 256):
-        #     p("✓ Output shape", "correct", color1 = c.GREEN)
-        # else:
-        #     p("✗ Output shape", f"wrong: {output.shape}", color1 = c.RED)
-
-        # Multi-class segmentation: 3 channels (background, individual_tree, group_of_trees)
-        expected_shape = (2, 3, 256, 256)
-
-        if output.shape == expected_shape:
-            p("✓ Output shape", "correct (multi-class)", color1 = c.GREEN)
-        else:
-            p("✗ Output shape", f"expected {expected_shape}, got {output.shape}", color1 = c.RED)
-
-        return True
-
-    except Exception as e:
-        p("✗ Model check failed", str(e), color1 = c.RED)
-
-        traceback.print_exc()
-        return False
-
-
-def check_disk_space():
-    """Check available disk space."""
-    t("Checking Disk Space")
-
-    try:
-
-
-        config = Config.load()
-        total, used, free = shutil.disk_usage(config.paths.root)
-
-        free_gb = free / (1024 ** 3)
-
-        p("Free space", f"{free_gb:.1f} GB")
-
-        if free_gb > 10:
-            p("✓ Sufficient space", ">10 GB available", color1 = c.GREEN)
-            return True
-        elif free_gb > 5:
-            p("⚠ Limited space", f"{free_gb:.1f} GB (needs >10 GB)", color1 = c.ORANGE)
-            return True
-        else:
-            p("✗ Insufficient space", f"{free_gb:.1f} GB (needs >10 GB)", color1 = c.RED)
-            return False
-
-    except Exception as e:
-        p("✗ Disk check failed", str(e), color1 = c.ORANGE)
-        return True
-
-
-
-
-
-
-
-
-# %%
-
-
-
 checks = [
-    ("Configuration", check_config),
-    ("GPU", check_gpu),
-    ("Data", check_data),
-    ("Dataset", check_dataset),
-    ("Model", check_model),
-    ("Disk Space", check_disk_space),
+    ("Configuration", lambda: check_config(config)),
+    ("GPU", lambda: check_gpu()),
+    ("Data", lambda: check_data(config)),
+    ("Dataset", lambda: check_dataset(config)),
+    ("Model", lambda: check_model()),
+    ("Disk Space", lambda: check_disk_space(config)),
 ]
 
 results = { }
@@ -286,7 +136,6 @@ for name, func in checks:
     except Exception as e:
         results[name] = False
         p(f"✗ {name} check crashed", str(e), color1 = c.RED)
-
         traceback.print_exc()
 
 
@@ -294,7 +143,7 @@ for name, func in checks:
 
 # Runtime estimate
 try:
-    simple_estimate_runtime()
+    simple_estimate_runtime(config)
 except Exception as e:
     p("⚠ Runtime estimate failed", str(e), color1 = c.ORANGE)
 
@@ -309,24 +158,7 @@ total = len(results)
 
 for name, success in results.items():
     if success:
-        p(f"✓ {name}", "PASS", color1 = c.GREEN, bold = True)
+        p(f"{name}", "✓", color1 = c.GREEN, bold = True)
     else:
-        p(f"✗ {name}", "FAIL", color1 = c.RED, bold = True)
+        p(f"{name}", "✗", color1 = c.RED, bold = True)
 
-
-# %%
-
-p("")
-p("Total", f"{passed}/{total} passed")
-
-if passed == total:
-    p("")
-    t("ALL CHECKS PASSED! ✓")
-    p(
-            "You're ready to run:", "python 09_master_execution_robust.py",
-            color1 = c.GREEN, color2 = c.CYAN, bold = True
-    )
-else:
-    p("")
-    t("SOME CHECKS FAILED!")
-    p("Fix the issues above before running the full pipeline", color1 = c.RED)

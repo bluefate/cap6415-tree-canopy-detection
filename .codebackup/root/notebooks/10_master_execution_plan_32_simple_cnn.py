@@ -1,51 +1,73 @@
 # %% [markdown]
-# <a href="https://colab.research.google.com/github/bluefate/CAP6415_F25_project-Tree-Canopy-Detection/blob/main/notebooks/10_master_execution_plan_64_rgb.ipynb" target="_parent"><img src="https://colab.research.google.com/assets/colab-badge.svg" alt="Open In Colab"/></a>
+# # Notebook: 10 Master Execution Plan
+# ### Purpose: Complete pipeline from data preparation to final submission
+#
 
 # %%
-import os
-import sys
+# # !git fetch origin
+# # !git reset --hard origin/main
 
-from IPython.display import HTML
+# subprocess.run(["git", "fetch", "origin"], check=True)
+# subprocess.run(["git", "reset", "--hard", "origin/main"], check=True)
+
+# %%
+
+from IPython import get_ipython
 
 
-if 'google.colab' in str(get_ipython()):
-    HTML(
-            """
-                <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-                <style>
-                    pre, code, .output pre {
-                        font-family: 'JetBrains Mono', monospace !important;
-                    }
-                </style>
-                """
-    )
+if not "google.colab" in str(get_ipython()):
+    from pathlib import Path
 
-    os.chdir('/content')
 
+    root = Path("C:/github/Tree-Canopy-Detection")
+
+else:
+    from pathlib import Path
+
+
+    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+
+    # noinspection PyUnresolvedReferences
     from google.colab import drive
 
+    import os
+    import subprocess
+    import sys
 
-    drive.mount('/content/drive')
+
+    os.chdir("/content")
+    drive.mount("/content/drive")
 
     # Load environment variables
-    env_path = '/content/drive/MyDrive/TreeCanopyProject/.env'
+    env_path = "/content/drive/MyDrive/TreeCanopyProject/.env"
     if os.path.exists(env_path):
-        with open(env_path, 'r') as f:
+        with open(env_path, "r") as f:
             for line in f:
-                if '=' in line and not line.startswith('#'):
-                    key, value = line.strip().split('=', 1)
+                if "=" in line and not line.startswith("#"):
+                    key, value = line.strip().split("=", 1)
                     os.environ[key] = value
 
     # Clone repository
-    repo_path = '/content/CAP6415_F25_project-Tree-Canopy-Detection'
-    github_token = os.getenv('TOKEN')
+    repo_path = "/content/CAP6415_F25_project-Tree-Canopy-Detection"
+    github_token = os.getenv("TOKEN")
 
     if not os.path.exists(repo_path):
         if github_token:
-            # !git config --global user.email "jherna65@fau.edu"
-            # !git config --global user.name "bluefate"
+            # #!git config --global user.email "jherna65@fau.edu"
+            subprocess.run(
+                    ["git", "config", "--global", "user.email", "jherna65@fau.edu"],
+                    check = True,
+            )
+
+            # #!git config --global user.name "bluefate"
+            subprocess.run(
+                    ["git", "config", "--global", "user.name", "bluefate"], check = True
+            )
+
             clone_url = f"https://bluefate:{github_token}@github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git"
-            # !git clone $clone_url
+
+            # #!git clone $clone_url
+            subprocess.run(["git", "clone", clone_url], check = True)
             print("Repository cloned")
         else:
             print("ERROR: No token")
@@ -57,54 +79,52 @@ if 'google.colab' in str(get_ipython()):
         os.chdir(repo_path)
         if github_token:
             # #!git reset --hard HEAD
-            # !git pull
+            # #!git pull
+            subprocess.run(["git", "pull"], check = True)
         sys.path.insert(0, repo_path)
-        sys.path.insert(0, os.path.join(repo_path, 'src'))
+        sys.path.insert(0, os.path.join(repo_path, "src"))
         print("Setup complete")
 
     # Set paths
     if os.path.exists(repo_path):
         os.chdir(repo_path)
         sys.path.insert(0, repo_path)
-        sys.path.insert(0, os.path.join(repo_path, 'src'))
+        sys.path.insert(0, os.path.join(repo_path, "src"))
         print("Setup complete")
 
     print("Requirements")
     # Install packages
-    # !pip install -r requirements.txt
+    # # !pip install -r requirements.txt
+    subprocess.run(
+            [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check = True
+    )
 
 # %%
-# # !git fetch origin
-# # !git reset --hard origin/main
-
-# %% [markdown]
-# # Notebook: 10 Master Execution Plan
-# ### Purpose: Complete pipeline from data preparation to final submission
-
-# %%
-
-import json
-import os
-import random
 import sys
 from pathlib import Path
 
+
+sys.path.append(os.path.abspath(".."))
+sys.path.append(os.path.abspath("../src"))
+
+#os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  #enable for debugging ONLY
+import json
+import random
 import cv2
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-
-
-#os.environ["CUDA_LAUNCH_BLOCKING"] = "1"  #enable for debugging ONLY
-
-sys.path.append(os.path.abspath(".."))
-sys.path.append(os.path.abspath("../src"))
 from src.data.image_loader import load_image, validate_image_directory
-from src.exploration.class_explorer import color_mask, mask_all
+from src.exploration.class_explorer import (
+    analyze_class_distribution, color_mask, create_experiment_tracker, mask_all, plot_training_history,
+    update_tracker,
+)
+from src.training.trainer import create_splits
+from src.exploration.filter_utils import get_input_channels
 from src.exploration.visualize import show_side_by_side
 from src.models.zoo import build_model, MODEL_EXPERIMENTS
 from src.training.running import get_available_filters, get_version_config, validate_filter_set
-from src.utils.helpers import format_time
+from src.utils.helpers import estimate_runtime
 from src.utils.image_converter import ImageConverter
 from torch.utils.data import DataLoader
 from src.data.annotations import load_json_annotations
@@ -117,9 +137,10 @@ from src.data.enhance_masks import EnhancedImageMaskDataset
 from src.utils.versioning import VersionManager
 
 
-config = Config.load()
+config = Config.load(root = root)
 config.train.image_size = 32
 config.train.epochs = 2
+config.auto_adjust()
 #config = Config.load(Path("..").resolve() / "config_PROD.yaml")
 init_notebook(config.train.seed)
 config.show()
@@ -325,437 +346,7 @@ p("Experiments to Run", experiments, show = 50, color1 = c.RED)
 
 
 # %%
-import datetime
-import torch
-
-
-# Assume 'p', 't', 'c', 'entries', and 'config' are defined in the context.
-
-def format_time( seconds ):
-    """Converts a total number of seconds into a human-readable D days, HH:MM:SS format."""
-    td = datetime.timedelta(seconds = int(seconds))
-    time_str = str(td)
-
-    # Handle the 'days' case (e.g., "1 day, 0:03:20" -> "1d 0h 3m 20s")
-    if 'day' in time_str:
-        parts = time_str.split(', ')
-        days = parts[0].replace(' days', 'd').replace(' day', 'd')
-        hms = parts[1].split(':')
-        return f"{days} {hms[0].zfill(1)}h {hms[1].zfill(2)}m {hms[2].zfill(2)}s"
-
-    # If less than a day, output Hh Mm Ss (e.g., "3:25:45" -> "3h 25m 45s")
-    hms = time_str.split(':')
-    # Use lstrip('0') to show '3h' instead of '03h' unless it's '0h'
-    return f"{hms[0].lstrip('0')}h {hms[1]}m {hms[2]}s"
-
-
-def estimate_runtime( experiments ):
-    """
-    Estimate training runtime with GPU/CPU awareness, model complexity,
-    and experiment mode (rgb, filtered, concat) awareness.
-    """
-
-    # --- Setup and Initialization ---
-    train_size = int(0.8 * len(entries))
-    batch_size = config.train.batch_size
-    batches_per_epoch = max(1, train_size // batch_size)
-    epochs = config.train.epochs
-    total_seconds = 0.0
-
-    # Device detection
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    device_name = torch.cuda.get_device_name(0) if device.type == 'cuda' else 'CPU'
-
-    if device.type == 'cuda':
-        gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
-        if gpu_memory < 4:  # Low-end GPU
-            base_seconds = 2.0
-        elif gpu_memory < 8:  # Mid-range GPU
-            base_seconds = 1.0
-        else:  # High-end GPU
-            base_seconds = 0.5
-    else:
-        base_seconds = 5.0  # CPU is significantly slower
-
-    # Mode timing multipliers (updated for clarity and to incorporate overhead)
-    mode_multiplier = {
-        "rgb":      1.0,  # Standard 3-channel input
-        "filtered": 1.5,  # Filter computation overhead
-        "concat":   2.5  # 6-channel input + filter overhead (higher than 2.0 to account for extra memory/ops)
-    }
-
-    model_complexity = {
-        "simple_cnn":        1.0,
-        "unet":              2.5,
-        "smp_deeplabv3plus": 4.5,
-        "segformer":         3.5,
-        "yolov8n":           1.8,
-        "yolov8l":           6.0,
-    }
-
-    # --- Header and Pre-Run Info ---
-    t("Runtime Estimate")
-    p("Device", device_name, color1 = c.GREEN)
-    p("Total Experiments", len(experiments), color1 = c.BLACK, color2 = c.ORANGE)
-    p("Training samples", train_size, color1 = c.BLACK)
-    p("Batches per epoch", batches_per_epoch, color1 = c.BLACK)
-    p("Epochs per experiment", epochs, color1 = c.BLACK)
-    p("Batch size", batch_size, color1 = c.BLACK)
-    p("-" * 70, color1 = c.ORANGE)
-    p()
-
-    p("Per-Experiment Estimates:", color1 = c.CYAN, bold = True)
-    p("-" * 70, color1 = c.CYAN)
-
-    # --- Calculation Loop ---
-    for model_name, mode, filters in experiments:
-
-        # Get multipliers, defaulting to 1.0 if model/mode not found
-        mode_mult = mode_multiplier.get(mode, 1.0)
-        complexity_mult = model_complexity.get(model_name, 1.0)
-
-        # Total multiplier
-        total_mult = mode_mult * complexity_mult
-
-        # Time calculation: Base * Device/Complexity Multipliers * (Batches * Epochs)
-        sec_per_batch = base_seconds * total_mult
-
-        exp_seconds = epochs * batches_per_epoch * sec_per_batch
-        total_seconds += exp_seconds
-
-        # Format filter string
-        filter_str = f"[{', '.join(filters)}...]" if filters and len(filters) > 0 else "none"
-
-        # Display
-        exp_label = f"{model_name:20s} | {mode:8s} | {filter_str:20s}"
-
-        p(exp_label, format_time(exp_seconds), color1 = c.BLUE, color2 = c.BLACK)
-
-    p()
-    t("Totals")
-
-    total_hours = total_seconds / 3600
-
-    p("Total experiments", len(experiments))
-    p("Total batches", batches_per_epoch * epochs * len(experiments))
-
-    p("Estimated total time", format_time(total_seconds), color1 = c.GREEN, bold = True)
-
-    # Time breakdown and Warnings
-    if total_hours >= 24:
-        p("Estimated completion", f"~{total_hours / 24:.1f} days", color1 = c.ORANGE)
-        p("⚠ WARNING", "Training will take over 24 hours!", color1 = c.ORANGE, bold = True)
-        p("Consider", "Reducing epochs or selecting fewer models", color1 = c.ORANGE)
-    elif total_hours >= 8:
-        p("Estimated completion", f"~{total_hours:.1f} hours", color1 = c.ORANGE)
-        p("⚠ NOTE", "Long training session - consider running overnight", color1 = c.ORANGE)
-    else:
-        p("Estimated completion", f"~{total_seconds / 60:.0f} minutes", color1 = c.GREEN)
-
-    if device.type == 'cpu':
-        p("⚠ CPU DETECTED", "Training on CPU is 10-20x slower than GPU", color1 = c.RED, bold = True)
-    p()
-
-
-estimate_runtime(experiments)
-
-
-# %%
-def analyze_class_distribution( train_loader, val_loader = None ):
-    """
-    Analyze class distribution in training (and optionally validation) data.
-    Call this before training to understand class imbalance and get weight recommendations.
-    """
-
-    p()
-    t("CLASS DISTRIBUTION ANALYSIS")
-
-
-    def analyze_loader( loader, name ):
-        all_masks = []
-        total_images = 0
-
-        for _, mask in loader:
-            all_masks.append(mask.flatten())
-            total_images += mask.shape[0]
-
-        all_masks = torch.cat(all_masks)
-        counts = torch.bincount(all_masks, minlength = 3)
-        total_pixels = counts.sum().item()
-
-        print(f"\n{name}:")
-        print(f"  Total images: {total_images}")
-        print(f"  Total pixels: {total_pixels:,}")
-        print()
-
-        class_names = ["background", "individual_tree", "group_of_trees"]
-        percentages = []
-
-        for i, (class_name, count) in enumerate(zip(class_names, counts)):
-            pct = count.item() / total_pixels * 100
-            percentages.append(pct)
-            print(f"  Class {i} ({class_name:15}): {count.item():>10,} pixels ({pct:5.2f}%)")
-
-        return counts, percentages
-
-    # Analyze training data
-    train_counts, train_pcts = analyze_loader(train_loader, "TRAINING SET")
-
-    # Analyze validation data if provided
-    if val_loader is not None:
-        val_counts, val_pcts = analyze_loader(val_loader, "VALIDATION SET")
-
-    # Calculate recommended weights (inverse frequency)
-    p()
-    t("RECOMMENDED WEIGHTS")
-
-    total = train_counts.sum().float()
-    frequencies = train_counts.float() / total
-
-    # Method 1: Inverse frequency
-    inv_freq_weights = 1.0 / (frequencies + 1e-8)
-    inv_freq_weights = inv_freq_weights / inv_freq_weights.sum() * 3  # Normalize to sum=3
-
-    # Method 2: Balanced weights (sklearn-style)
-    n_classes = 3
-    n_samples = total.item()
-    balanced_weights = n_samples / (n_classes * train_counts.float() + 1e-8)
-    balanced_weights = balanced_weights / balanced_weights.min()  # Normalize so min=1
-
-    # Method 3: Simple practical weights (background down, trees up)
-    bg_ratio = train_pcts[0] / 100
-    simple_weights = torch.tensor(
-            [
-                0.3,  # Background (reduce)
-                1.0 / (train_pcts[1] / 100 + 0.1),  # Individual tree
-                1.0 / (train_pcts[2] / 100 + 0.1),  # Group of trees
-            ]
-    )
-    simple_weights = simple_weights / simple_weights.sum() * 3
-
-    # using print because p nt outputing weights correctly.
-    print("\nMethod 1 - Inverse Frequency:")
-    print(
-            f"  weights = torch.tensor([{inv_freq_weights[0]:.2f}, {inv_freq_weights[1]:.2f}, {inv_freq_weights[2]:.2f}])"
-    )
-
-    print("\nMethod 2 - Balanced (sklearn-style):")
-    print(
-            f"  weights = torch.tensor([{balanced_weights[0]:.2f}, {balanced_weights[1]:.2f}, {balanced_weights[2]:.2f}])"
-    )
-
-    print("\nMethod 3 - Simple Practical:")
-    print(f"  weights = torch.tensor([{simple_weights[0]:.2f}, {simple_weights[1]:.2f}, {simple_weights[2]:.2f}])")
-
-    return {
-        "train_counts":      train_counts,
-        "train_percentages": train_pcts,
-        "inv_freq_weights":  inv_freq_weights,
-        "balanced_weights":  balanced_weights,
-        "simple_weights":    simple_weights,
-    }
-
-
-
-# %%
-def create_experiment_tracker():
-    """Create a tracker to store and plot experiment results."""
-    return {
-        "models":         [],
-        "val_loss":       [],
-        "iou":            [],
-        "iou_individual": [],
-        "iou_group":      [],
-        "precision":      [],
-        "recall":         [],
-        "f1":             [],
-    }
-
-
-def update_tracker( tracker, model_name, checkpoint_path ):
-    """Update tracker with results from a completed experiment."""
-    if not checkpoint_path.exists():
-        return False
-
-    try:
-        ckpt = torch.load(checkpoint_path, map_location = "cpu")
-        tracker["models"].append(model_name)
-        tracker["val_loss"].append(ckpt.get("val_loss", ckpt.get("best_val_loss", 0)))
-        tracker["iou"].append(ckpt.get("val_iou", ckpt.get("iou", 0)))
-        tracker["iou_individual"].append(ckpt.get("val_iou_individual", 0))
-        tracker["iou_group"].append(ckpt.get("val_iou_group", 0))
-        tracker["precision"].append(ckpt.get("val_precision", ckpt.get("precision", 0)))
-        tracker["recall"].append(ckpt.get("val_recall", ckpt.get("recall", 0)))
-        tracker["f1"].append(ckpt.get("val_f1_score", ckpt.get("f1_score", 0)))
-        return True
-    except Exception as e:
-        print(f"Error loading checkpoint: {e}")
-        return False
-
-
-def plot_experiment_results( tracker, save_path = None ):
-    """Plot comparison of all completed experiments."""
-    if len(tracker["models"]) == 0:
-        print("No experiments completed yet.")
-        return
-
-    # One row, six columns
-    fig, axes = plt.subplots(1, 6, figsize = (24, 4))
-    fig.suptitle("Experiment Comparison", fontsize = 14, fontweight = "bold")
-
-    models = tracker["models"]
-    x = range(len(models))
-    colors = plt.cm.tab10(range(len(models)))
-
-    def setup_xticks( ax ):
-        ax.set_xticks(x)
-        ax.set_xticklabels(models, rotation = 0, ha = "center", fontsize = 8)
-
-    # Plot 1: Val Loss (lower is better)
-    ax = axes[0]
-    ax.bar(x, tracker["val_loss"], color = colors)
-    ax.set_ylabel("Val Loss")
-    ax.set_title("Validation Loss (lower=better)")
-    setup_xticks(ax)
-    ax.axhline(y = min(tracker["val_loss"]), color = "green", linestyle = "--", alpha = 0.5)
-
-    # Plot 2: IoU (higher is better)
-    ax = axes[1]
-    ax.bar(x, tracker["iou"], color = colors)
-    ax.set_ylabel("IoU")
-    ax.set_title("Mean IoU (higher=better)")
-    setup_xticks(ax)
-    ax.axhline(y = max(tracker["iou"]), color = "green", linestyle = "--", alpha = 0.5)
-
-    # Plot 3: IoU by class
-    ax = axes[2]
-    width = 0.35
-    x_arr = np.arange(len(models))
-    ax.bar(x_arr - width / 2, tracker["iou_individual"], width, label = "Individual", color = "forestgreen")
-    ax.bar(x_arr + width / 2, tracker["iou_group"], width, label = "Group", color = "gold")
-    ax.set_ylabel("IoU")
-    ax.set_title("IoU by Class")
-    ax.set_xticks(x_arr)
-    ax.set_xticklabels(models, rotation = 45, ha = "center", fontsize = 8)
-    ax.legend()
-
-    # Plot 4: Precision
-    ax = axes[3]
-    ax.bar(x, tracker["precision"], color = colors)
-    ax.set_ylabel("Precision")
-    ax.set_title("Precision (higher=better)")
-    setup_xticks(ax)
-
-    # Plot 5: Recall
-    ax = axes[4]
-    ax.bar(x, tracker["recall"], color = colors)
-    ax.set_ylabel("Recall")
-    ax.set_title("Recall (higher=better)")
-    setup_xticks(ax)
-
-    # Plot 6: F1 Score
-    ax = axes[5]
-    ax.bar(x, tracker["f1"], color = colors)
-    ax.set_ylabel("F1 Score")
-    ax.set_title("F1 Score (higher=better)")
-    setup_xticks(ax)
-    ax.axhline(y = max(tracker["f1"]), color = "green", linestyle = "--", alpha = 0.5)
-
-    plt.tight_layout(rect = [0, 0, 1, 0.93])
-
-    if save_path:
-        plt.savefig(save_path, dpi = 150, bbox_inches = "tight")
-
-    plt.show()
-
-    # Print summary table
-    p()
-    t(f"{'Model':<20} {'Loss':>8} {'IoU':>8} {'Ind':>8} {'Grp':>8} {'Prec':>8} {'Rec':>8} {'F1':>8}")
-
-    best_iou_idx = np.argmax(tracker["iou"])
-    for i, model in enumerate(models):
-        marker = " 🏆" if i == best_iou_idx else ""
-        print(
-                f"{model:<20} {tracker['val_loss'][i]:>8.4f} {tracker['iou'][i]:>8.4f} "
-                f"{tracker['iou_individual'][i]:>8.4f} {tracker['iou_group'][i]:>8.4f} "
-                f"{tracker['precision'][i]:>8.4f} {tracker['recall'][i]:>8.4f} {tracker['f1'][i]:>8.4f}{marker}"
-        )
-
-
-def plot_training_history( trainer, title_prefix = "" ):
-    history = trainer.history
-
-    train_loss = history.get("train_loss", [])
-    val_loss = history.get("val_loss", [])
-    val_iou = history.get("val_iou", [])
-    val_precision = history.get("val_precision", [])
-    val_recall = history.get("val_recall", [])
-    val_f1 = history.get("val_f1", [])
-    lr = history.get("lr", [])
-
-    n_epochs = len(train_loss)
-    if n_epochs == 0:
-        print("No history to plot")
-        return
-
-    epochs = range(1, n_epochs + 1)
-
-    fig, axes = plt.subplots(1, 4, figsize = (22, 4))
-    fig.suptitle(f"{title_prefix} epoch metrics", fontsize = 14, fontweight = "bold")
-
-    # 1. Loss curves
-    ax = axes[0]
-    ax.plot(epochs, train_loss, label = "Train loss")
-    ax.plot(epochs, val_loss, label = "Val loss")
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Loss")
-    ax.set_title("Loss per epoch")
-    ax.legend()
-
-    # 2. IoU and F1
-    ax = axes[1]
-    if len(val_iou) == n_epochs:
-        ax.plot(epochs, val_iou, label = "Val IoU")
-    if len(val_f1) == n_epochs:
-        ax.plot(epochs, val_f1, label = "Val F1")
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Score")
-    ax.set_title("IoU and F1 per epoch")
-    ax.legend()
-
-    # 3. Precision and Recall
-    ax = axes[2]
-    if len(val_precision) == n_epochs:
-        ax.plot(epochs, val_precision, label = "Val precision")
-    if len(val_recall) == n_epochs:
-        ax.plot(epochs, val_recall, label = "Val recall")
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Score")
-    ax.set_title("Precision and Recall per epoch")
-    ax.legend()
-
-    # 4. Learning rate
-    ax = axes[3]
-    if len(lr) == n_epochs:
-        ax.plot(epochs, lr, label = "LR")
-    ax.set_xlabel("Epoch")
-    ax.set_ylabel("Learning rate")
-    ax.set_title("LR schedule")
-    ax.legend()
-
-    plt.tight_layout(rect = [0, 0, 1, 0.9])
-    plt.show()
-
-
-
-# %%
-def get_input_channels( mode, filters ):
-    """Determine input channels based on mode."""
-    if mode == "concat" and filters:
-        return 6  # RGB + 3 filters
-    else:
-        return 3  # RGB or filtered RGB
-
+estimate_runtime(experiments, config, entries)
 
 # %%
 # Initialize best model tracker
@@ -778,6 +369,7 @@ t("Train Experiments")
 # Running experiments
 results = { }
 analysis_printed = False
+train_entries, val_entries = create_splits(entries)
 for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("\n\n")
     t(f"Experiment {i}/{len(experiments)}")
@@ -786,12 +378,8 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("Filters", filters, color1 = c.ORANGE)
 
     try:
-        # Prepare data
-        train_entries = entries[: int(0.8 * len(entries))]
-        val_entries = entries[int(0.8 * len(entries)):]
-
-        train_tf = get_train_augmentations(config.train.image_size)
-        val_tf = get_val_augmentations(config.train.image_size)
+        train_tf = get_train_augmentations(config.train.image_size, mode = mode)
+        val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
         train_ds = EnhancedImageMaskDataset(
                 train_entries,
@@ -809,12 +397,7 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
         )
         # Determine input channels
         sample_img, _ = train_ds[0]
-        in_channels = sample_img.shape[0]
-        # Skip 6-channel experiments not supported yet
-        if in_channels == 6 and model_name in ["simple_cnn", "unet"]:
-            # p("Warning", f"Skipping 6-channel experiment for {model_name}", color1 = c.ORANGE)
-            # continue
-            in_channels = get_input_channels(mode, filters)
+        in_channels = get_input_channels(mode, filters, model_name)
 
         train_loader = DataLoader(
                 train_ds,
@@ -1458,8 +1041,8 @@ def train_class_specific_model( class_name, model_name = 'simple_cnn' ):
     val_entries = class_entries[split_idx:]
 
     # Create datasets with class filter
-    train_tf = get_train_augmentations(config.train.image_size)
-    val_tf = get_val_augmentations(config.train.image_size)
+    train_tf = get_train_augmentations(config.train.image_size, mode = mode)
+    val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
     train_ds = ImageMaskDataset(
             train_entries,
@@ -1594,7 +1177,7 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
     )
 
     # Run predictions
-    val_tf = get_val_augmentations(config.train.image_size)
+    val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
     results = predictor.run_on_folder(eval_dir, transform = val_tf)
 
@@ -2049,7 +1632,7 @@ def visualize_experiment_predictions( item, image_dir, num_samples = 3 ):
             model.load_state_dict(state)
         model.eval()
 
-        val_tf = get_val_augmentations(config.train.image_size)
+        val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
         # Get image files
         image_files = sorted(list(image_dir.glob("*.png")))
@@ -2198,7 +1781,7 @@ for e in sample_entries:
     try:
         img = load_image(image_dir, e)
         mask = mask_all(e)
-        mask_rgb = color_mask(e)
+        mask_rgb = color_mask(config, e)
         overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
 
         show_side_by_side(
