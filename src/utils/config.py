@@ -71,6 +71,8 @@ class Config(BaseModel):
     @classmethod
     def load( cls, yaml_path: Path = None, root: Path = None ) -> "Config":
 
+        if root is None:
+            raise ValueError("Missing required field 'root'. Pass it via load(root=...).")
 
         if yaml_path is None:
             load_dotenv()
@@ -85,8 +87,7 @@ class Config(BaseModel):
             raw = yaml.safe_load(f)
 
         raw_paths = raw.get("paths", { })
-        if root is not None:
-            raw_paths["root"] = str(root)
+        raw_paths["root"] = str(root)
 
 
         raw_train = raw.get("train", { })
