@@ -3,8 +3,9 @@ from pathlib import Path
 import torch
 from torch.nn import CrossEntropyLoss
 
-from prediction.validation import validate_data_loader
+from src.data.masks import CLASS_TO_ID
 from src.models.zoo import build_model
+from src.prediction.validation import validate_data_loader
 from src.training.trainer import Trainer
 from src.utils.config import Config
 
@@ -24,20 +25,14 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 
 def prepare_criterion():
     """Weighted cross entropy for imbalanced 3-class segmentation."""
-    # weights = torch.tensor([1.00, 2.50, 7.00])  # [background, individual, group]
-    # weights = torch.tensor([1.0, 5.0, 5.0])  # [background, individual, group]
-    weights = torch.tensor([0.5, 2.0, 3.0])  # [background, individual, group]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    return CrossEntropyLoss(weight=weights.to(device))
+    # weights = torch.tensor([1.00, 2.50, 7.00], device=device)  # [background, individual, group]
+    # weights = torch.tensor([1.0, 5.0, 5.0], device=device)  # [background, individual, group]
+    weights = torch.tensor(
+        [0.5, 2.0, 3.0], device=device
+    )  # [background, individual, group]
 
-
-# look for this after train_loader to verify class inbalance
-# all_masks = []
-# for _, mask in train_loader:
-#     all_masks.append(mask.flatten())
-# all_masks = torch.cat(all_masks)
-# print(f"Class distribution: {torch.bincount(all_masks, minlength=3)}")
-# print(f"Class percentages: {torch.bincount(all_masks, minlength=3).float() / len(all_masks) * 100}")
+    return CrossEntropyLoss(weight=weights)
 
 
 def run_training(
@@ -57,9 +52,7 @@ def run_training(
     validate_data_loader(train_loader, "Training")
     validate_data_loader(val_loader, "Validation")
 
-    n_classes = len(
-        torch.unique(torch.cat([m.flatten() for _, m in train_loader.dataset]))
-    )
+    n_classes = len(CLASS_TO_ID) + 1  # +1 for background
 
     model = build_model(model_name, in_channels=in_channels, out_channels=n_classes)
     optimizer = prepare_optimizer(model, lr)

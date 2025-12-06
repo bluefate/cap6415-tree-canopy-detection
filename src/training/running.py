@@ -2,8 +2,8 @@ import copy
 
 import torch
 
-from data.enhance_masks import EnhancedImageMaskDataset
-from utils.helpers import c, p
+from src.data.enhance_masks import EnhancedImageMaskDataset
+from src.utils.helpers import c, p
 
 
 def get_version_config(

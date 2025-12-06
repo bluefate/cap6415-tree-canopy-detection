@@ -8,15 +8,24 @@ enhanced images without shape mismatch errors.
 import cv2
 import numpy as np
 
-from src.utils.helpers import c, p
+from src.utils.helpers import c, p, t
 
 
-def get_input_channels(mode, filters):
-    """Determine input channels based on mode."""
-    if mode == "concat" and filters:
-        return 6  # RGB + 3 filters
+def get_input_channels(mode, filters, model_name):
+    """Get correct input channels for model and mode combination."""
+    if mode == "rgb":
+        return 3
+    elif mode == "filtered":
+        return 3  # Filters replace RGB channels
+    elif mode == "concat":
+        if model_name in ["simple_cnn", "unet"]:
+            # These models don't support 6 channels - use RGB instead
+            print(f"WARNING: {model_name} doesn't support concat mode, using RGB")
+            return 3
+        else:
+            return 6  # RGB + 3 filters
     else:
-        return 3  # RGB or filtered RGB
+        return 3  # Default fallback
 
 
 def normalize_filter_output(filtered, target_shape, dtype=np.uint8):

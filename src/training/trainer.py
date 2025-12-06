@@ -1,3 +1,4 @@
+import random
 from pathlib import Path
 from typing import Any, Dict
 
@@ -8,6 +9,19 @@ from torch.utils.data import DataLoader
 from src.training.metrics import compute_metrics_multiclass
 from src.utils.logging import Logger
 from src.utils.versioning import VersionManager
+
+
+def create_splits(entries, seed=42):
+    """Create consistent train/val splits for all experiments."""
+    random.seed(seed)
+    shuffled_entries = entries.copy()
+    random.shuffle(shuffled_entries)
+
+    split_idx = int(0.8 * len(shuffled_entries))
+    train_entries = shuffled_entries[:split_idx]
+    val_entries = shuffled_entries[split_idx:]
+
+    return train_entries, val_entries
 
 
 class Trainer:
@@ -31,7 +45,7 @@ class Trainer:
 
         self.model = model.to(self.device)
         self.optimizer = optimizer
-        self.criterion = criterion
+        self.criterion = criterion.to(self.device)
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.cfg = config

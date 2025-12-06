@@ -488,8 +488,8 @@ def format_time( seconds ):
 def simple_estimate_runtime():
     """Estimate total runtime."""
     t("Runtime Estimate")
-    from data.annotations import load_json_annotations
-    from utils.config import Config
+    from src.data.annotations import load_json_annotations
+    from src.utils.config import Config
 
     config = Config.load()
 

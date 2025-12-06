@@ -8,7 +8,7 @@ import cv2
 import numpy as np
 from PIL import Image
 
-from data.annotations import AnnotationEntry
+from src.data.annotations import AnnotationEntry
 from src.utils.helpers import c, p
 
 
