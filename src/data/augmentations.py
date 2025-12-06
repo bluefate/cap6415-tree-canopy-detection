@@ -53,7 +53,6 @@ def get_train_augmentations(image_size: int = 256):
 def get_val_augmentations(image_size: int = 256):
     """
     Build validation and inference augmentation pipeline.
-    Only resize and tensor conversion.
     """
     return A.Compose(
         [

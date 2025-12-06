@@ -30,7 +30,7 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         self.filter_names = filter_names or ["laplacian", "sobel", "clahe"]
 
     def __getitem__(self, idx: int):
-        """Override to ensure mask dtype is float for BCEWithLogitsLoss."""
+        """Fixed tensor processing to avoid double normalization."""
         entry = self.entries[idx]
         img_path = self.image_dir / entry.image_path.name
 
@@ -51,48 +51,42 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             )
             mask = build_multiclass_mask(filtered_entry)
 
-        # Apply filters before transforms to avoid double normalization
+        # Apply filters BEFORE transforms to avoid double normalization
         if self.mode == "filtered":
             image = self.apply_filters_to_enhanced_image(image)
         elif self.mode == "concat":
             filtered_img = self.apply_filters_to_enhanced_image(image)
-            # Concatenate RGB + filtered
             image = np.concatenate([image, filtered_img], axis=2)
 
-        # Apply transforms
+        # Apply transforms (includes normalization)
         if self.transform:
             processed = self.transform(image=image, mask=mask)
-            image = processed["image"]
+            image = processed["image"]  # Should be tensorized by ToTensorV2
             mask = processed["mask"]
 
             # Normalize mask to class indices 0,1,2
             if mask.max() > 2:
                 mask = (mask / 255).astype(np.uint8)
 
-        # # back to numpy HWC uint8 (0–255) for filter step
-        # image = (image.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
+        # Safety check: Convert image to tensor if not already done
+        if not isinstance(image, torch.Tensor):
+            image = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
+        else:
+            # Ensure proper format if already tensor
+            if image.ndim == 3 and image.shape[0] not in [3, 6]:  # Not CHW format
+                image = image.permute(2, 0, 1)
+            if image.max() > 1.0:  # Not normalized
+                image = image / 255.0
 
-        # Convert mask to tensor - LONG for CrossEntropyLoss (multi-class)
+        # Convert mask to tensor
         if isinstance(mask, torch.Tensor):
             mask_t = mask.long()
         else:
             mask_t = torch.from_numpy(mask).long()
 
-        # Ensure mask is [H, W] for multi-class CrossEntropyLoss
         while mask_t.ndim > 2:
             mask_t = mask_t.squeeze(0)
 
-        # Convert image to tensor
-        if isinstance(image, torch.Tensor):
-            # image = image.float()
-            if image.ndim == 3 and image.shape[0] not in [3, 6]:
-                image = image.permute(2, 0, 1)
-            if image.max() > 1.0:
-                image = image / 255.0
-        else:
-            image = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
-
-        # Verify shape is correct
         assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}"
 
         return image, mask_t

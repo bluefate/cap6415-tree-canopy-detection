@@ -193,6 +193,36 @@ def print_validation_results(stats: Dict[str, Any]) -> None:
 #         sys.exit(1)
 
 
+def validate_data_batch(images, masks, batch_idx=0):
+    """Validate a batch of data for common issues."""
+    p(f"Batch {batch_idx} validation:")
+    p(f"  Images: shape={images.shape}, dtype={images.dtype}")
+    p(f"  Image range: [{images.min():.3f}, {images.max():.3f}]")
+    p(f"  Masks: shape={masks.shape}, dtype={masks.dtype}")
+    p(f"  Mask unique values: {torch.unique(masks).tolist()}")
+
+    # Check for issues
+    issues = []
+    if torch.isnan(images).any():
+        issues.append("NaN values in images")
+    if torch.isinf(images).any():
+        issues.append("Inf values in images")
+    if images.min() < -3 or images.max() > 3:
+        issues.append(
+            f"Images outside expected range: [{images.min():.3f}, {images.max():.3f}]"
+        )
+    if masks.max() >= 3:
+        issues.append(f"Invalid mask values >= 3: {torch.unique(masks).tolist()}")
+    if masks.min() < 0:
+        issues.append(f"Negative mask values: {torch.unique(masks).tolist()}")
+
+    if issues:
+        p("Warning", f"ISSUES FOUND: {issues}", color1 = c.ORANGE)
+    else:
+        p("Batch looks good")
+    print()
+
+
 def validate_data_loader(data_loader, name="DataLoader"):
     """Validate data loader outputs for debugging."""
     t(f"Validating {name}")

@@ -32,7 +32,6 @@ class ImageMaskDataset(Dataset):
     Neded for segmentation training.
     """
 
-    # -----------------------
     def __init__(
         self,
         entries: List[AnnotationEntry],
@@ -45,11 +44,9 @@ class ImageMaskDataset(Dataset):
         self.classes = classes
         self.transform = transform
 
-    # -----------------------
     def __len__(self) -> int:
         return len(self.entries)
 
-    # -----------------------
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         entry = self.entries[idx]
         img_path = self.image_dir / entry.image_path.name
@@ -59,9 +56,6 @@ class ImageMaskDataset(Dataset):
             raise RuntimeError(f"Failed to read {img_path}")
 
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        H, W = image.shape[:2]
-
-        # Build multi-class mask (values: 0=background, 1=individual, 2=group)
         mask = build_multiclass_mask(entry)
 
         if self.transform:
@@ -73,29 +67,26 @@ class ImageMaskDataset(Dataset):
             if mask.max() > 2:
                 mask = (mask / 255).astype(np.uint8)
 
-        # Convert image to tensor
-        if isinstance(image, torch.Tensor):
+        # Safety check: Convert image to tensor if not already done
+        if not isinstance(image, torch.Tensor):
+            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
+        else:
             img_t = image.float()
             if img_t.ndim == 3 and img_t.shape[0] != 3:
                 img_t = img_t.permute(2, 0, 1)
             if img_t.max() > 1.0:
                 img_t = img_t / 255.0
-        else:
-            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
-        # Convert mask to tensor [H, W] -> [1, H, W]
+        # Convert mask to tensor
         if isinstance(mask, torch.Tensor):
             mask_t = mask.long()
         else:
             mask_t = torch.from_numpy(mask).long()
 
-        # Ensure mask has shape [H, W] for multi-class CrossEntropyLoss
         while mask_t.ndim > 2:
             mask_t = mask_t.squeeze(0)
 
         assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}"
-
-        # -----------------------
         return img_t, mask_t
 
 
@@ -119,7 +110,6 @@ class ImageOnlyDataset(Dataset):
     Used only for inference
     """
 
-    # -----------------------
     def __init__(
         self,
         image_dir: Path,
@@ -131,32 +121,27 @@ class ImageOnlyDataset(Dataset):
             [f for f in self.image_dir.glob("*.*") if f.suffix.lower() in [".png"]],
         )
 
-    # -----------------------
     def __len__(self) -> int:
         return len(self.files)
 
-    # -----------------------
     def __getitem__(self, idx: int) -> Tuple[str, torch.Tensor]:
-
         path = self.files[idx]
-
         image = self._load_image(path)
 
         if self.transform:
             processed = self.transform(image=image)
             image = processed["image"]
 
-        # Convert image to tensor
-        if isinstance(image, torch.Tensor):
+        # Safety check: Convert image to tensor if not already done
+        if not isinstance(image, torch.Tensor):
+            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
+        else:
             img_t = image.float()
             if img_t.ndim == 3 and img_t.shape[0] != 3:
                 img_t = img_t.permute(2, 0, 1)
             if img_t.max() > 1.0:
                 img_t = img_t / 255.0
-        else:
-            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
 
-        # -----------------------
         return path.name, img_t
 
     def _load_image(
