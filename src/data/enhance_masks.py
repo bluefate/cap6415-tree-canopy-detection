@@ -1,6 +1,8 @@
+import albumentations as A
 import cv2
 import numpy as np
 import torch
+from albumentations import ToTensorV2
 
 from src.data.loaders import ImageMaskDataset
 from src.data.masks import build_multiclass_mask
@@ -30,7 +32,6 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         self.filter_names = filter_names or ["laplacian", "sobel", "clahe"]
 
     def __getitem__(self, idx: int):
-        """Fixed tensor processing to avoid double normalization."""
         entry = self.entries[idx]
         img_path = self.image_dir / entry.image_path.name
 
@@ -58,10 +59,34 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             filtered_img = self.apply_filters_to_enhanced_image(image)
             image = np.concatenate([image, filtered_img], axis=2)
 
-        # Apply transforms (includes normalization)
+        # Apply transforms with mode awareness
         if self.transform:
-            processed = self.transform(image=image, mask=mask)
-            image = processed["image"]  # Should be tensorized by ToTensorV2
+            # Check if transform function accepts mode parameter
+            try:
+                if hasattr(self.transform, "transforms"):
+                    # It's an Albumentations compose - apply directly
+                    processed = self.transform(image=image, mask=mask)
+                else:
+                    # It's our custom function - this shouldn't happen with current code
+                    processed = self.transform(image=image, mask=mask)
+            except TypeError as e:
+                if "HueSaturationValue" in str(e):
+                    print(f"Skipping problematic transform for {self.mode} mode")
+                    # Apply minimal transforms only
+                    minimal_transform = A.Compose(
+                        [
+                            A.Resize(256, 256),
+                            A.Normalize(
+                                mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)
+                            ),
+                            ToTensorV2(),
+                        ]
+                    )
+                    processed = minimal_transform(image=image, mask=mask)
+                else:
+                    raise e
+
+            image = processed["image"]
             mask = processed["mask"]
 
             # Normalize mask to class indices 0,1,2

@@ -384,8 +384,8 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
 
     try:
 
-        train_tf = get_train_augmentations(config.train.image_size)
-        val_tf = get_val_augmentations(config.train.image_size)
+        train_tf = get_train_augmentations(config.train.image_size, mode=mode)
+        val_tf = get_val_augmentations(config.train.image_size, mode=mode)
 
         train_ds = EnhancedImageMaskDataset(
             train_entries,
@@ -1110,8 +1110,8 @@ def train_class_specific_model(class_name, model_name="simple_cnn"):
     val_entries = class_entries[split_idx:]
 
     # Create datasets with class filter
-    train_tf = get_train_augmentations(config.train.image_size)
-    val_tf = get_val_augmentations(config.train.image_size)
+    train_tf = get_train_augmentations(config.train.image_size, mode=mode)
+    val_tf = get_val_augmentations(config.train.image_size, mode=mode)
 
     train_ds = ImageMaskDataset(
         train_entries,
@@ -1236,7 +1236,7 @@ def generate_submission(model_path, model_name, eval_dir, output_path):
     )
 
     # Run predictions
-    val_tf = get_val_augmentations(config.train.image_size)
+    val_tf = get_val_augmentations(config.train.image_size, mode=mode)
 
     results = predictor.run_on_folder(eval_dir, transform=val_tf)
 
@@ -1704,7 +1704,7 @@ def visualize_experiment_predictions(item, image_dir, num_samples=3):
             model.load_state_dict(state)
         model.eval()
 
-        val_tf = get_val_augmentations(config.train.image_size)
+        val_tf = get_val_augmentations(config.train.image_size, mode=mode)
 
         # Get image files
         image_files = sorted(list(image_dir.glob("*.png")))
