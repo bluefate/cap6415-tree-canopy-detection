@@ -6,7 +6,6 @@ import sys
 from IPython import get_ipython
 from IPython.display import HTML
 
-from src.training.trainer import create_splits
 
 
 if "google.colab" in str(get_ipython()):
@@ -130,6 +129,7 @@ from src.training.running import (
     get_version_config,
     validate_filter_set,
 )
+from src.training.trainer import create_splits
 from src.utils.helpers import estimate_runtime
 from src.utils.image_converter import ImageConverter
 from torch.utils.data import DataLoader

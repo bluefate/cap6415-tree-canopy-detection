@@ -28,7 +28,7 @@ def get_input_channels(mode, filters, model_name):
             return 3
         else:
             num_filters = len(filters) if filters else 0
-            return 3 + num_filters  # RGB + 3 filters
+            return 3 + num_filters  # RGB + actual filter count
     else:
         return 3  # Default fallback
 

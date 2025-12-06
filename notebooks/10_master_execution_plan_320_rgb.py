@@ -6,8 +6,6 @@ import sys
 from IPython import get_ipython
 from IPython.display import HTML
 
-from src.training.trainer import create_splits
-
 
 if "google.colab" in str(get_ipython()):
     HTML(
@@ -122,6 +120,7 @@ from src.exploration.class_explorer import (
     plot_training_history,
     update_tracker,
 )
+from src.training.trainer import create_splits
 from src.exploration.filter_utils import get_input_channels
 from src.exploration.visualize import show_side_by_side
 from src.models.zoo import build_model, MODEL_EXPERIMENTS
