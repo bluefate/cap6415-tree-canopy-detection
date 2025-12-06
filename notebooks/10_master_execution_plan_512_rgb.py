@@ -96,7 +96,7 @@ else:
 # %%
 import sys
 from pathlib import Path
-
+import os
 
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
