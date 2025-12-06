@@ -53,7 +53,11 @@ def run_training(
     image_size = config.train.image_size
     lr = config.train.learning_rate
 
-    model = build_model(model_name, in_channels=in_channels, out_channels=3)
+    n_classes = len(
+        torch.unique(torch.cat([m.flatten() for _, m in train_loader.dataset]))
+    )
+
+    model = build_model(model_name, in_channels=in_channels, out_channels=n_classes)
     optimizer = prepare_optimizer(model, lr)
     criterion = prepare_criterion()
 
@@ -221,6 +225,7 @@ def compute_metrics_multiclass(
     # MULTI-CLASS MODE: If pred has C > 1 channels
     # Convert logits to class predictions
     if isinstance(pred, torch.Tensor):
+        pred = F.softmax(pred, dim=1)
         pred_classes = torch.argmax(pred, dim=1).detach().cpu().numpy()  # [B, H, W]
     else:
         pred_classes = np.argmax(pred, axis=1)

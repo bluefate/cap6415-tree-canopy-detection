@@ -13,7 +13,6 @@ import os
 import sys
 
 import pandas as pd
-import torch
 from torch.utils.data import DataLoader
 
 
@@ -26,7 +25,7 @@ from src.data.enhance_masks import EnhancedImageMaskDataset
 from src.training.engine import run_training
 from src.training.running import get_available_filters, get_version_config, validate_filter_set
 from src.utils.config import Config
-from src.utils.helpers import init_notebook, p, t, c
+from src.utils.helpers import estimate_runtime_by_epcoh, init_notebook, p, t, c
 
 
 # %% [markdown]
@@ -140,41 +139,7 @@ for i, exp in enumerate(experiments[:5]):
 #
 
 # %%
-def estimate_runtime( num_experiments, epochs_per_exp = 10 ):
-    """Rough estimate of total training time"""
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Time per epoch estimates (in seconds)
-    time_per_epoch = {
-        "simple_cnn": 30,
-        "unet":       60,
-        "yolov8s":    90,
-    }
-
-    total_seconds = 0
-    for model_name, mode, _ in experiments:
-        base_time = time_per_epoch.get(model_name, 60)
-        # Filtered mode adds ~20% overhead
-        if mode == "filtered":
-            base_time *= 1.2
-        total_seconds += base_time * epochs_per_exp
-
-    total_minutes = total_seconds / 60
-    total_hours = total_minutes / 60
-
-    p("Runtime Estimate", "", color1 = c.ORANGE)
-    p("  Device", device.type.upper())
-    p("  Experiments", num_experiments)
-    p("  Epochs per exp", epochs_per_exp)
-    p("  Estimated time", f"{total_hours:.1f} hours ({total_minutes:.0f} min)")
-
-    if device.type == "cpu":
-        p("  ⚠ WARNING", "CPU training is 10-20x slower!", color1 = c.RED)
-
-    return total_hours
-
-
-estimated_hours = estimate_runtime(len(experiments), epochs_per_exp = config.train.epochs)
+estimated_hours = estimate_runtime_by_epcoh(experiments, epochs_per_exp = config.train.epochs)
 
 
 # %% [markdown]

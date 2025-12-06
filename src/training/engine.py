@@ -1,7 +1,9 @@
 from pathlib import Path
 
 import torch
+from torch.nn import CrossEntropyLoss
 
+from prediction.validation import validate_data_loader
 from src.models.zoo import build_model
 from src.training.trainer import Trainer
 from src.utils.config import Config
@@ -23,10 +25,10 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 def prepare_criterion():
     """Weighted cross entropy for imbalanced 3-class segmentation."""
     # weights = torch.tensor([1.00, 2.50, 7.00])  # [background, individual, group]
-    weights = torch.tensor([1.0, 5.0, 5.0])  # [background, individual, group]
-    return torch.nn.CrossEntropyLoss(
-        weight=weights.cuda() if torch.cuda.is_available() else weights
-    )
+    # weights = torch.tensor([1.0, 5.0, 5.0])  # [background, individual, group]
+    weights = torch.tensor([0.5, 2.0, 3.0])  # [background, individual, group]
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    return CrossEntropyLoss(weight=weights.to(device))
 
 
 # look for this after train_loader to verify class inbalance
@@ -51,6 +53,9 @@ def run_training(
     """
     image_size = config.train.image_size
     lr = config.train.learning_rate
+
+    validate_data_loader(train_loader, "Training")
+    validate_data_loader(val_loader, "Validation")
 
     n_classes = len(
         torch.unique(torch.cat([m.flatten() for _, m in train_loader.dataset]))

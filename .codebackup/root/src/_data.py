@@ -239,6 +239,11 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             processed = self.transform(image=image, mask=mask)
             image = processed["image"]
             mask = processed["mask"]
+
+            # Normalize mask to class indices 0,1,2
+            if mask.max() > 2:
+                mask = (mask / 255).astype(np.uint8)
+
             # back to numpy HWC uint8 (0â€“255) for filter step
             image = (image.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
 
@@ -330,7 +335,7 @@ from data.annotations import AnnotationEntry
 from src.utils.helpers import c, p
 
 
-def load_image( image_dir: Path, entry: AnnotationEntry ) -> np.ndarray:
+def load_image(image_dir: Path, entry: AnnotationEntry) -> np.ndarray:
     """
     Load an image with automatic format handling and fallback for TIFFs.
     Tries OpenCV first (fastest), falls back to PIL for problematic TIFFs.
@@ -686,6 +691,10 @@ class ImageMaskDataset(Dataset):
             processed = self.transform(image=image, mask=mask)
             image = processed["image"]
             mask = processed["mask"]
+
+            # Ensure mask values are proper class indices (0,1,2)
+            if mask.max() > 2:
+                mask = (mask / 255).astype(np.uint8)
 
         # Convert image to tensor
         if isinstance(image, torch.Tensor):

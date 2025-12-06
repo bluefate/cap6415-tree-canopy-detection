@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import torch.nn.functional as F
 
 
 def _to_numpy(pred: torch.Tensor, true: torch.Tensor):
@@ -49,7 +48,7 @@ def compute_metrics(pred: torch.Tensor, true: torch.Tensor):
 
     # Resize prediction to match target size if needed
     if pred.shape[-2:] != target_size:
-        pred = F.interpolate(
+        pred = torch.nn.functional.interpolate(
             pred, size=target_size, mode="bilinear", align_corners=False
         )
 
@@ -102,7 +101,7 @@ def compute_metrics_multiclass(
 
     # Resize prediction to match target size if needed
     if pred.shape[-2:] != target_size:
-        pred = F.interpolate(
+        pred = torch.nn.functional.interpolate(
             pred, size=target_size, mode="bilinear", align_corners=False
         )
 
@@ -144,10 +143,10 @@ def compute_metrics_multiclass(
             "recall": tp / (tp + fn + 1e-8),
         }
 
-    # MULTI-CLASS MODE: If pred has C > 1 channels
+    # MULTI-CLASS MODE: If pred > 1 channels
     # Convert logits to class predictions
     if isinstance(pred, torch.Tensor):
-        pred = F.softmax(pred, dim=1)
+        pred = torch.nn.functional.softmax(pred, dim=1)
         pred_classes = torch.argmax(pred, dim=1).detach().cpu().numpy()  # [B, H, W]
     else:
         pred_classes = np.argmax(pred, axis=1)

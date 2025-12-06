@@ -8,6 +8,8 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any, Dict
 
+import torch
+
 from src.utils.helpers import c, p, t
 
 
@@ -189,6 +191,35 @@ def print_validation_results(stats: Dict[str, Any]) -> None:
 #     else:
 #         p(f"Error: Submission file not found: {submission_path}")
 #         sys.exit(1)
+
+
+def validate_data_loader(data_loader, name="DataLoader"):
+    """Validate data loader outputs for debugging."""
+    t(f"Validating {name}")
+    for i, (images, masks) in enumerate(data_loader):
+        p(
+            f"Image Batch {i}:",
+            f"  Images: {images.shape}, dtype={images.dtype}, range=[{images.min():.3f}, {images.max():.3f}]",
+        )
+        p(
+            f"Mask Batch {i}:",
+            f"  Masks: {masks.shape}, dtype={masks.dtype}, unique={torch.unique(masks).tolist()}",
+        )
+
+        # Check for invalid values
+        if torch.isnan(images).any():
+            p("WARNING", "NaN values in images!", color1=c.ORANGE)
+        if torch.isinf(images).any():
+            p("WARNING", "Inf values in images!", color1=c.ORANGE)
+        if masks.max() >= 3:
+            p(
+                "WARNING",
+                f"Invalid mask values > 2: {torch.unique(masks).tolist()}",
+                color1=c.ORANGE,
+            )
+
+        if i >= 2:  # Only check first few batches
+            break
 
 
 def analyze_validation_metrics(

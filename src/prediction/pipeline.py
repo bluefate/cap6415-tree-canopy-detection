@@ -102,7 +102,7 @@ class Predictor:
                     # Get raw logits
                     output = self.model(crop)
                     # Apply softmax to get probabilities
-                    output = F.softmax(output, dim=1)
+                    output = torch.nn.functional.softmax(output, dim=1)
 
                 prob_map[:, y1:y2, x1:x2] += output.squeeze(0)
                 count_map[:, y1:y2, x1:x2] += 1.0

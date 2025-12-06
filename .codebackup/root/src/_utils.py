@@ -609,6 +609,205 @@ t = p()._title
 #                 return
 #
 
+import datetime
+import torch
+
+
+# Assume 'p', 't', 'c', 'entries', and 'config' are defined in the context.
+
+def format_time( seconds ):
+    """Converts a total number of seconds into a human-readable D days, HH:MM:SS format."""
+    td = datetime.timedelta(seconds = int(seconds))
+    time_str = str(td)
+
+    # Handle the 'days' case (e.g., "1 day, 0:03:20" -> "1d 0h 3m 20s")
+    if 'day' in time_str:
+        parts = time_str.split(', ')
+        days = parts[0].replace(' days', 'd').replace(' day', 'd')
+        hms = parts[1].split(':')
+        return f"{days} {hms[0].zfill(1)}h {hms[1].zfill(2)}m {hms[2].zfill(2)}s"
+
+    # If less than a day, output Hh Mm Ss (e.g., "3:25:45" -> "3h 25m 45s")
+    hms = time_str.split(':')
+    # Use lstrip('0') to show '3h' instead of '03h' unless it's '0h'
+    return f"{hms[0].lstrip('0')}h {hms[1]}m {hms[2]}s"
+
+
+
+def simple_estimate_runtime():
+    """Estimate total runtime."""
+    t("Runtime Estimate")
+    from data.annotations import load_json_annotations
+    from utils.config import Config
+
+    config = Config.load()
+
+    entries = load_json_annotations(config.paths.annotations)
+    train_size = int(0.8 * len(entries))
+
+    batch_size = config.train.batch_size
+    batches_per_epoch = train_size // batch_size
+
+    # Assume ~1 second per batch (conservative)
+    seconds_per_epoch = batches_per_epoch * 1
+
+    # 4 experiments × 10 epochs
+    total_seconds = 4 * 10 * seconds_per_epoch
+
+    p("Training samples", train_size)
+    p("Batches per epoch", batches_per_epoch)
+    p("Estimated time per epoch", f"~{format_time(seconds_per_epoch // 60)}", color1 = c.BLACK, color2 = c.RED)
+    p("Estimated total time", f"~{format_time(total_seconds)}", color1 = c.BLACK, color2 = c.RED)
+
+
+
+
+def estimate_runtime_by_epcoh( experiments, epochs_per_exp = 10 ):
+    """Rough estimate of total training time"""
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+    # Time per epoch estimates (in seconds)
+    time_per_epoch = {
+        "simple_cnn": 30,
+        "unet":       60,
+        "yolov8s":    90,
+    }
+
+    total_seconds = 0
+    for model_name, mode, _ in experiments:
+        base_time = time_per_epoch.get(model_name, 60)
+        # Filtered mode adds ~20% overhead
+        if mode == "filtered":
+            base_time *= 1.2
+        total_seconds += base_time * epochs_per_exp
+
+    total_minutes = total_seconds / 60
+    total_hours = total_minutes / 60
+
+    p("Runtime Estimate", "", color1 = c.ORANGE)
+    p("  Device", device.type.upper())
+    p("  Experiments", len(experiments))
+    p("  Epochs per exp", epochs_per_exp)
+    p("  Estimated time", f"{total_hours:.1f} hours ({total_minutes:.0f} min)")
+
+    if device.type == "cpu":
+        p("  ⚠ WARNING", "CPU training is 10-20x slower!", color1 = c.RED)
+
+    return total_hours
+
+
+
+
+
+
+def estimate_runtime( experiments, config, entries = None ):
+    """
+    Estimate training runtime with GPU/CPU awareness, model complexity,
+    and experiment mode (rgb, filtered, concat) awareness.
+    """
+
+    # --- Setup and Initialization ---
+    train_size = int(0.8 * len(entries))
+    batch_size = config.train.batch_size
+    batches_per_epoch = max(1, train_size // batch_size)
+    epochs = config.train.epochs
+    total_seconds = 0.0
+
+    # Device detection
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device_name = torch.cuda.get_device_name(0) if device.type == 'cuda' else 'CPU'
+
+    if device.type == 'cuda':
+        gpu_memory = torch.cuda.get_device_properties(0).total_memory / 1e9
+        if gpu_memory < 4:  # Low-end GPU
+            base_seconds = 2.0
+        elif gpu_memory < 8:  # Mid-range GPU
+            base_seconds = 1.0
+        else:  # High-end GPU
+            base_seconds = 0.5
+    else:
+        base_seconds = 5.0  # CPU is significantly slower
+
+    # Mode timing multipliers (updated for clarity and to incorporate overhead)
+    mode_multiplier = {
+        "rgb":      1.0,  # Standard 3-channel input
+        "filtered": 1.5,  # Filter computation overhead
+        "concat":   2.5  # 6-channel input + filter overhead (higher than 2.0 to account for extra memory/ops)
+    }
+
+    model_complexity = {
+        "simple_cnn":        1.0,
+        "unet":              2.5,
+        "smp_deeplabv3plus": 4.5,
+        "segformer":         3.5,
+        "yolov8n":           1.8,
+        "yolov8l":           6.0,
+    }
+
+    # --- Header and Pre-Run Info ---
+    t("Runtime Estimate")
+    p("Device", device_name, color1 = c.GREEN)
+    p("Total Experiments", len(experiments), color1 = c.BLACK, color2 = c.ORANGE)
+    p("Training samples", train_size, color1 = c.BLACK)
+    p("Batches per epoch", batches_per_epoch, color1 = c.BLACK)
+    p("Epochs per experiment", epochs, color1 = c.BLACK)
+    p("Batch size", batch_size, color1 = c.BLACK)
+    p("-" * 70, color1 = c.ORANGE)
+    p()
+
+    p("Per-Experiment Estimates:", color1 = c.CYAN, bold = True)
+    p("-" * 70, color1 = c.CYAN)
+
+    # --- Calculation Loop ---
+    for model_name, mode, filters in experiments:
+
+        # Get multipliers, defaulting to 1.0 if model/mode not found
+        mode_mult = mode_multiplier.get(mode, 1.0)
+        complexity_mult = model_complexity.get(model_name, 1.0)
+
+        # Total multiplier
+        total_mult = mode_mult * complexity_mult
+
+        # Time calculation: Base * Device/Complexity Multipliers * (Batches * Epochs)
+        sec_per_batch = base_seconds * total_mult
+
+        exp_seconds = epochs * batches_per_epoch * sec_per_batch
+        total_seconds += exp_seconds
+
+        # Format filter string
+        filter_str = f"[{', '.join(filters)}...]" if filters and len(filters) > 0 else "none"
+
+        # Display
+        exp_label = f"{model_name:20s} | {mode:8s} | {filter_str:20s}"
+
+        p(exp_label, format_time(exp_seconds), color1 = c.BLUE, color2 = c.BLACK)
+
+    p()
+    t("Totals")
+
+    total_hours = total_seconds / 3600
+
+    p("Total experiments", len(experiments))
+    p("Total batches", batches_per_epoch * epochs * len(experiments))
+
+    p("Estimated total time", format_time(total_seconds), color1 = c.GREEN, bold = True)
+
+    # Time breakdown and Warnings
+    if total_hours >= 24:
+        p("Estimated completion", f"~{total_hours / 24:.1f} days", color1 = c.ORANGE)
+        p("⚠ WARNING", "Training will take over 24 hours!", color1 = c.ORANGE, bold = True)
+        p("Consider", "Reducing epochs or selecting fewer models", color1 = c.ORANGE)
+    elif total_hours >= 8:
+        p("Estimated completion", f"~{total_hours:.1f} hours", color1 = c.ORANGE)
+        p("⚠ NOTE", "Long training session - consider running overnight", color1 = c.ORANGE)
+    else:
+        p("Estimated completion", f"~{total_seconds / 60:.0f} minutes", color1 = c.GREEN)
+
+    if device.type == 'cpu':
+        p("⚠ CPU DETECTED", "Training on CPU is 10-20x slower than GPU", color1 = c.RED, bold = True)
+    p()
+
+
 
 
 # From C:\github\Tree-Canopy-Detection\src\utils\image_converter.py

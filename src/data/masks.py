@@ -30,6 +30,7 @@ def build_binary_mask(segmentation: List[float], width: int, height: int) -> np.
 def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
     """
     Build mask with class indices for multi-class segmentation.
+    Background=0, individual_tree=1, group_of_trees=2
     """
     if class_to_id is None:
         class_to_id = CLASS_TO_ID
@@ -41,8 +42,11 @@ def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
         if seg is None or len(seg) < 6:
             continue
 
-        # Get class ID (0 if unknown class)
-        class_id = class_to_id.get(item.cls, 0)
+        # Get class ID, skip unknown classes (don't assign to background)
+        class_id = class_to_id.get(item.cls, None)
+        if class_id is None:
+            # Skip unknown classes instead of assigning to background
+            continue
 
         poly = np.array(seg, dtype=np.int32).reshape(-1, 2)
         cv2.fillPoly(mask, [poly], class_id)

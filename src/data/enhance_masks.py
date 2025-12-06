@@ -3,6 +3,7 @@ import numpy as np
 import torch
 
 from src.data.loaders import ImageMaskDataset
+from src.data.masks import build_multiclass_mask
 
 
 class EnhancedImageMaskDataset(ImageMaskDataset):
@@ -40,12 +41,9 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
 
         # Build mask
         if self.classes is None:
-            from src.data.masks import build_multiclass_mask
-
             mask = build_multiclass_mask(entry)
         else:
             from src.data.annotations import AnnotationEntry
-            from src.data.masks import build_multiclass_mask
 
             filtered_items = [item for item in entry.items if item.cls in self.classes]
             filtered_entry = AnnotationEntry(
@@ -53,7 +51,15 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             )
             mask = build_multiclass_mask(filtered_entry)
 
-        # Apply transforms first
+        # Apply filters before transforms to avoid double normalization
+        if self.mode == "filtered":
+            image = self.apply_filters_to_enhanced_image(image)
+        elif self.mode == "concat":
+            filtered_img = self.apply_filters_to_enhanced_image(image)
+            # Concatenate RGB + filtered
+            image = np.concatenate([image, filtered_img], axis=2)
+
+        # Apply transforms
         if self.transform:
             processed = self.transform(image=image, mask=mask)
             image = processed["image"]
@@ -63,26 +69,8 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
             if mask.max() > 2:
                 mask = (mask / 255).astype(np.uint8)
 
-            # back to numpy HWC uint8 (0–255) for filter step
-            image = (image.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
-
-        # Apply filters based on mode
-        if self.mode == "filtered":
-            image = self.apply_filters_to_enhanced_image(image)
-        elif self.mode == "concat":
-            filtered_img = self.apply_filters_to_enhanced_image(image)
-            # Concatenate RGB + filtered
-            image = np.concatenate([image, filtered_img], axis=2)
-
-        # Convert image to tensor
-        if isinstance(image, torch.Tensor):
-            img_t = image.float()
-            if img_t.ndim == 3 and img_t.shape[0] != 3:
-                img_t = img_t.permute(2, 0, 1)
-            if img_t.max() > 1.0:
-                img_t = img_t / 255.0
-        else:
-            img_t = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
+        # # back to numpy HWC uint8 (0–255) for filter step
+        # image = (image.permute(1, 2, 0).cpu().numpy() * 255).astype(np.uint8)
 
         # Convert mask to tensor - LONG for CrossEntropyLoss (multi-class)
         if isinstance(mask, torch.Tensor):
@@ -94,10 +82,20 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         while mask_t.ndim > 2:
             mask_t = mask_t.squeeze(0)
 
+        # Convert image to tensor
+        if isinstance(image, torch.Tensor):
+            # image = image.float()
+            if image.ndim == 3 and image.shape[0] not in [3, 6]:
+                image = image.permute(2, 0, 1)
+            if image.max() > 1.0:
+                image = image / 255.0
+        else:
+            image = torch.from_numpy(image.transpose(2, 0, 1)).float() / 255.0
+
         # Verify shape is correct
         assert mask_t.ndim == 2, f"Mask should be 2D [H, W], got {mask_t.shape}"
 
-        return img_t, mask_t
+        return image, mask_t
 
     def apply_filters_to_enhanced_image(self, img):
         """

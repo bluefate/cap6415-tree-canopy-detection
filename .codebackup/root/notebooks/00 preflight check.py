@@ -3,7 +3,7 @@
 
 # %%
 if 'google.colab' in str(get_ipython()):
-  # %cd /content/CAP6415_F25_project-Tree-Canopy-Detection
+    # %cd / content / CAP6415_F25_project-Tree-Canopy-Detection
 
 # %% [markdown]
 # # Notebook: 00 Pre-Flight Check Script
@@ -27,7 +27,7 @@ sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
 import torch
 from src.utils.config import Config
-from src.utils.helpers import c, format_time, p, t
+from src.utils.helpers import c, p, simple_estimate_runtime, t
 from src.models.zoo import build_model
 from src.data.annotations import load_json_annotations
 
@@ -258,29 +258,6 @@ def check_disk_space():
         return True
 
 
-def estimate_runtime():
-    """Estimate total runtime."""
-    t("Runtime Estimate")
-
-    config = Config.load()
-
-    entries = load_json_annotations(config.paths.annotations)
-    train_size = int(0.8 * len(entries))
-
-    batch_size = config.train.batch_size
-    batches_per_epoch = train_size // batch_size
-
-    # Assume ~1 second per batch (conservative)
-    seconds_per_epoch = batches_per_epoch * 1
-
-    # 4 experiments × 10 epochs
-    total_seconds = 4 * 10 * seconds_per_epoch
-
-    p("Training samples", train_size)
-    p("Batches per epoch", batches_per_epoch)
-    p("Estimated time per epoch", f"~{format_time(seconds_per_epoch // 60)}", color1 = c.BLACK, color2 = c.RED)
-    p("Estimated total time", f"~{format_time(total_seconds)}", color1 = c.BLACK, color2 = c.RED)
-
 
 
 
@@ -317,7 +294,7 @@ for name, func in checks:
 
 # Runtime estimate
 try:
-    estimate_runtime()
+    simple_estimate_runtime()
 except Exception as e:
     p("⚠ Runtime estimate failed", str(e), color1 = c.ORANGE)
 

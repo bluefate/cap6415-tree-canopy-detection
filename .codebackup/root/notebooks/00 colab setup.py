@@ -22,10 +22,12 @@
 # %%
 # Check system information and GPU availability
 import os
-import psutil
-import torch
 import platform
 from datetime import datetime
+
+import psutil
+import torch
+
 
 print("=" * 60)
 print("🌳 TREE CANOPY DETECTION - SYSTEM CHECK")
@@ -80,14 +82,13 @@ else:
 
 # %%
 from google.colab import drive
-import shutil
+
 
 drive.mount('/content/drive')
 
-
 # Create project backup directory in Drive
 drive_project_path = '/content/drive/MyDrive/TreeCanopyProject'
-os.makedirs(drive_project_path, exist_ok=True)
+os.makedirs(drive_project_path, exist_ok = True)
 
 # Create subdirectories for organization
 subdirs = [
@@ -99,10 +100,9 @@ subdirs = [
     'backups'
 ]
 
-
 for subdir in subdirs:
     path = os.path.join(drive_project_path, subdir)
-    os.makedirs(path, exist_ok=True)
+    os.makedirs(path, exist_ok = True)
     print(f"Created: {path}")
 
 
@@ -120,16 +120,16 @@ for subdir in subdirs:
 # %%
 import os
 
+
 env_path = '/content/drive/MyDrive/TreeCanopyProject/.env'
 
 if os.path.exists(env_path):
-    # with open(env_path, 'r') as f:
-    #     for line in f:
-    #         if '=' in line and not line.startswith('#'):
-    #             key, value = line.strip().split('=', 1)
-    #             os.environ[key] = value
-    # print("✅ Environment variables loaded")
-    print("✅ Environment variables already exists")
+    with open(env_path, 'r') as f:
+        for line in f:
+            if '=' in line and not line.startswith('#'):
+                key, value = line.strip().split('=', 1)
+                os.environ[key] = value
+    print("✅ Environment variables loaded")
 else:
     print("❌ .env file not found")
 
@@ -154,7 +154,6 @@ if github_token:
 else:
     print("❌ Add GITHUB_TOKEN to .env file")
 
-
 print()
 # !ls /content/drive/MyDrive/TreeCanopyProject
 
@@ -169,10 +168,10 @@ print()
 # %%
 from pathlib import Path
 
+
 #root_dir = Path("/content/drive/MyDrive/TreeCanopyProject")
 root_dir = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
 extensions = [".py", ".ipynb"]
-
 
 prev_parent = None
 for path in sorted(root_dir.rglob("*")):
