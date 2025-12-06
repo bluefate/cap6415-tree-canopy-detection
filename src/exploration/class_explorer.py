@@ -414,7 +414,7 @@ def class_distribution(entries):
 
 def dataset_report(config, entries, sample_count=3):
     dist = class_distribution(entries)
-    p("Class counts:", dist)
+    p("Class counts", dist)
 
     both = find_images_with_both(entries)
     p("Images containing both classes:", len(both))
@@ -422,10 +422,12 @@ def dataset_report(config, entries, sample_count=3):
     samples = entries[:sample_count]
 
     for e in samples:
-        p("Image:", e.image_path.name)
+        p()
+        t(f"Image: {e.image_path.name}")
         explore_color_overlay(config, e)
         explore_bboxes(config, e)
         explore_image(config, e)
+        p()
 
 
 def create_experiment_tracker():
