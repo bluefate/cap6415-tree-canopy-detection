@@ -7,7 +7,6 @@ from IPython import get_ipython
 from IPython.display import HTML
 
 
-
 if "google.colab" in str(get_ipython()):
     HTML(
         """

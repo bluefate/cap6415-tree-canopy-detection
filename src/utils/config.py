@@ -90,9 +90,9 @@ class Config(BaseModel):
         paths_cfg = PathsConfig(**raw_paths)
         train_cfg = TrainConfig(**raw_train)
 
-        cls.auto_adjust()
-
-        return cls(paths = paths_cfg, train = train_cfg, extra = extra)
+        instance = cls(paths=paths_cfg, train=train_cfg, extra=extra)
+        instance.auto_adjust()
+        return instance
 
     def show( self ):
         """
@@ -145,7 +145,7 @@ class Config(BaseModel):
 
             # Also reduce workers for large images
             if self.train.num_workers > 2:
-                p("WARNING", f"Num of Workers size {self.train.batch_size} too large for image "
+                p("WARNING", f"Num of Workers size {self.train.num_workers} too large for image "
                              f"size {self.train.image_size}. "
                              f"Reducing num_workers to 2 to prevent OOM", color1 = c.RED)
                 self.train.num_workers = 2
