@@ -20,10 +20,15 @@ def get_input_channels(mode, filters, model_name):
     elif mode == "concat":
         if model_name in ["simple_cnn", "unet"]:
             # These models don't support 6 channels - use RGB instead
-            print(f"WARNING: {model_name} doesn't support concat mode, using RGB")
+            p(
+                "WARNING",
+                f"{model_name} doesn't support concat mode, using RGB",
+                color1=c.ORANGE,
+            )
             return 3
         else:
-            return 6  # RGB + 3 filters
+            num_filters = len(filters) if filters else 0
+            return 3 + num_filters  # RGB + 3 filters
     else:
         return 3  # Default fallback
 
