@@ -396,6 +396,32 @@ def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
     return all_models
 
 
+def get_correct_model_name_from_path(model_path):
+    """Fixed model name detection specifically for your case"""
+    from src.models.zoo import MODEL_BUILDERS
+
+    path_str = str(model_path).lower()
+    known_models = MODEL_BUILDERS.keys()
+
+    # Check for exact matches first (prioritize longer names)
+    for model_name in sorted(known_models, key=len, reverse=True):
+        if model_name in path_str:
+            return model_name
+
+    # Manual fixes for your specific case
+    if "/smp_unet" in path_str:
+        return "smp_unet"
+    elif "smp" in path_str and "unet" in path_str:
+        return "smp_unet"
+    elif "simple_cnn" in path_str:
+        return "simple_cnn"
+    elif "unet" in path_str:
+        return "unet"  # Only if no smp prefix
+
+    # Fallback
+    return "smp_unet"
+
+
 def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
     """
     Generate a submission file for a given model checkpoint (.pth).
@@ -439,38 +465,27 @@ def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
         # image_size_str = model_info.get("image_size", "unknown")
 
         # Scan path to find a valid model name
-        model_name = next(
-            (
-                part.lower()
-                for part in model_path.parts
-                if part.lower() in MODEL_BUILDERS
-            ),
-            "unet",
-        )
-        # Try to find a known model from path
-        known_models = set(MODEL_BUILDERS.keys())
-        path_parts = [p.lower() for p in model_path.parts]
+        # model_name = next(
+        #     (
+        #         part.lower()
+        #         for part in model_path.parts
+        #         if part.lower() in MODEL_BUILDERS
+        #     ),
+        #     "unet",
+        # )
 
-        # Direct match
-        model_name = next((p for p in path_parts if p in known_models), None)
+        model_name = get_correct_model_name_from_path(model_path)
 
-        # Optional remap (you can expand this as needed)
-        name_map = {
-            "unet": "smp_unet",  # only if you want this behavior
-            "deeplabv3": "smp_deeplabv3",
-            "deeplabv3plus": "smp_deeplabv3plus",
-        }
-        if model_name is None:
-            # fallback: detect and remap if applicable
-            for p in path_parts:
-                if p in name_map:
-                    model_name = name_map[p]
-                    break
+        # Verify the model name is valid
+        if model_name not in MODEL_BUILDERS:
+            print(f"Warning: {model_name} not found in MODEL_BUILDERS, using smp_unet")
+            model_name = "smp_unet"
+
+        p(f"Using model name: {model_name} for path: {model_path}")
 
         # Fallback hard default
         if not model_name:
             model_name = "smp_unet"
-
 
         # Get image size using fallback logic
         model_info = extract_model_info_fallback(model_path)
@@ -821,7 +836,12 @@ def plot_model_performance_overview(df: pd.DataFrame) -> None:
 
     # 2. Performance by Model Type
     if "Model Name" in valid_df.columns:
-        model_performance = valid_df.groupby("Model Name")["Val Loss"].agg(
+        # Filter out invalid model names (e.g., pure numbers like "03", "07")
+        valid_df_filtered = valid_df[
+            valid_df["Model Name"].apply(lambda x: str(x).isalpha() or "_" in str(x))
+        ]
+
+        model_performance = valid_df_filtered.groupby("Model Name")["Val Loss"].agg(
             ["mean", "min", "count"]
         )
         model_performance = model_performance.sort_values("mean")
