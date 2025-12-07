@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 import torch
 
-from src.models.zoo import build_model, MODEL_BENCHMARKS
+from src.models.zoo import build_model
 from src.utils.logging import Logger
 
 
@@ -24,12 +24,12 @@ class Predictor:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger = Logger()
 
-        # self.model = build_model(model_name, in_channels=3, out_channels=3).to(
-        #     self.device
-        # )
-        model_args = MODEL_BENCHMARKS.get(model_name, {})
-        model_args.update({"in_channels": 3, "out_channels": 3})
-        self.model = build_model(model_name, **model_args).to(self.device)
+        self.model = build_model(model_name, in_channels=3, out_channels=3).to(
+            self.device
+        )
+        # model_args = MODEL_BENCHMARKS.get(model_name, {})
+        # model_args.update({"in_channels": 3, "out_channels": 3})
+        # self.model = build_model(model_name, **model_args).to(self.device)
 
         self._load_weights()
 
@@ -48,7 +48,7 @@ class Predictor:
             else:
                 self.model.load_state_dict(state)
         except Exception as e:
-            #self.logger.error(f"Failed to load weights from {self.model_path}: {e}")
+            # self.logger.error(f"Failed to load weights from {self.model_path}: {e}")
             raise
 
         self.model.eval()
