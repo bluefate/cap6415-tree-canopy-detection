@@ -118,7 +118,7 @@ def extract_model_info_from_path(model_path: Path, config) -> Dict[str, str]:
         }
 
     except Exception as e:
-        p(f"Error parsing structured path {model_path}: {str(e)}", color1=c.ORANGE)
+        p(f"Error parsing structured path {model_path}", color1=c.ORANGE)  # {str(e)}
         return extract_model_info_fallback(model_path, config)
 
 
@@ -305,7 +305,11 @@ def get_model_training_info(model_path: Path) -> Dict[str, Any]:
         return info
 
     except Exception as e:
-        return {"error": str(e), "epoch": None, "val_loss": None}
+        return {
+            "error": "An Error has occured",
+            "epoch": None,
+            "val_loss": None,
+        }  #: str(e)
 
 
 def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
@@ -399,7 +403,7 @@ def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
                 all_models.append(model_data)
 
             except Exception as e:
-                p(f"  Error processing {model_file}: {str(e)}", color1=c.ORANGE)
+                p(f"  Error processing {model_file}", color1=c.ORANGE)  #: {str(e)}
                 # import traceback
                 #
                 # traceback.print_exc()
@@ -499,7 +503,7 @@ def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
 
             p(f"Using model name: {model_name} for path: {model_path}")
         except Exception as e:
-            p(f"Error extracting model info: {e}, using default: {model_name}")
+            p(f"Error extracting model info, using default: {model_name}")  #: {e}
 
         # Get image size using fallback logic
         image_size_str = (
@@ -570,7 +574,7 @@ def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
 
         p(
             "Failed to generate submission",
-            f"{e} | model={model_name} | path={model_path}",
+            f"model={model_name} | path={model_path}",  # {e} |
             color1=c.RED,
         )
 
