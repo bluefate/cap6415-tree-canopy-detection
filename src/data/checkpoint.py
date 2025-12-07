@@ -527,7 +527,7 @@ def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
             )
             return None
 
-        t(f"=== === Generating submission for: {model_path.name} === ===")
+        t(f"Generating submission for: {model_path.name}")
 
         # Build predictor and run on evaluation folder
         predictor = Predictor(
@@ -836,7 +836,7 @@ def plot_model_performance_overview(df: pd.DataFrame) -> None:
 
     # 2. Performance by Model Type
     if "Model Name" in valid_df.columns:
-        # Filter out invalid model names (e.g., pure numbers like "03", "07")
+        # Filter out invalid model names (pure numbers like "03", "07")
         valid_df_filtered = valid_df[
             valid_df["Model Name"].apply(lambda x: str(x).isalpha() or "_" in str(x))
         ]

@@ -471,14 +471,14 @@ def format_time( seconds ):
     td = datetime.timedelta(seconds = int(seconds))
     time_str = str(td)
 
-    # Handle the 'days' case (e.g., "1 day, 0:03:20" -> "1d 0h 3m 20s")
+    # Handle the 'days' case ("1 day, 0:03:20" -> "1d 0h 3m 20s")
     if 'day' in time_str:
         parts = time_str.split(', ')
         days = parts[0].replace(' days', 'd').replace(' day', 'd')
         hms = parts[1].split(':')
         return f"{days} {hms[0].zfill(1)}h {hms[1].zfill(2)}m {hms[2].zfill(2)}s"
 
-    # If less than a day, output Hh Mm Ss (e.g., "3:25:45" -> "3h 25m 45s")
+    # If less than a day, output Hh Mm Ss ("3:25:45" -> "3h 25m 45s")
     hms = time_str.split(':')
     # Use lstrip('0') to show '3h' instead of '03h' unless it's '0h'
     return f"{hms[0].lstrip('0')}h {hms[1]}m {hms[2]}s"
