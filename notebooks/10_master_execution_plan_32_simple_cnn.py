@@ -140,9 +140,11 @@ from src.utils.versioning import VersionManager
 
 
 config = Config.load(root=root)
-config.train.image_size = 32
-config.train.epochs = 2
-config.auto_adjust()
+if not "google.colab" in str(get_ipython()):
+    config.train.batch_size = 2
+    config.train.num_workers = 1
+    config.train.image_size = 32
+    config.train.epochs = 2
 # config = Config.load(Path("..").resolve() / "config_PROD.yaml")
 init_notebook(config.train.seed)
 config.show()
