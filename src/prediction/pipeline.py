@@ -48,7 +48,7 @@ class Predictor:
             else:
                 self.model.load_state_dict(state)
         except Exception as e:
-            self.logger.error(f"Failed to load weights from {self.model_path}: {e}")
+            #self.logger.error(f"Failed to load weights from {self.model_path}: {e}")
             raise
 
         self.model.eval()
