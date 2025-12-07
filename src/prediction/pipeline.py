@@ -31,17 +31,26 @@ class Predictor:
         model_args.update({"in_channels": 3, "out_channels": 3})
         self.model = build_model(model_name, **model_args).to(self.device)
 
-
         self._load_weights()
 
     def _load_weights(self):
         if not self.model_path.exists():
             raise FileNotFoundError(f"Missing model weights {self.model_path}")
         state = torch.load(self.model_path, map_location=self.device)
-        if "model" in state:
-            self.model.load_state_dict(state["model"])
-        else:
-            self.model.load_state_dict(state)
+
+        # if "model" in state:
+        #     self.model.load_state_dict(state["model"])
+        # else:
+        #     self.model.load_state_dict(state)
+        try:
+            if "model" in state:
+                self.model.load_state_dict(state["model"])
+            else:
+                self.model.load_state_dict(state)
+        except Exception as e:
+            self.logger.error(f"Failed to load weights from {self.model_path}: {e}")
+            raise
+
         self.model.eval()
         self.logger.info(f"Loaded model weights from {self.model_path}")
 
@@ -59,17 +68,6 @@ class Predictor:
         else:  # Binary
             pred = torch.sigmoid(pred).cpu().squeeze().numpy()
             return (pred > 0.5).astype(np.uint8)
-
-    def _load_weights(self):
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"Missing model weights {self.model_path}")
-        state = torch.load(self.model_path, map_location=self.device)
-        if "model" in state:
-            self.model.load_state_dict(state["model"])
-        else:
-            self.model.load_state_dict(state)
-        self.model.eval()
-        self.logger.info(f"Loaded weights: {self.model_path}")
 
     def predict_sliding_window(
         self, image: np.ndarray, tile_size: int, overlap: float = 0.25

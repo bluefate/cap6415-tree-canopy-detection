@@ -8,6 +8,7 @@ import torch
 from matplotlib import pyplot as plt
 
 from prediction.submission import export_submission
+from src.models.zoo import MODEL_BUILDERS
 from src.prediction.pipeline import Predictor
 from src.utils.helpers import c, p, t
 
@@ -432,9 +433,23 @@ def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
         # IMPORTANT
         # For submissions we always use the fallback parser
         # so we never treat "03", "10", "11" as model names.
-        model_info = extract_model_info_fallback(model_path)
+        # model_info = extract_model_info_fallback(model_path)
+        #
+        # model_name = model_info.get("model_name", "unet")
+        # image_size_str = model_info.get("image_size", "unknown")
 
-        model_name = model_info.get("model_name", "unet")
+        # Scan path to find a valid model name
+        model_name = next(
+            (
+                part.lower()
+                for part in model_path.parts
+                if part.lower() in MODEL_BUILDERS
+            ),
+            "unet",
+        )
+
+        # Get image size using fallback logic
+        model_info = extract_model_info_fallback(model_path)
         image_size_str = model_info.get("image_size", "unknown")
 
         # Convert image size to int if possible
