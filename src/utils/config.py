@@ -6,7 +6,7 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field, validator
 
-from src.utils.helpers import c, p, t
+from src.utils.helpers import p, t
 
 
 class PathsConfig(BaseModel):
@@ -142,8 +142,20 @@ class Config(BaseModel):
 
 
     def auto_adjust( self ):
-
-        auto_adjust
+        p("auto_adjust disabled")
+        # if self.train.image_size >= 512:
+        #     if self.train.batch_size > 4:
+        #         p("WARNING", f"Batch size {self.train.batch_size} too large for image size "
+        #                      f"{self.train.image_size}. "
+        #                      f"Reducing batch size to 4 to prevent OOM", color1 = c.RED)
+        #         self.train.batch_size = 4
+        #
+        #     # Also reduce workers for large images
+        #     if self.train.num_workers > 2:
+        #         p("WARNING", f"Num of Workers size {self.train.num_workers} too large for image "
+        #                      f"size {self.train.image_size}. "
+        #                      f"Reducing num_workers to 2 to prevent OOM", color1 = c.RED)
+        #         self.train.num_workers = 2
 
     @property
     def MASK_COLORS(self):
