@@ -18,7 +18,7 @@ else:
     from pathlib import Path
 
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
@@ -96,11 +96,6 @@ else:
 import os
 import sys
 
-from torch.nn import CrossEntropyLoss
-
-from src.training.running import get_version_config
-from src.training.trainer import create_splits
-
 
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
@@ -114,6 +109,11 @@ from src.models.zoo import MODEL_BUILDERS
 from src.training.engine import run_training
 from src.utils.config import Config
 from src.utils.helpers import init_notebook, p, t, c
+from src.models.zoo import build_model
+from src.prediction.validation import analyze_validation_metrics
+from torch.nn import CrossEntropyLoss
+from src.training.running import get_version_config
+from src.training.trainer import create_splits
 
 
 config = Config.load(root = root)
@@ -123,6 +123,12 @@ init_notebook(config.train.seed)
 train_dir = config.paths.train_images
 annotations_path = config.paths.annotations
 entries = load_json_annotations(annotations_path)
+
+# if not "google.colab" in str(get_ipython()):
+#     config.train.batch_size = 2
+#     config.train.num_workers = 1
+#     config.train.image_size = 32
+#     config.train.epochs = 2
 
 # Shuffle entries
 train_entries, val_entries = create_splits(entries)
@@ -189,11 +195,7 @@ trainer = run_training(
         model_name = model_name,
 )
 
-# %% [markdown]
-#
-
 # %%
-from src.models.zoo import build_model
 
 
 # Verify tensor types
@@ -222,9 +224,6 @@ p(f"Loss computed successfully: {loss.item()}", color1 = c.BLACK)
 
 
 # %%
-from src.prediction.validation import analyze_validation_metrics
-
-
 if trainer is not None:
     checkpoint_path = trainer.paths["checkpoint"]
     if checkpoint_path.exists():

@@ -17,7 +17,7 @@ else:
     from pathlib import Path
 
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
@@ -144,9 +144,9 @@ entries = load_json_annotations(annotations_path)
 #
 
 # %%
-def load_sample_with_mask( entry, image_dir ):
+def load_sample_with_mask( config, entry ):
     """Load image and its ground truth mask."""
-    img_path = image_dir / entry.image_path.name
+    img_path = config.paths.train_images / entry.image_path.name
     img = cv2.imread(str(img_path))
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
 
@@ -222,12 +222,12 @@ t("Evaluating all kernels from get_kernels()")
 
 results = []
 
-for idx, entry in enumerate(sample_entries):
+for idx, sample_entry in enumerate(sample_entries):
 
-    p(f"Processing sample {idx + 1}/{len(sample_entries)}", entry.image_path.name)
+    p(f"Processing sample {idx + 1}/{len(sample_entries)}", sample_entry.image_path.name)
 
     # Load image and mask
-    img, mask = load_sample_with_mask(entry, train_dir)
+    img, mask = load_sample_with_mask(config, sample_entry)
     gray = to_gray(img)
 
     # Evaluating all kernels from kernel bank
@@ -242,7 +242,7 @@ for idx, entry in enumerate(sample_entries):
 
             results.append(
                     {
-                        'image':  entry.image_path.name,
+                        'image':  sample_entry.image_path.name,
                         'filter': kname.lower(),
                         **metrics
                     }
@@ -273,7 +273,7 @@ for idx, entry in enumerate(sample_entries):
 
             results.append(
                     {
-                        'image':       entry.image_path.name,
+                        'image':       sample_entry.image_path.name,
                         'filter':      fname,
                         'filter_type': 'algorithmic',
                         **metrics
@@ -341,9 +341,9 @@ def validate_filter_compatibility( filter_names, available_filters ):
     return True
 
 
-for entry in sample_entries:
+for sample_entry in sample_entries:
     try:
-        img, mask = load_sample_with_mask(entry, train_dir)
+        img, mask = load_sample_with_mask(config, sample_entry)
 
         # Apply filters safely
         filters = apply_filters_safely(img, get_available_filters())
@@ -362,7 +362,7 @@ for entry in sample_entries:
 # %%
 # Visualize top 3 filters on a sample image
 sample_entry = sample_entries[0]
-img, mask = load_sample_with_mask(sample_entry, train_dir)
+img, mask = load_sample_with_mask(config, sample_entry)
 filters = apply_all_filters(img)
 
 t(f"Visual comparison: {sample_entry.image_path.name}")
@@ -431,7 +431,7 @@ p("TOP_3_FILTERS", top_3_filters)
 t("Comprehensive Filter Comparison")
 
 sample_entry = sample_entries[0]
-img, mask = load_sample_with_mask(sample_entry, train_dir)
+img, mask = load_sample_with_mask(config, sample_entry)
 filters = apply_all_filters(img)
 
 # Prepare all filters for visualization
@@ -439,9 +439,13 @@ all_filters = list(filters.keys())
 images = [img, mask] + [filters[f] for f in all_filters]
 titles_all = ['Original', 'Ground Truth'] + all_filters
 
+cmaps_all = [None, 'gray'] + ['seismic'] * len(all_filters)
+
 show_side_by_side(
         *images,
         titles = tuple(titles_all),
-        maxcolumns = 5
+        cmaps = tuple(cmaps_all),
+        maxcolumns = 3,
+        figsize = 5
 )
 

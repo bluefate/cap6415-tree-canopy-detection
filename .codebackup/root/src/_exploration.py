@@ -415,7 +415,7 @@ def class_distribution(entries):
 
 def dataset_report(config, entries, sample_count=3):
     dist = class_distribution(entries)
-    p("Class counts:", dist)
+    p("Class counts", dist)
 
     both = find_images_with_both(entries)
     p("Images containing both classes:", len(both))
@@ -423,10 +423,12 @@ def dataset_report(config, entries, sample_count=3):
     samples = entries[:sample_count]
 
     for e in samples:
-        p("Image:", e.image_path.name)
+        p()
+        t(f"Image: {e.image_path.name}")
         explore_color_overlay(config, e)
         explore_bboxes(config, e)
         explore_image(config, e)
+        p()
 
 
 def create_experiment_tracker():
@@ -879,6 +881,111 @@ def enhance_image_for_segmentation(image: np.ndarray) -> tuple:
     stages["normalized"] = norm
 
     return norm, stages
+
+
+# From C:\github\Tree-Canopy-Detection\src\exploration\evaluation.py
+import torch
+
+from src.utils.helpers import p
+
+
+def load_best_model(model_name: str, config, notebook="10", mode="rgb", filters=None):
+    """Load the best trained model with correct path structure."""
+    from src.models.zoo import build_model
+    from src.utils.versioning import VersionManager
+
+    # Construct the exact path used by training
+    model_dir = config.paths.models / notebook / model_name / mode
+
+    # Add filters to path if used
+    if filters:
+        if isinstance(filters, list):
+            filter_str = "_".join(filters)
+        else:
+            filter_str = str(filters)
+        model_dir = model_dir / filter_str
+
+    # Add image size to path
+    model_dir = model_dir / f"size_{config.train.image_size}"
+
+    p(f"Looking for models in: {model_dir}")
+
+    if not model_dir.exists():
+        print(f"Model directory doesn't exist: {model_dir}")
+        # Show what actually exists
+        base_dir = config.paths.models
+        if base_dir.exists():
+            print("Available structure:")
+            for item in base_dir.rglob("*"):
+                if item.is_dir() or item.suffix == ".pth":
+                    print(f"  {item.relative_to(base_dir)}")
+        raise RuntimeError(f"No model directory found: {model_dir}")
+
+    # Use VersionManager to find latest version
+    vm = VersionManager(model_dir)
+    version_dir = vm.find_latest()
+
+    if version_dir is None:
+        print(f"No version directories found in: {model_dir}")
+        print("Contents:")
+        for item in model_dir.glob("*"):
+            print(f"  {item.name}")
+        raise RuntimeError("No trained models found")
+
+    # Try best_model.pth first, then checkpoint.pth
+    best_path = version_dir / "best_model.pth"
+    checkpoint_path = version_dir / "checkpoint.pth"
+
+    if best_path.exists():
+        model_path = best_path
+        print(f"Loading best model from: {best_path}")
+    elif checkpoint_path.exists():
+        model_path = checkpoint_path
+        print(f"Loading checkpoint from: {checkpoint_path}")
+    else:
+        print(f"No model files found in: {version_dir}")
+        print("Available files:")
+        for item in version_dir.glob("*"):
+            print(f"  {item.name}")
+        raise RuntimeError(f"No model weights found in: {version_dir}")
+
+    # Determine input channels based on mode and filters
+    if mode == "concat" and filters:
+        in_channels = 6  # RGB + 3 filters
+    else:
+        in_channels = 3  # RGB or filtered RGB
+
+    # Build and load model
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model = build_model(model_name, in_channels=in_channels, out_channels=3)
+
+    # Load weights
+    state = torch.load(model_path, map_location=device)
+    if "model" in state:
+        model.load_state_dict(state["model"])
+    else:
+        model.load_state_dict(state)
+
+    model.to(device)
+    model.eval()
+
+    print(f"Successfully loaded model from: {model_path}")
+    return model
+
+
+def diagnose_model_directory(config):
+    """Diagnose the actual directory structure."""
+    models_dir = config.paths.models
+    print(f"Models directory: {models_dir}")
+    print(f"Exists: {models_dir.exists()}")
+
+    if models_dir.exists():
+        print("\nDirectory structure:")
+        for item in models_dir.rglob("*"):
+            if item.is_dir() or item.suffix == ".pth":
+                depth = len(item.relative_to(models_dir).parts)
+                indent = "  " * (depth - 1)
+                print(f"{indent}{item.name}")
 
 
 # From C:\github\Tree-Canopy-Detection\src\exploration\filters.py
@@ -1581,7 +1688,6 @@ from typing import Optional, Tuple
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-from PIL import Image
 
 
 def show_side_by_side(
@@ -1670,8 +1776,13 @@ def show_side_by_side(
         elif isinstance(img, np.ndarray):
             # Handle raw image arrays
             if not preserve_values:
-                # Default: clip to 0â€“255 and cast to uint8
-                img = np.clip(img, 0, 255).astype(np.uint8)
+                # Handle [0,1] range images properly
+                if img.max() <= 1.0:
+                    # Image is in [0,1] range - scale to [0,255]
+                    img = (img * 255).astype(np.uint8)
+                else:
+                    # Image is in larger range - clip to [0,255]
+                    img = np.clip(img, 0, 255).astype(np.uint8)
             # else: keep raw values (signed floats/ints)
 
         # ---------------------------------------------------
@@ -1743,16 +1854,20 @@ def show_image(
     """
     Show an image using matplotlib.
     """
-    # Convert float images safely
+    # Convert float images safely - handle [0,1] range properly
     if image.dtype != np.uint8:
-        img = np.clip(image, 0, 255).astype(np.uint8)
+        if image.max() <= 1.0:
+            # Image is in [0,1] range - convert to [0,255]
+            img = (image * 255).astype(np.uint8)
+        else:
+            # Image is in larger range - clip to [0,255]
+            img = np.clip(image, 0, 255).astype(np.uint8)
     else:
         img = image
 
     if return_img:
         return img
     else:
-
         plt.figure(figsize=(5, 5))
         if img.ndim == 2:
             plt.imshow(img, cmap=cmap)
@@ -1767,25 +1882,33 @@ def show_image(
 # using from PIL import Image to be able to show pure white and black
 def show_mask(mask: np.ndarray, title: str = "", return_img: bool = False, cmap="gray"):
     """
-    Show a binary mask as pure black and white.
-    Uses PIL to avoid Matplotlib auto scaling side effects.
+    Show a mask with proper handling of class indices.
     """
-
-    # normalize mask to 0 and 255
+    # Handle multi-class masks (class indices 0,1,2)
     if mask.dtype != np.uint8:
-        # convert float or int mask to binary (0 or 255)
-        mask_img = (mask > 0.5).astype(np.uint8) * 255
+        if mask.max() <= 2:
+            # Multi-class mask with indices [0,1,2] - scale to visible range
+            mask_img = (mask * 127).astype(np.uint8)  # 0->0, 1->127, 2->254
+        else:
+            # Binary mask [0,1] - convert to [0,255]
+            mask_img = (mask > 0.5).astype(np.uint8) * 255
     else:
-        if mask.max() <= 1:
+        if mask.max() <= 2:
+            # Already uint8 with class indices [0,1,2]
+            mask_img = mask * 127
+        elif mask.max() <= 1:
+            # Binary mask [0,1] as uint8
             mask_img = mask * 255
         else:
-            # if mask is uint8 but noisy, re-binarize
-            mask_img = (mask > 127).astype(np.uint8) * 255
+            # Already in proper range
+            mask_img = mask
 
     if return_img:
         return mask_img
 
     # use PIL for exact grayscale
+    from PIL import Image
+
     img = Image.fromarray(mask_img, mode="L")
 
     plt.figure(figsize=(5, 5))
@@ -1806,31 +1929,29 @@ def show_overlay(
     """
     Show an image with a red mask overlay.
     """
+    # Convert image to uint8
     if image.max() <= 1.0:
         img_u8 = (image * 255).astype(np.uint8)
     else:
         img_u8 = image.astype(np.uint8)
 
-    mask_u8 = (mask * 255).astype(np.uint8)
+    # Handle mask properly - don't multiply class indices by 255
+    if mask.max() <= 2:
+        # Multi-class mask [0,1,2] - convert to binary [0,1] then to [0,255]
+        mask_binary = (mask > 0).astype(np.float32)  # Any class > 0 = tree
+        mask_u8 = (mask_binary * 255).astype(np.uint8)
+    else:
+        # Already processed mask
+        mask_u8 = mask.astype(np.uint8)
+
     mask_rgb = np.zeros_like(img_u8)
-    mask_rgb[:, :, 0] = mask_u8
+    mask_rgb[:, :, 0] = mask_u8  # Red channel for trees
 
     overlay = cv2.addWeighted(img_u8, 1 - alpha, mask_rgb, alpha, 0)
 
     if return_img:
         return overlay
     else:
-        if image.max() <= 1.0:
-            img_u8 = (image * 255).astype(np.uint8)
-        else:
-            img_u8 = image.astype(np.uint8)
-
-        mask_u8 = (mask * 255).astype(np.uint8)
-        mask_rgb = np.zeros_like(img_u8)
-        mask_rgb[:, :, 0] = mask_u8
-
-        overlay = cv2.addWeighted(img_u8, 1 - alpha, mask_rgb, alpha, 0)
-
         plt.figure(figsize=(5, 5))
         plt.imshow(overlay)
         if title:

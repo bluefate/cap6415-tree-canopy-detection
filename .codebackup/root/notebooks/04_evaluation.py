@@ -18,7 +18,7 @@ else:
     from pathlib import Path
 
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
@@ -114,6 +114,7 @@ from src.models.zoo import MODEL_BUILDERS
 from src.training.metrics import compute_metrics
 from src.utils.config import Config
 from src.utils.helpers import c, init_notebook, p, t
+from src.exploration.evaluation import diagnose_model_directory, load_best_model
 
 
 config = Config.load(root = root)
@@ -125,6 +126,11 @@ mask_dir = config.paths.train_masks
 annotations_path = config.paths.annotations
 entries = load_json_annotations(annotations_path)
 
+# if not "google.colab" in str(get_ipython()):
+#     config.train.batch_size = 2
+#     config.train.num_workers = 1
+#     config.train.image_size = 32
+#     config.train.epochs = 2
 
 # %%
 p("Models", MODEL_BUILDERS)
@@ -142,63 +148,15 @@ p("Image Size", config.train.image_size)
 val_tf = get_val_augmentations(config.train.image_size)
 dataset = ImageMaskDataset(entries, train_dir, transform = val_tf)
 
-
 # %% [markdown]
 # #### Loading Model
 
 # %%
-def load_best_model( model_name: str, config ):
-    from src.models.zoo import build_model
-    from src.utils.versioning import VersionManager
+diagnose_model_directory(config)
 
-    t(model_name)
-
-    # Check for structured path first (from notebook 10)
-    structured_paths = [
-        config.paths.models / model_name / "rgb",
-        config.paths.models / "notebook_eval" / model_name / "rgb"
-    ]
-
-    version_dir = None
-    for path in structured_paths:
-        if path.exists():
-            vm = VersionManager(path)
-            version_dir = vm.find_latest()
-            if version_dir is not None:
-                break
-
-    # Fallback to general search
-    if version_dir is None:
-        vm = VersionManager(config.paths.models)
-        version_dir = vm.find_latest()
-
-    if version_dir is None:
-        raise RuntimeError("No trained models found")
-
-    best_path = version_dir / "best_model.pth"
-    p("Using model version", version_dir.name)
-    p("Model path", str(best_path))
-
-    # Define device BEFORE building model
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    p("Using device", device)
-
-    # Build model with correct device
-    model = build_model(model_name, in_channels = 3, out_channels = 3).to(device)
-
-    state = torch.load(best_path, map_location = device)
-    if "model" in state:
-        model.load_state_dict(state["model"])
-    else:
-        model.load_state_dict(state)
-
-    model.eval()
-    return model
-
-
-model = load_best_model("simple_cnn", config)
-
-
+# %%
+# Using output from notebook 3
+model = load_best_model("simple_cnn", config, notebook = "03", mode = "rgb")
 
 # %% [markdown]
 # #### Batch evaluation
@@ -372,7 +330,7 @@ for _ in range(5):
     show_side_by_side(
             img_display, mask_rgb, pred_rgb, overlay,
             titles = titles,
-            cmaps = [None, None, None, None]  # Fixed cmaps - no "gray" for RGB images
+            cmaps = [None, None, None, None]
     )
 
 # %%

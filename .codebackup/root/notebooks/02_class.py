@@ -3,6 +3,7 @@
 # ### Purpose: This notebook provides utilities for exploring masks, overlays, classes, and bounding boxes
 
 # %%
+import random
 
 from IPython import get_ipython
 
@@ -17,7 +18,7 @@ else:
     from pathlib import Path
 
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
@@ -142,18 +143,29 @@ p("Unique annotation classes", unique_classes)
 
 
 # %%
-entry = entries[config.train.seed]
+sample_entries = random.sample(entries, config.train.seed)
+entry = sample_entries[0]
 p("Classes found in entry", count_classes(entry))
 # p("Number of classes found", class_distribution(entry))
 
 # %%
 
-
+t("show_single_class")
 show_single_class(config, entry, "individual_tree")
+
+t("show_single_class")
 show_single_class(config, entry, "group_of_trees")
+
+t("show_all_classes")
 show_all_classes(config, entry)
+
+t("show_per_class")
 show_per_class(config, entry)
+
+t("show_overlay_all")
 show_overlay_all(config, entry)
+
+t("show_overlay_by_class")
 show_overlay_by_class(config, entry)
 
 
@@ -174,10 +186,10 @@ explore_color_overlay(config, entry)
 # #### Bounding Box Exploration
 
 # %%
-explore_bboxes(entry, config.paths.train_images)
+explore_bboxes(config, entry)
 
 # %% [markdown]
 # #### Dataset-wide Report
 
 # %%
-dataset_report(config, entries)
+dataset_report(config, sample_entries)

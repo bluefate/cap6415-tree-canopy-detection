@@ -18,7 +18,7 @@ else:
     from pathlib import Path
 
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
@@ -169,7 +169,7 @@ max_per_row = 5
 n_rows = int(np.ceil(len(cmaps) / max_per_row))
 n_cols = min(len(cmaps), max_per_row)
 
-fig, axes = plt.subplots(n_rows, n_cols, figsize = (2 * n_cols, 2 * n_rows))
+fig, axes = plt.subplots(n_rows, n_cols, figsize = (4 * n_cols, 4 * n_rows))
 fig.suptitle("FFT magnitude", fontsize = 18, weight = "bold")
 
 axes = axes.flatten()
@@ -183,7 +183,7 @@ for i, cmap in enumerate(cmaps):
 for j in range(len(cmaps), len(axes)):
     axes[j].axis("off")
 
-plt.tight_layout()
+plt.tight_layout(rect = [0, 0.03, 1, 0.94])
 plt.show()
 
 

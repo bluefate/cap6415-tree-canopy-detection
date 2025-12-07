@@ -17,7 +17,7 @@ else:
     from pathlib import Path
 
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
@@ -119,6 +119,11 @@ train_dir = config.paths.train_images
 annotations_path = config.paths.annotations
 entries = load_json_annotations(annotations_path)
 
+# if not "google.colab" in str(get_ipython()):
+#     config.train.batch_size = 2
+#     config.train.num_workers = 1
+#     config.train.image_size = 32
+#     config.train.epochs = 2
 
 # %% [markdown]
 # #### Load validation entries

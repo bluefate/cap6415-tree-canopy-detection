@@ -23,7 +23,7 @@ else:
     from pathlib import Path
 
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
@@ -125,6 +125,12 @@ from src.utils.helpers import estimate_runtime_by_epcoh, init_notebook, p, t, c
 config = Config.load(root = root)
 init_notebook(config.train.seed)
 
+# if not "google.colab" in str(get_ipython()):
+#     config.train.batch_size = 2
+#     config.train.num_workers = 1
+#     config.train.image_size = 32
+#     config.train.epochs = 2
+
 # Load data
 entries = load_json_annotations(config.paths.annotations)
 p("Total images loaded", len(entries), color1 = c.GREEN)
@@ -157,10 +163,11 @@ p("  Sharpening: sharpen_basic, edge_enhance, high_pass")
 
 # %% [markdown]
 # ### 3. Define Experiment Matrix
-# #
-# We'll test:
+#
 # - **Models**: SimpleCNN (fast), UNet (standard), YOLOv8s (advanced)
+#
 # - **Input modes**: RGB (baseline), Filtered (3 filter channels)
+#
 # - **Filter sets**: Edge detection, smoothing, enhancement, mixed
 #
 
@@ -197,11 +204,6 @@ if not all_valid:
 
 # Define models to test
 models_to_test = ["simple_cnn", "unet", "yolov8s"]
-
-# IMPORTANT NOTE: The current run_training() function hardcodes 3-channel input.
-# This means we can only test RGB mode effectively with the existing infrastructure.
-# Filtered mode (3 filter channels) will be skipped for now unless filters are applied
-# as preprocessing that still results in 3-channel outputs.
 
 # Generate all experiments: (model, mode, filters)
 experiments = []
@@ -253,6 +255,20 @@ best_model_tracker = {
 train_tf = get_train_augmentations(config.train.image_size, mode = mode)
 val_tf = get_val_augmentations(config.train.image_size, mode = mode)
 
+# Determine input channels once using the base dataset
+sample_ds = EnhancedImageMaskDataset(
+        train_entries,
+        config.paths.train_images,
+        mode = "base",
+        filter_names = None,
+        transform = val_tf,
+)
+sample_img, _ = sample_ds[0]
+in_channels_main = sample_img.shape[0]
+p("Detected input channels", in_channels_main, color1 = c.CYAN)
+
+# Main experiment loop
+
 for i, (model_name, mode, filters) in enumerate(experiments, 1):
     p("\n" + "=" * 80)
     t(f"Experiment {i}/{len(experiments)}")
@@ -267,7 +283,7 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
 
 
         key, version_root, exp_config, best_model_path, checkpoint_path_check, best_model_exists = get_version_config(
-                config, filters, "11", model_name, mode, in_channels, best_model_tracker, i, experiments
+                config, filters, "11", model_name, mode, in_channels_main, best_model_tracker, i, experiments
         )
         if best_model_exists:
             continue
@@ -294,8 +310,6 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
         in_channels = sample_img.shape[0]
         p("Input channels", in_channels)
 
-        # NOTE: run_training always builds models with 3 input channels
-        # So filtered mode (3 filter channels) works, but concat mode (6 channels) won't
         if mode == "concat":
             p(
                     "⚠ Warning",
@@ -304,7 +318,7 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
             )
             continue
 
-        # Create dataloaders
+        # Create dataloadersc
         train_loader = DataLoader(
                 train_ds, batch_size = config.train.batch_size, shuffle = True, num_workers = 2
         )
@@ -318,13 +332,11 @@ for i, (model_name, mode, filters) in enumerate(experiments, 1):
                 exp_config,
                 train_loader,
                 val_loader,
-                config.paths.models,
                 version_root = version_root,
                 model_name = model_name,
+                in_channels = in_channels,
         )
 
-        # Extract results
-        version_info = trainer.version_manager.version_info
         history = trainer.history
 
         result = {
@@ -512,9 +524,8 @@ if len(results) > 0:
 
 
 # %% [markdown]
-# ### 9. Visualization (Optional)
-# #
-# Create comparison plots if you want visual analysis.
+# ### 9. Visualization
+#
 #
 
 # %%
@@ -579,42 +590,4 @@ if len(df_success) > 5:
     p("✓ Saved plot", str(plot_path), color1 = c.GREEN)
 
     plt.show()
-
-
-# %% [markdown]
-# ### 10. Recommendations
-# #
-# Based on the results, here's what to do next:
-#
-
-# %%
-if len(df_success) > 0:
-    t("Recommendations")
-
-    best = df_success.iloc[0]
-
-    p("=" * 80)
-    p("NEXT STEPS")
-    p("=" * 80)
-    p(f"1. Use the best model: {best['model']} with {best['mode']} mode")
-    p(f"   Filters: {best['filters']}")
-    p(f"   Achieved Val Loss: {best['best_val_loss']:.6f}")
-    p(f"2. Load the model from: {best['version_path']}")
-    p(f"3. Run predictions using notebook 05_prediction.py")
-    p(f"4. Generate submission file using notebook 07_submission.py")
-
-    # Additional insights
-    if best["mode"] == "filtered":
-        p(f"INSIGHT: Filter enhancement improved performance!")
-        p(f"   Consider using these filters: {best['filters']}")
-    else:
-        p(f"INSIGHT: RGB baseline performed best.")
-        p(f"   Filters didn't improve performance in this case.")
-
-    # Check convergence
-    if best["best_epoch"] < best["total_epochs"] * 0.5:
-        p(f"⚡ Model converged quickly (epoch {best['best_epoch']}/{best['total_epochs']})")
-        p(f"   Could reduce epochs for faster training in future runs.")
-
-    p("=" * 80)
 

@@ -17,7 +17,7 @@ else:
     from pathlib import Path
 
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
@@ -146,42 +146,62 @@ for _ in range(1):
 
     img_t, mask_t = dataset[idx]
 
-    img = img_t.permute(1, 2, 0).numpy()
+    # Handle normalized images properly for display
+    if img_t.min() < 0:  # ImageNet normalized
+        mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+        std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+        img_denorm = torch.clamp(img_t * std + mean, 0.0, 1.0)
+        img = img_denorm.permute(1, 2, 0).numpy()
+    else:  # Already in [0,1] range
+        img = img_t.permute(1, 2, 0).numpy()
     mask = mask_t.squeeze().numpy()
-
-    titles = [f"Image {idx}", f"Mask", "Overlay"]
 
     show_image(img, f"Sample {idx}")
     show_mask(mask, "Mask")
     show_overlay(img, mask, 0.4, "Overlay")
 
+    t("Checking show_side_by_side()")
+    titles = [f"Image {idx}", f"Mask", "Overlay"]
+
+    img_t = show_image(img, return_img = True)
+    mask = show_mask(mask, return_img = True)
+    overlay = show_overlay(img, mask, return_img = True)
+
+    show_side_by_side(img, mask, overlay, titles = titles)
+
 
 # %%
-for _ in range(3):
+for _ in range(5):
     idx = random.randint(0, len(dataset) - 1)
     t(f"Image {idx}")
 
     img_t, mask_t = dataset[idx]
 
-    img = img_t.permute(1, 2, 0).numpy()
+    # Handle normalized images properly for display
+    if img_t.min() < 0:  # ImageNet normalized
+        mean = torch.tensor([0.485, 0.456, 0.406]).view(3, 1, 1)
+        std = torch.tensor([0.229, 0.224, 0.225]).view(3, 1, 1)
+        img_denorm = torch.clamp(img_t * std + mean, 0.0, 1.0)
+        img = img_denorm.permute(1, 2, 0).numpy()
+    else:  # Already in [0,1] range
+        img = img_t.permute(1, 2, 0).numpy()
     mask = mask_t.squeeze().numpy()
 
-    titles = [f"Image {idx}", f"Mask", "Overlay"]
+    titles = [f"Image {idx}", "Mask", "Overlay"]
 
+    # Convert image to uint8 for cv2 operations
     if img.max() <= 1.0:
         base = (img * 255).astype(np.uint8)
     else:
         base = img.astype(np.uint8)
 
-    mask_u8 = (mask * 255).astype(np.uint8)
+    # Handle mask properly for overlay
+    mask_binary = (mask > 0).astype(np.uint8)  # Convert class indices to binary
     mask_rgb = np.zeros_like(base)
-    mask_rgb[:, :, 0] = mask_u8
+    mask_rgb[:, :, 0] = mask_binary * 255  # Red channel for trees
     overlay = cv2.addWeighted(base, 0.6, mask_rgb, 0.4, 0)
 
     show_side_by_side(img, mask, overlay, titles = titles)
-
-
-
 
 # %% [markdown]
 # #### Testing forward pass with a small model

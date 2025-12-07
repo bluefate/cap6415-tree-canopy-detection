@@ -149,7 +149,7 @@ from src.utils.versioning import VersionManager
 
 
 config = Config.load(root = root)
-config.train.image_size = 512
+config.train.image_size = 1024
 #config.auto_adjust()
 # config = Config.load(Path("..").resolve() / "config_PROD.yaml")
 init_notebook(config.train.seed)

@@ -17,7 +17,7 @@ else:
     from pathlib import Path
 
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
@@ -94,6 +94,7 @@ else:
 # %%
 import os
 import sys
+import torch
 
 
 sys.path.append(os.path.abspath(".."))
@@ -106,12 +107,18 @@ from src.prediction.submission import export_submission
 from src.utils.config import Config
 from src.utils.helpers import c, init_notebook, p
 from src.utils.versioning import VersionManager
+from src.exploration.evaluation import load_best_model
 
 
 config = Config.load(root = root)
 
 init_notebook(config.train.seed)
 
+# if not "google.colab" in str(get_ipython()):
+#     config.train.batch_size = 2
+#     config.train.num_workers = 1
+#     config.train.image_size = 32
+#     config.train.epochs = 2
 
 # %% [markdown]
 # #### Select model version
@@ -127,34 +134,22 @@ p("Image Size", config.train.image_size)
 # %%
 model_name = "simple_cnn"
 
-# Search for models in structured paths first
-structured_paths = [
-    config.paths.models / model_name / "rgb",
-    config.paths.models / "notebook_eval" / model_name / "rgb",
-    config.paths.models / model_name / "rgb" / f"size_{config.train.image_size}",
-]
+try:
+    model = load_best_model(model_name, config, notebook = "03", mode = "rgb")
 
-version_dir = None
-vm = None
+    # Save model temporarily for Predictor class
+    temp_model_path = config.paths.models / "temp_best_model.pth"
+    torch.save({ "model": model.state_dict() }, temp_model_path)
 
-# Try structured paths first
-for path in structured_paths:
-    if path.exists():
-        p(f"Checking path: {path}", color1 = c.CYAN)
-        vm = VersionManager(path)
-        version_dir = vm.find_latest()
-        if version_dir is not None:
-            p(f"Found model in: {path}", color1 = c.GREEN)
-            break
+    predictor = Predictor(
+            model_path = temp_model_path,
+            model_name = model_name,
+            image_size = config.train.image_size,
+    )
 
-# Fallback to general search
-if version_dir is None:
-    p("Structured paths not found, searching generally...", color1 = c.ORANGE)
-    vm = VersionManager(config.paths.models)
-    version_dir = vm.find_latest()
+    p(f"Successfully created predictor with {model_name}", color1 = c.GREEN)
 
-# Add null check for missing models
-if version_dir is None:
+except RuntimeError as e:
     p("No trained models found!", color1 = c.RED, bold = True)
     p("Available directories:", color1 = c.ORANGE)
     models_dir = config.paths.models
@@ -163,42 +158,10 @@ if version_dir is None:
         for item in models_dir.iterdir():
             if item.is_dir():
                 p("  ", item.name)
-                # Check subdirectories
-                for subitem in item.iterdir():
-                    if subitem.is_dir():
-                        p("    ", subitem.name)
-                        # Check for version directories
-                        for subsubitem in subitem.iterdir():
-                            if subsubitem.is_dir() and subsubitem.name.startswith('v'):
-                                p("      ", subsubitem.name)
     else:
         p("Models directory doesn't exist:", models_dir)
 
-    p("\nTo fix this issue:")
-    p("1. Run notebook 03 (training) first, OR")
-    p("2. Run notebook 10 with a simple experiment like:", color1 = c.CYAN)
-    p("   experiments = [('simple_cnn', 'rgb', None)]", color1 = c.CYAN)
-
-    raise RuntimeError("No trained models found. Please run training first.")
-
-p(f"Using model from: {version_dir}", color1 = c.GREEN)
-
-model_path = version_dir / "best_model.pth"
-
-# Check if model file exists
-if not model_path.exists():
-    checkpoint_path = version_dir / "checkpoint.pth"
-    if checkpoint_path.exists():
-        p("Using checkpoint instead of best_model", color1 = c.ORANGE)
-        model_path = checkpoint_path
-    else:
-        raise RuntimeError(f"No model weights found in {version_dir}")
-
-predictor = Predictor(
-        model_path = model_path,
-        model_name = model_name,
-        image_size = config.train.image_size,
-)
+    raise e
 
 # %% [markdown]
 # #### Run on evaluation folder

@@ -25,7 +25,7 @@ else:
     from pathlib import Path
 
 
-    root = Path("/content/CAP6415_F25_project-Tree-Canopy-Detection")
+    root = Path("/content/drive/MyDrive/TreeCanopyProject")
 
     # noinspection PyUnresolvedReferences
     from google.colab import drive
@@ -102,7 +102,7 @@ else:
 # %%
 import sys
 from pathlib import Path
-
+import os
 
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
@@ -139,7 +139,7 @@ from src.utils.versioning import VersionManager
 
 config = Config.load(root = root)
 config.train.image_size = 64
-config.auto_adjust()
+# config.auto_adjust()
 #config = Config.load(Path("..").resolve() / "config_PROD.yaml")
 init_notebook(config.train.seed)
 config.show()
