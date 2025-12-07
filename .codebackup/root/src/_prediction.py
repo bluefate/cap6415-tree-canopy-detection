@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import torch
 
-from src.models.zoo import build_model
+from src.models.zoo import build_model, MODEL_BENCHMARKS
 from src.utils.logging import Logger
 
 
@@ -25,19 +25,33 @@ class Predictor:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger = Logger()
 
-        self.model = build_model(model_name, in_channels=3, out_channels=3).to(
-            self.device
-        )
+        # self.model = build_model(model_name, in_channels=3, out_channels=3).to(
+        #     self.device
+        # )
+        model_args = MODEL_BENCHMARKS.get(model_name, {})
+        model_args.update({"in_channels": 3, "out_channels": 3})
+        self.model = build_model(model_name, **model_args).to(self.device)
+
         self._load_weights()
 
     def _load_weights(self):
         if not self.model_path.exists():
             raise FileNotFoundError(f"Missing model weights {self.model_path}")
         state = torch.load(self.model_path, map_location=self.device)
-        if "model" in state:
-            self.model.load_state_dict(state["model"])
-        else:
-            self.model.load_state_dict(state)
+
+        # if "model" in state:
+        #     self.model.load_state_dict(state["model"])
+        # else:
+        #     self.model.load_state_dict(state)
+        try:
+            if "model" in state:
+                self.model.load_state_dict(state["model"])
+            else:
+                self.model.load_state_dict(state)
+        except Exception as e:
+            self.logger.error(f"Failed to load weights from {self.model_path}: {e}")
+            raise
+
         self.model.eval()
         self.logger.info(f"Loaded model weights from {self.model_path}")
 
@@ -55,17 +69,6 @@ class Predictor:
         else:  # Binary
             pred = torch.sigmoid(pred).cpu().squeeze().numpy()
             return (pred > 0.5).astype(np.uint8)
-
-    def _load_weights(self):
-        if not self.model_path.exists():
-            raise FileNotFoundError(f"Missing model weights {self.model_path}")
-        state = torch.load(self.model_path, map_location=self.device)
-        if "model" in state:
-            self.model.load_state_dict(state["model"])
-        else:
-            self.model.load_state_dict(state)
-        self.model.eval()
-        self.logger.info(f"Loaded weights: {self.model_path}")
 
     def predict_sliding_window(
         self, image: np.ndarray, tile_size: int, overlap: float = 0.25
@@ -358,10 +361,7 @@ def mask_to_polygons_multiclass(
     return annotations
 
 
-def export_submission(
-    results: List[Dict[str, Any]],
-    output_path: Path,
-) -> None:
+def export_submission(results: List[Dict[str, Any]], output_path: Path, config) -> None:
     """
     Convert prediction results into expected submission JSON structure.
     Uses sample_answer.json as template to preserve cm_resolution and scene_type.
@@ -370,12 +370,13 @@ def export_submission(
     cm_resolution and scene_type come from the template.
     """
     # Load template - use raw string (r"...") for Windows paths
-    template_path = Path(
-        "/content/drive/MyDrive/TreeCanopyProject/data/data1/sample_answer.json"
-    )
+    # template_path = Path(
+    #     "/content/drive/MyDrive/TreeCanopyProject/data/data1/sample_answer.json"
+    # )
     # template_path = Path(
     #     r"C:\github\Tree-Canopy-Detection\src\data\data1\sample_answer.json"
     # )
+    template_path = config.paths.template
 
     if not template_path.exists():
         raise FileNotFoundError(f"Template not found: {template_path}")

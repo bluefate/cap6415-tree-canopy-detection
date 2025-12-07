@@ -935,7 +935,7 @@ def plot_model_timeline(df: pd.DataFrame) -> None:
     plt.show()
 
 
-def fix_models_list_before_analysis(models_list):
+def fix_models_list_before_analysis(models_list, config):
     """
     Call this function to fix model names in your models_list before creating visualizations.
     """
@@ -947,7 +947,7 @@ def fix_models_list_before_analysis(models_list):
             file_path = model.get("file_path", "")
 
             # Use our fixed extraction function
-            fixed_info = extract_model_info_fallback(Path(file_path))
+            fixed_info = extract_model_info_fallback(Path(file_path), config)
             model["model_name"] = fixed_info["model_name"]
 
             # Also update other fields that might be wrong
@@ -998,7 +998,7 @@ def main_model_tracking_pipeline(config):
     # Step 6: Create visualizations
     p()
     t("Step 6: Creating Performance Visualizations")
-    models_list = fix_models_list_before_analysis(models_list)
+    models_list = fix_models_list_before_analysis(models_list, config)
     plot_model_performance_overview(df_summary)
     # plot_model_timeline(df_summary)
 

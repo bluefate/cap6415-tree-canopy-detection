@@ -196,19 +196,19 @@ def get_val_augmentations(image_size: int = 256, mode: str = "rgb"):
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 import torch
 from matplotlib import pyplot as plt
 
-from src.data.augmentations import get_val_augmentations
+from prediction.submission import export_submission
+from src.models.zoo import MODEL_BUILDERS
 from src.prediction.pipeline import Predictor
-from src.prediction.submission import export_submission
 from src.utils.helpers import c, p, t
 
 
-def find_checkpoint_directories(base_path: Path) -> List[Path]:
+def find_checkpoint_directories(base_path: Path, config) -> List[Path]:
     """
     Find all checkpoint directories (checkpoints, checkpoints_copy, checkpoints2, etc.)
     """
@@ -224,7 +224,8 @@ def find_checkpoint_directories(base_path: Path) -> List[Path]:
         checkpoint_dirs.append(checkpoints_dir)
 
     # Look for variations like checkpoints_copy, checkpoints2, etc.
-    for item in base_path.iterdir():
+    root = config.paths.root
+    for item in root.iterdir():
         if item.is_dir():
             item_name_lower = item.name.lower()
             # Check for checkpoint variations OR numbered directories (like 03, 07, 10, 11)
@@ -246,11 +247,11 @@ def find_checkpoint_directories(base_path: Path) -> List[Path]:
 
     p(f"Searching for checkpoint directories in: {base_path}")
     if checkpoint_dirs:
-        p(f"Found checkpoint directories:")
+        p(f"Found checkpoint directories")
         for dir_path in checkpoint_dirs:
             p(f"  {dir_path.name}")
     else:
-        p(f"No checkpoint directories found. Available directories:")
+        p(f"No checkpoint directories found. Available directories")
         for item in base_path.iterdir():
             if item.is_dir():
                 p(f"  {item.name}")
@@ -258,7 +259,7 @@ def find_checkpoint_directories(base_path: Path) -> List[Path]:
     return sorted(checkpoint_dirs)
 
 
-def extract_model_info_from_path(model_path: Path) -> Dict[str, str]:
+def extract_model_info_from_path(model_path: Path, config) -> Dict[str, str]:
     """
     Extract model information from the structured file path.
     """
@@ -277,7 +278,7 @@ def extract_model_info_from_path(model_path: Path) -> Dict[str, str]:
             f"Warning: Could not find checkpoint directory in path: {model_path}",
             color1=c.ORANGE,
         )
-        return extract_model_info_fallback(model_path)
+        return extract_model_info_fallback(model_path, config)
 
     # Extract information from structured path
     try:
@@ -285,7 +286,7 @@ def extract_model_info_from_path(model_path: Path) -> Dict[str, str]:
         remaining_parts = parts[checkpoint_idx + 1 :]
 
         if len(remaining_parts) < 3:  # Need at least model/mode/version
-            return extract_model_info_fallback(model_path)
+            return extract_model_info_fallback(model_path, config)
 
         model_name = remaining_parts[0]
         mode = remaining_parts[1]
@@ -297,7 +298,7 @@ def extract_model_info_from_path(model_path: Path) -> Dict[str, str]:
         else:
             # No size directory, extract from other clues
             version = remaining_parts[2]
-            image_size = extract_size_from_context(model_path)
+            image_size = extract_size_from_context(model_path, config)
 
         # Extract filters from path if present
         filters = extract_filters_from_path(model_path)
@@ -313,10 +314,10 @@ def extract_model_info_from_path(model_path: Path) -> Dict[str, str]:
 
     except Exception as e:
         p(f"Error parsing structured path {model_path}: {str(e)}", color1=c.ORANGE)
-        return extract_model_info_fallback(model_path)
+        return extract_model_info_fallback(model_path, config)
 
 
-def extract_model_info_fallback(model_path: Path) -> Dict[str, str]:
+def extract_model_info_fallback(model_path: Path, config) -> Dict[str, str]:
     """
     Fallback method to extract model information when structured path parsing fails.
     """
@@ -327,16 +328,56 @@ def extract_model_info_fallback(model_path: Path) -> Dict[str, str]:
     model_keywords = [
         "simple_cnn",
         "unet",
+        "smp_unet",
+        "smp_fpn",
+        "smp_linknet",
+        "smp_deeplabv3",
+        "smp_deeplabv3plus",
+        "yolov8n",
         "yolov8s",
         "yolov8m",
         "yolov8l",
         "resnet",
         "efficientnet",
+        "segformer",
     ]
-    for keyword in model_keywords:
+
+    # Method 1: Direct substring search
+    for keyword in sorted(model_keywords, key=len, reverse=True):
         if keyword in path_str:
             model_name = keyword
             break
+
+    # Method 2: Check path parts if Method 1 failed
+    if model_name == "unknown":
+        parts = model_path.parts
+        for part in parts:
+            part_lower = part.lower()
+            if part_lower in model_keywords:
+                model_name = part_lower
+                break
+
+    # Method 3: Pattern-based detection for edge cases
+    if model_name == "unknown":
+        if "smp_unet" in path_str or ("smp" in path_str and "unet" in path_str):
+            model_name = "smp_unet"
+        elif "simple_cnn" in path_str:
+            model_name = "simple_cnn"
+        elif "/unet/" in path_str and "smp" not in path_str:
+            model_name = "unet"
+        elif "yolov8" in path_str:
+            if "yolov8n" in path_str:
+                model_name = "yolov8n"
+            elif "yolov8s" in path_str:
+                model_name = "yolov8s"
+            elif "yolov8m" in path_str:
+                model_name = "yolov8m"
+            elif "yolov8l" in path_str:
+                model_name = "yolov8l"
+
+    # Fallback - but avoid "unknown"
+    if model_name == "unknown":
+        model_name = "smp_unet"
 
     # Extract mode/input type
     mode = "rgb"
@@ -348,13 +389,13 @@ def extract_model_info_fallback(model_path: Path) -> Dict[str, str]:
         mode = "grayscale"
 
     # Extract image size
-    image_size = extract_size_from_context(model_path)
+    image_size = extract_size_from_context(model_path, config)
 
     # Extract version info
     parts = model_path.parts
     version_info = []
     for part in parts:
-        if part.startswith("v") and len(part) <= 6:  # Like v1, v2, v10, etc.
+        if part.startswith("v") and len(part) <= 6:
             version_info.append(part)
         elif "version" in part.lower():
             version_info.append(part)
@@ -374,33 +415,40 @@ def extract_model_info_fallback(model_path: Path) -> Dict[str, str]:
     }
 
 
-def extract_size_from_context(model_path: Path) -> str:
+def extract_size_from_context(model_path: Path, config) -> str:
     """
     Extract image size from path context or filename.
     """
     path_str = str(model_path)
+    image_size = "unknown"
 
     # Look for size_XXX pattern
     size_match = re.search(r"size_(\d+)", path_str)
     if size_match:
-        return size_match.group(1)
+        image_size = size_match.group(1)
+    else:
+        # Look for other patterns
+        size_patterns = [
+            r"(\d+)(?:x\d+)?(?:_rgb|_filtered|_concat)",
+            r"(\d+)_rgb",
+            r"(\d+)_filtered",
+            r"(\d+)_concat",
+            r"plan_(\d+)_",
+            r"size(\d+)",
+        ]
+        for pattern in size_patterns:
+            match = re.search(pattern, path_str)
+            if match:
+                image_size = match.group(1)
+                break
 
-    # Look for XXX pattern in various contexts
-    size_patterns = [
-        r"(\d+)(?:x\d+)?(?:_rgb|_filtered|_concat)",
-        r"(\d+)_rgb",
-        r"(\d+)_filtered",
-        r"(\d+)_concat",
-        r"plan_(\d+)_",
-        r"size(\d+)",
-    ]
+    if image_size == "unknown":
+        try:
+            image_size = str(config.train.image_size)
+        except:
+            image_size = "512"
 
-    for pattern in size_patterns:
-        match = re.search(pattern, path_str)
-        if match:
-            return match.group(1)
-
-    return "unknown"
+    return image_size
 
 
 def extract_filters_from_path(model_path: Path) -> str:
@@ -455,14 +503,14 @@ def get_model_training_info(model_path: Path) -> Dict[str, Any]:
         return {"error": str(e), "epoch": None, "val_loss": None}
 
 
-def scan_all_models(base_path: Path) -> List[Dict[str, Any]]:
+def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
     """
     Scan all checkpoint directories and collect model information.
     """
     p("Base_path", base_path)
-    checkpoint_dirs = find_checkpoint_directories(base_path)
-    all_models = []
-    p("Checkpoint directories found:", checkpoint_dirs)
+    checkpoint_dirs = find_checkpoint_directories(base_path, config)
+    all_models: List[Dict[str, Any]] = []
+    p("Checkpoint directories found", checkpoint_dirs)
 
     t(f"Scanning Checkpoint Directories")
     p(f"Found {len(checkpoint_dirs)} checkpoint directories")
@@ -476,7 +524,7 @@ def scan_all_models(base_path: Path) -> List[Dict[str, Any]]:
 
         # Show directory structure for first few files
         if len(model_files) > 0:
-            p(f"  Sample paths:")
+            p(f"  Sample paths")
             for model_file in model_files[:3]:
                 rel_path = model_file.relative_to(checkpoint_dir)
                 p(f"    {rel_path}")
@@ -486,37 +534,59 @@ def scan_all_models(base_path: Path) -> List[Dict[str, Any]]:
         for model_file in model_files:
             try:
                 # Extract basic info using improved parser
-                model_info = extract_model_info_from_path(model_file)
+                model_info = extract_model_info_from_path(model_file, config)
 
                 # Show parsing result for first few models
                 if len(all_models) < 3:
                     p(
-                        f"  Parsed {model_file.name}: {model_info['model_name']}/{model_info['mode']}/{model_info['image_size']}/{model_info['version']}",
+                        f"  Parsed {model_file.name}: "
+                        f"{model_info['model_name']}/"
+                        f"{model_info['mode']}/"
+                        f"{model_info['image_size']}/"
+                        f"{model_info['version']}",
                         color1=c.CYAN,
                     )
 
-                # Get file stats
+                # File stats
                 file_stats = model_file.stat()
                 created_time = datetime.fromtimestamp(file_stats.st_mtime)
                 file_size = file_stats.st_size / (1024 * 1024)  # MB
 
-                # Get training info
+                # Training info
                 training_info = get_model_training_info(model_file)
 
-                # Check for submission file
-                submission_path = model_file.parent / "SUBMISSION.json"
-                has_submission = submission_path.exists()
+                # Robust submission detection in this folder
+                submission_path = next(
+                    (
+                        f
+                        for f in model_file.parent.glob("*")
+                        if f.name.lower().startswith("submission")
+                        and f.suffix.lower() == ".json"
+                    ),
+                    None,
+                )
+                has_submission = submission_path is not None
+
+                try:
+                    rel_path = str(model_file.relative_to(config.paths.root))
+                except ValueError:
+                    rel_path = str(
+                        model_file
+                    )  # fallback to full path if not under root
 
                 # Combine all information
-                model_data = {
+                model_data: Dict[str, Any] = {
                     "file_path": str(model_file),
-                    "relative_path": str(model_file.relative_to(base_path)),
+                    # "relative_path": str(model_file.relative_to(base_path)),
+                    "relative_path": rel_path,
                     "checkpoint_dir": checkpoint_dir.name,
                     "file_name": model_file.name,
                     "file_size_mb": round(file_size, 2),
                     "created_date": created_time,
                     "has_submission": has_submission,
-                    "submission_path": str(submission_path) if has_submission else None,
+                    "submission_path": (
+                        str(submission_path) if submission_path is not None else None
+                    ),
                     **model_info,
                     **training_info,
                 }
@@ -531,11 +601,11 @@ def scan_all_models(base_path: Path) -> List[Dict[str, Any]]:
 
     p(f"Total models found: {len(all_models)}")
 
-    # Show summary of discovered models
+    # Summary of discovered models
     if all_models:
         t("Model Discovery Summary")
-        model_counts = {}
-        mode_counts = {}
+        model_counts: Dict[str, int] = {}
+        mode_counts: Dict[str, int] = {}
 
         for model in all_models:
             model_name = model.get("model_name", "unknown")
@@ -544,91 +614,209 @@ def scan_all_models(base_path: Path) -> List[Dict[str, Any]]:
             model_counts[model_name] = model_counts.get(model_name, 0) + 1
             mode_counts[mode] = mode_counts.get(mode, 0) + 1
 
-        p("Models by type:", model_counts)
-        p("Models by mode:", mode_counts)
+        p("Models by type", model_counts)
+        p("Models by mode", mode_counts)
 
-        # Show models with and without submissions
+        # Models with and without submissions
         with_sub = sum(1 for m in all_models if m.get("has_submission"))
         p(f"Models with submissions: {with_sub}/{len(all_models)}")
 
     return all_models
 
 
-def generate_submission_for_model(model_data: Dict[str, Any], config) -> bool:
-    """
-    Generate submission file for a single model if it doesn't exist.
-    """
-    model_path = Path(model_data["file_path"])
-    submission_path = model_path.parent / "SUBMISSION.json"
+def get_correct_model_name_from_path(model_path):
+    """Fixed model name detection specifically for your case"""
+    from src.models.zoo import MODEL_BUILDERS
 
-    if submission_path.exists():
-        return True  # Already has submission
+    path_str = str(model_path).lower()
+    known_models = MODEL_BUILDERS.keys()
+
+    # Check for exact matches first (prioritize longer names)
+    for model_name in sorted(known_models, key=len, reverse=True):
+        if model_name in path_str:
+            return model_name
+
+    # Manual fixes for your specific case
+    if "/smp_unet" in path_str:
+        return "smp_unet"
+    elif "smp" in path_str and "unet" in path_str:
+        return "smp_unet"
+    elif "simple_cnn" in path_str:
+        return "simple_cnn"
+    elif "unet" in path_str:
+        return "unet"  # Only if no smp prefix
+
+    # Fallback
+    return "smp_unet"
+
+
+def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
+    """
+    Generate a submission file for a given model checkpoint (.pth).
+    """
+    model_name = "smp_unet"
 
     try:
-        p(f"Generating submission for: {model_data['relative_path']}", color1=c.GREEN)
+        # Normalize to Path
+        if not isinstance(model_path, Path):
+            model_path = Path(model_path)
 
-        # Initialize predictor (remove in_channels parameter)
-        predictor = Predictor(
-            model_path=model_path,
-            model_name=model_data["model_name"],
-            image_size=(
-                int(model_data["image_size"])
-                if model_data["image_size"].isdigit()
-                else 256
+        p("Trying to create submission for", str(model_path))
+
+        if not model_path.exists():
+            p("Error", f"Model file not found: {model_path}", color1=c.RED)
+            return None
+
+        # Check if a submission already exists in this folder (case insensitive)
+        existing_sub = next(
+            (
+                f
+                for f in model_path.parent.glob("*")
+                if f.name.lower().startswith("submission")
+                and f.suffix.lower() == ".json"
             ),
+            None,
+        )
+        if existing_sub is not None:
+            p("Submission already exists for", str(model_path.parent))
+            return existing_sub
+
+        try:
+            model_info = extract_model_info_fallback(model_path, config)
+            model_name = model_info.get("model_name", "smp_unet")
+
+            # Verify the model name is valid
+            if model_name not in MODEL_BUILDERS:
+                print(
+                    f"Warning: {model_name} not found in MODEL_BUILDERS, using smp_unet"
+                )
+                model_name = "smp_unet"
+
+            p(f"Using model name: {model_name} for path: {model_path}")
+        except Exception as e:
+            p(f"Error extracting model info: {e}, using default: {model_name}")
+
+        # Get image size using fallback logic
+        image_size_str = (
+            model_info.get("image_size", "unknown")
+            if "model_info" in locals()
+            else "unknown"
         )
 
-        # Determine input mode for transformations
-        mode = model_data["mode"]
-        val_tf = get_val_augmentations(config.train.image_size)
+        # Convert image size to int if possible
+        image_size: Optional[int] = None
+        if image_size_str and image_size_str != "unknown":
+            try:
+                image_size = int(image_size_str)
+            except ValueError:
+                image_size = None
 
-        # Run predictions on evaluation images
-        eval_dir = config.paths.eval_images
-        results = predictor.run_on_folder(eval_dir, transform=val_tf)
+        # Fallback to config.train.image_size or 256
+        if image_size is None:
+            train_cfg = getattr(config, "train", None)
+            cfg_size = getattr(train_cfg, "image_size", None) if train_cfg else None
+            if cfg_size is not None:
+                try:
+                    image_size = int(cfg_size)
+                except ValueError:
+                    image_size = 256
+            else:
+                image_size = 256
 
-        # Export submission
-        export_submission(results, submission_path)
+        p(
+            "Parsed model for submission",
+            f"name={model_name}",
+            f"image_size={image_size}",
+        )
 
-        # Update model data
-        model_data["has_submission"] = True
-        model_data["submission_path"] = str(submission_path)
+        # Evaluation images directory (same as used in prediction notebooks)
+        eval_dir = Path(config.paths.eval_images)
+        if not eval_dir.exists():
+            p(
+                "Error",
+                f"Evaluation images directory not found: {eval_dir}",
+                color1=c.RED,
+            )
+            return None
 
-        p(f"  Submission saved: {submission_path.name}", color1=c.GREEN)
-        return True
+        t(f"Generating submission for: {model_path.name}")
+
+        # Build predictor and run on evaluation folder
+        predictor = Predictor(
+            model_path=model_path,
+            model_name=model_name,
+            image_size=image_size,
+        )
+
+        results = predictor.run_on_folder(
+            eval_dir,
+            transform=None,
+            num_samples=None,
+        )
+
+        # Write SUBMISSION.json alongside the checkpoint
+        submission_path = model_path.parent / "SUBMISSION.json"
+        export_submission(results, submission_path, config)
+
+        p("Submission created", str(submission_path), color1=c.GREEN)
+        return submission_path
 
     except Exception as e:
-        p(f"  Failed to generate submission: {str(e)}", color1=c.RED)
+
+        p(
+            "Failed to generate submission",
+            f"{e} | model={model_name} | path={model_path}",
+            color1=c.RED,
+        )
+
         import traceback
 
         traceback.print_exc()
-        return False
+        return None
 
 
 def generate_missing_submissions(models_list: List[Dict[str, Any]], config) -> int:
     """
-    Generate submission files for all models that don't have them.
+    Generate submission files for all models that do not have them.
+    Work at the version folder level, so each model directory gets
+    at most one SUBMISSION.json.
     """
     t("Generating Missing Submissions")
 
-    models_without_submissions = [m for m in models_list if not m["has_submission"]]
+    # Filter models that currently have no submission
+    models_without_submissions = [m for m in models_list if not m.get("has_submission")]
     p(f"Models without submissions: {len(models_without_submissions)}")
 
-    if len(models_without_submissions) == 0:
+    if not models_without_submissions:
         p("All models already have submissions!", color1=c.GREEN)
         return 0
 
+    # Work once per parent directory
+    unique_dirs: Dict[Path, Path] = {}
+    for m in models_without_submissions:
+        model_path = Path(m["file_path"])
+        model_dir = model_path.parent
+        if model_dir not in unique_dirs:
+            unique_dirs[model_dir] = model_path
+
+    dirs_to_process = list(unique_dirs.items())
     generated_count = 0
 
-    for i, model_data in enumerate(models_without_submissions):
-        p(f"\nProgress: {i + 1}/{len(models_without_submissions)}")
+    for idx, (model_dir, model_path) in enumerate(dirs_to_process, start=1):
+        p("")
+        p(f"Progress: {idx}/{len(dirs_to_process)}")
+        p("Creating submission for", str(model_path))
 
-        if generate_submission_for_model(model_data, config):
+        sub_path = generate_submission_for_model(model_path, config)
+        if sub_path is not None:
             generated_count += 1
 
+    p("")
     p(
-        f"\nSubmissions generated: {generated_count}/{len(models_without_submissions)}",
+        f"Submissions generated: {generated_count}/{len(dirs_to_process)}",
         color1=c.CYAN,
     )
+
     return generated_count
 
 
@@ -769,12 +957,23 @@ def print_model_rankings(ranked_models: List[Dict[str, Any]], top_n: int = 10) -
 def create_submission_links_report(models_list: List[Dict[str, Any]]) -> str:
     """
     Create a markdown report with clickable submission links.
+    Re verifies submission presence for each model directory.
     """
-    # First, re-verify submission status for all models
+    # Re verify submission status for all models
     for model in models_list:
-        submission_path = Path(model["file_path"]).parent / "SUBMISSION.json"
-        model["has_submission"] = submission_path.exists()
-        if model["has_submission"]:
+        model_path = Path(model["file_path"])
+        submission_path = next(
+            (
+                f
+                for f in model_path.parent.glob("*")
+                if f.name.lower().startswith("submission")
+                and f.suffix.lower() == ".json"
+            ),
+            None,
+        )
+        has_submission = submission_path is not None
+        model["has_submission"] = has_submission
+        if has_submission:
             model["submission_path"] = str(submission_path)
 
     models_with_submissions = [m for m in models_list if m.get("has_submission")]
@@ -803,7 +1002,7 @@ def create_submission_links_report(models_list: List[Dict[str, Any]]) -> str:
         # Format date
         date_str = created_date.strftime("%Y-%m-%d") if created_date else "unknown"
 
-        # Create submission link (relative path for better portability)
+        # Create submission link
         rel_submission_path = Path(submission_path).name if submission_path else "N/A"
         link = (
             f"[{rel_submission_path}]({submission_path})"
@@ -850,7 +1049,12 @@ def plot_model_performance_overview(df: pd.DataFrame) -> None:
 
     # 2. Performance by Model Type
     if "Model Name" in valid_df.columns:
-        model_performance = valid_df.groupby("Model Name")["Val Loss"].agg(
+        # Filter out invalid model names (pure numbers like "03", "07")
+        valid_df_filtered = valid_df[
+            valid_df["Model Name"].apply(lambda x: str(x).isalpha() or "_" in str(x))
+        ]
+
+        model_performance = valid_df_filtered.groupby("Model Name")["Val Loss"].agg(
             ["mean", "min", "count"]
         )
         model_performance = model_performance.sort_values("mean")
@@ -926,6 +1130,30 @@ def plot_model_timeline(df: pd.DataFrame) -> None:
     plt.show()
 
 
+def fix_models_list_before_analysis(models_list):
+    """
+    Call this function to fix model names in your models_list before creating visualizations.
+    """
+    for model in models_list:
+        current_name = model.get("model_name", "unknown")
+
+        # If current name is a directory number or unknown, extract real model name
+        if current_name in ["03", "07", "10", "11", "unknown"]:
+            file_path = model.get("file_path", "")
+
+            # Use our fixed extraction function
+            fixed_info = extract_model_info_fallback(Path(file_path))
+            model["model_name"] = fixed_info["model_name"]
+
+            # Also update other fields that might be wrong
+            if model.get("mode", "unknown") == "unknown":
+                model["mode"] = fixed_info["mode"]
+            if model.get("image_size", "unknown") == "unknown":
+                model["image_size"] = fixed_info["image_size"]
+
+    return models_list
+
+
 def main_model_tracking_pipeline(config):
     """
     Main pipeline for model tracking and submission management.
@@ -936,7 +1164,7 @@ def main_model_tracking_pipeline(config):
     # Step 1: Scan all models
     p()
     t("Step 1: Scanning All Models")
-    models_list = scan_all_models(config.paths.models)
+    models_list = scan_all_models(config.paths.models, config)
 
     if len(models_list) == 0:
         p("No models found! Check your paths.", color1=c.RED)
@@ -965,6 +1193,7 @@ def main_model_tracking_pipeline(config):
     # Step 6: Create visualizations
     p()
     t("Step 6: Creating Performance Visualizations")
+    models_list = fix_models_list_before_analysis(models_list)
     plot_model_performance_overview(df_summary)
     # plot_model_timeline(df_summary)
 

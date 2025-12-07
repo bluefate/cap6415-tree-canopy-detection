@@ -107,6 +107,7 @@ import sys
 from pathlib import Path
 import os
 
+
 sys.path.append(os.path.abspath(".."))
 sys.path.append(os.path.abspath("../src"))
 
@@ -1289,7 +1290,7 @@ def generate_submission( model_path, model_name, eval_dir, output_path ):
     p("Predictions generated", len(results))
 
     # Export submission
-    export_submission(results, output_path)
+    export_submission(results, output_path, config)
     p("Submission saved", output_path)
 
     with open(output_path, "r") as f:

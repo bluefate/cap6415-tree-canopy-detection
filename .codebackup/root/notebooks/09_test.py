@@ -271,8 +271,8 @@ p("Batch image shape", images.shape)
 p("Batch mask shape", masks.shape)
 
 # Expected:
-# Images: [batch_size, channels, H, W]  e.g., [4, 3, 256, 256]
-# Masks: [batch_size, 1, H, W]          e.g., [4, 1, 256, 256]
+# Images: [batch_size, channels, H, W]  example [4, 3, 256, 256]
+# Masks: [batch_size, 1, H, W]          example [4, 1, 256, 256]
 
 try:
     assert images.ndim == 4, f"Batch images should be 4D, got {images.ndim}D"

@@ -29,3 +29,32 @@ SOLAFUNE Schedule Competition
 **Deadline for submission of source code, etc**
 
 - 2025/12/26 PM11:59 GMT -- Potential winner(s) will be notified
+
+
+----------------------------------------
+Project Details 
+----------------------------------------
+
+**Development Logs**
+- -/10 pts
+- Weekly text file logs which document the progress of the work on the project.
+
+**Description**
+- -/10 pts
+- Short description in the form of an abstract in the readme.md file – describing what the main problem is and how it’s solved.
+
+**Documentation**
+- -/20 pts
+- Detailed and well-organized documentation - mainly in the form of comments throughout the code.
+
+
+**Reproducibility**
+- -/30 pts
+- The code from your repository should run without errors on TA’s machine, assuming all the dependencies are installed. The results should be similar to what you provided in the results page, and in the demo video.
+
+
+**Video**
+- -/30 pts
+- Provide the URL of the video recording of the demonstration of your project.
+
+

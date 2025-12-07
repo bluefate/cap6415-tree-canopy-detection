@@ -209,5 +209,5 @@ else:
     p("Exporting submission for version:", version_folder.name)
 
     out_path = version_folder / "submission.json"
-    export_submission(results, out_path)
+    export_submission(results, out_path, config)
     p("Submission Saved", out_path)
