@@ -64,7 +64,7 @@ def find_checkpoint_directories(base_path: Path, config) -> List[Path]:
     return sorted(checkpoint_dirs)
 
 
-def extract_model_info_from_path(model_path: Path) -> Dict[str, str]:
+def extract_model_info_from_path(model_path: Path, config) -> Dict[str, str]:
     """
     Extract model information from the structured file path.
     """
@@ -83,7 +83,7 @@ def extract_model_info_from_path(model_path: Path) -> Dict[str, str]:
             f"Warning: Could not find checkpoint directory in path: {model_path}",
             color1=c.ORANGE,
         )
-        return extract_model_info_fallback(model_path)
+        return extract_model_info_fallback(model_path, config)
 
     # Extract information from structured path
     try:
@@ -91,7 +91,7 @@ def extract_model_info_from_path(model_path: Path) -> Dict[str, str]:
         remaining_parts = parts[checkpoint_idx + 1 :]
 
         if len(remaining_parts) < 3:  # Need at least model/mode/version
-            return extract_model_info_fallback(model_path)
+            return extract_model_info_fallback(model_path, config)
 
         model_name = remaining_parts[0]
         mode = remaining_parts[1]
@@ -103,7 +103,7 @@ def extract_model_info_from_path(model_path: Path) -> Dict[str, str]:
         else:
             # No size directory, extract from other clues
             version = remaining_parts[2]
-            image_size = extract_size_from_context(model_path)
+            image_size = extract_size_from_context(model_path, config)
 
         # Extract filters from path if present
         filters = extract_filters_from_path(model_path)
@@ -119,10 +119,10 @@ def extract_model_info_from_path(model_path: Path) -> Dict[str, str]:
 
     except Exception as e:
         p(f"Error parsing structured path {model_path}: {str(e)}", color1=c.ORANGE)
-        return extract_model_info_fallback(model_path)
+        return extract_model_info_fallback(model_path, config)
 
 
-def extract_model_info_fallback(model_path: Path) -> Dict[str, str]:
+def extract_model_info_fallback(model_path: Path, config) -> Dict[str, str]:
     """
     Fallback method to extract model information when structured path parsing fails.
     """
@@ -144,19 +144,45 @@ def extract_model_info_fallback(model_path: Path) -> Dict[str, str]:
         "yolov8l",
         "resnet",
         "efficientnet",
+        "segformer",
     ]
 
-    if model_name == "unknown":
-        parts = model_path.parts
-        for part in parts:
-            if part.lower().startswith("smp_") or part.lower().startswith("yolov8"):
-                model_name = part.lower()
-                break
-
-    for keyword in model_keywords:
+    # Method 1: Direct substring search
+    for keyword in sorted(model_keywords, key=len, reverse=True):
         if keyword in path_str:
             model_name = keyword
             break
+
+    # Method 2: Check path parts if Method 1 failed
+    if model_name == "unknown":
+        parts = model_path.parts
+        for part in parts:
+            part_lower = part.lower()
+            if part_lower in model_keywords:
+                model_name = part_lower
+                break
+
+    # Method 3: Pattern-based detection for edge cases
+    if model_name == "unknown":
+        if "smp_unet" in path_str or ("smp" in path_str and "unet" in path_str):
+            model_name = "smp_unet"
+        elif "simple_cnn" in path_str:
+            model_name = "simple_cnn"
+        elif "/unet/" in path_str and "smp" not in path_str:
+            model_name = "unet"
+        elif "yolov8" in path_str:
+            if "yolov8n" in path_str:
+                model_name = "yolov8n"
+            elif "yolov8s" in path_str:
+                model_name = "yolov8s"
+            elif "yolov8m" in path_str:
+                model_name = "yolov8m"
+            elif "yolov8l" in path_str:
+                model_name = "yolov8l"
+
+    # Fallback - but avoid "unknown"
+    if model_name == "unknown":
+        model_name = "smp_unet"
 
     # Extract mode/input type
     mode = "rgb"
@@ -168,13 +194,13 @@ def extract_model_info_fallback(model_path: Path) -> Dict[str, str]:
         mode = "grayscale"
 
     # Extract image size
-    image_size = extract_size_from_context(model_path)
+    image_size = extract_size_from_context(model_path, config)
 
     # Extract version info
     parts = model_path.parts
     version_info = []
     for part in parts:
-        if part.startswith("v") and len(part) <= 6:  # Like v1, v2, v10, etc.
+        if part.startswith("v") and len(part) <= 6:
             version_info.append(part)
         elif "version" in part.lower():
             version_info.append(part)
@@ -194,33 +220,40 @@ def extract_model_info_fallback(model_path: Path) -> Dict[str, str]:
     }
 
 
-def extract_size_from_context(model_path: Path) -> str:
+def extract_size_from_context(model_path: Path, config) -> str:
     """
     Extract image size from path context or filename.
     """
     path_str = str(model_path)
+    image_size = "unknown"
 
     # Look for size_XXX pattern
     size_match = re.search(r"size_(\d+)", path_str)
     if size_match:
-        return size_match.group(1)
+        image_size = size_match.group(1)
+    else:
+        # Look for other patterns
+        size_patterns = [
+            r"(\d+)(?:x\d+)?(?:_rgb|_filtered|_concat)",
+            r"(\d+)_rgb",
+            r"(\d+)_filtered",
+            r"(\d+)_concat",
+            r"plan_(\d+)_",
+            r"size(\d+)",
+        ]
+        for pattern in size_patterns:
+            match = re.search(pattern, path_str)
+            if match:
+                image_size = match.group(1)
+                break
 
-    # Look for XXX pattern in various contexts
-    size_patterns = [
-        r"(\d+)(?:x\d+)?(?:_rgb|_filtered|_concat)",
-        r"(\d+)_rgb",
-        r"(\d+)_filtered",
-        r"(\d+)_concat",
-        r"plan_(\d+)_",
-        r"size(\d+)",
-    ]
+    if image_size == "unknown":
+        try:
+            image_size = str(config.train.image_size)
+        except:
+            image_size = "512"
 
-    for pattern in size_patterns:
-        match = re.search(pattern, path_str)
-        if match:
-            return match.group(1)
-
-    return "unknown"
+    return image_size
 
 
 def extract_filters_from_path(model_path: Path) -> str:
@@ -306,7 +339,7 @@ def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
         for model_file in model_files:
             try:
                 # Extract basic info using improved parser
-                model_info = extract_model_info_from_path(model_file)
+                model_info = extract_model_info_from_path(model_file, config)
 
                 # Show parsing result for first few models
                 if len(all_models) < 3:
@@ -425,12 +458,9 @@ def get_correct_model_name_from_path(model_path):
 def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
     """
     Generate a submission file for a given model checkpoint (.pth).
-
-    Uses the same building blocks as your prediction notebooks:
-    - build Predictor with a valid model_name and image_size
-    - run inference on config.paths.eval_images
-    - call export_submission to write SUBMISSION.json in the model folder
     """
+    model_name = "smp_unet"
+
     try:
         # Normalize to Path
         if not isinstance(model_path, Path):
@@ -456,40 +486,27 @@ def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
             p("Submission already exists for", str(model_path.parent))
             return existing_sub
 
-        # IMPORTANT
-        # For submissions we always use the fallback parser
-        # so we never treat "03", "10", "11" as model names.
-        # model_info = extract_model_info_fallback(model_path)
-        #
-        # model_name = model_info.get("model_name", "unet")
-        # image_size_str = model_info.get("image_size", "unknown")
+        try:
+            model_info = extract_model_info_fallback(model_path, config)
+            model_name = model_info.get("model_name", "smp_unet")
 
-        # Scan path to find a valid model name
-        # model_name = next(
-        #     (
-        #         part.lower()
-        #         for part in model_path.parts
-        #         if part.lower() in MODEL_BUILDERS
-        #     ),
-        #     "unet",
-        # )
+            # Verify the model name is valid
+            if model_name not in MODEL_BUILDERS:
+                print(
+                    f"Warning: {model_name} not found in MODEL_BUILDERS, using smp_unet"
+                )
+                model_name = "smp_unet"
 
-        model_name = get_correct_model_name_from_path(model_path)
-
-        # Verify the model name is valid
-        if model_name not in MODEL_BUILDERS:
-            print(f"Warning: {model_name} not found in MODEL_BUILDERS, using smp_unet")
-            model_name = "smp_unet"
-
-        p(f"Using model name: {model_name} for path: {model_path}")
-
-        # Fallback hard default
-        if not model_name:
-            model_name = "smp_unet"
+            p(f"Using model name: {model_name} for path: {model_path}")
+        except Exception as e:
+            p(f"Error extracting model info: {e}, using default: {model_name}")
 
         # Get image size using fallback logic
-        model_info = extract_model_info_fallback(model_path)
-        image_size_str = model_info.get("image_size", "unknown")
+        image_size_str = (
+            model_info.get("image_size", "unknown")
+            if "model_info" in locals()
+            else "unknown"
+        )
 
         # Convert image size to int if possible
         image_size: Optional[int] = None
@@ -550,6 +567,7 @@ def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
         return submission_path
 
     except Exception as e:
+
         p(
             "Failed to generate submission",
             f"{e} | model={model_name} | path={model_path}",
@@ -917,6 +935,30 @@ def plot_model_timeline(df: pd.DataFrame) -> None:
     plt.show()
 
 
+def fix_models_list_before_analysis(models_list):
+    """
+    Call this function to fix model names in your models_list before creating visualizations.
+    """
+    for model in models_list:
+        current_name = model.get("model_name", "unknown")
+
+        # If current name is a directory number or unknown, extract real model name
+        if current_name in ["03", "07", "10", "11", "unknown"]:
+            file_path = model.get("file_path", "")
+
+            # Use our fixed extraction function
+            fixed_info = extract_model_info_fallback(Path(file_path))
+            model["model_name"] = fixed_info["model_name"]
+
+            # Also update other fields that might be wrong
+            if model.get("mode", "unknown") == "unknown":
+                model["mode"] = fixed_info["mode"]
+            if model.get("image_size", "unknown") == "unknown":
+                model["image_size"] = fixed_info["image_size"]
+
+    return models_list
+
+
 def main_model_tracking_pipeline(config):
     """
     Main pipeline for model tracking and submission management.
@@ -956,6 +998,7 @@ def main_model_tracking_pipeline(config):
     # Step 6: Create visualizations
     p()
     t("Step 6: Creating Performance Visualizations")
+    models_list = fix_models_list_before_analysis(models_list)
     plot_model_performance_overview(df_summary)
     # plot_model_timeline(df_summary)
 
