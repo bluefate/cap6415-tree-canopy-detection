@@ -447,6 +447,30 @@ def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
             ),
             "unet",
         )
+        # Try to find a known model from path
+        known_models = set(MODEL_BUILDERS.keys())
+        path_parts = [p.lower() for p in model_path.parts]
+
+        # Direct match
+        model_name = next((p for p in path_parts if p in known_models), None)
+
+        # Optional remap (you can expand this as needed)
+        name_map = {
+            "unet": "smp_unet",  # only if you want this behavior
+            "deeplabv3": "smp_deeplabv3",
+            "deeplabv3plus": "smp_deeplabv3plus",
+        }
+        if model_name is None:
+            # fallback: detect and remap if applicable
+            for p in path_parts:
+                if p in name_map:
+                    model_name = name_map[p]
+                    break
+
+        # Fallback hard default
+        if not model_name:
+            model_name = "smp_unet"
+
 
         # Get image size using fallback logic
         model_info = extract_model_info_fallback(model_path)
