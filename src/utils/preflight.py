@@ -1,5 +1,4 @@
 import shutil
-import traceback
 from pathlib import Path
 
 import cv2
@@ -144,7 +143,7 @@ def check_dataset(config):
     except Exception as e:
         p("✗ Dataset check failed", str(e), color1 = c.RED)
 
-        traceback.print_exc()
+        # traceback.print_exc()
         return False
 
 
@@ -185,7 +184,7 @@ def check_model():
     except Exception as e:
         p("✗ Model check failed", str(e), color1 = c.RED)
 
-        traceback.print_exc()
+        # traceback.print_exc()
         return False
 
 

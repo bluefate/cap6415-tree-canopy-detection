@@ -400,9 +400,9 @@ def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
 
             except Exception as e:
                 p(f"  Error processing {model_file}: {str(e)}", color1=c.ORANGE)
-                import traceback
-
-                traceback.print_exc()
+                # import traceback
+                #
+                # traceback.print_exc()
 
     p(f"Total models found: {len(all_models)}")
 
@@ -574,9 +574,9 @@ def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
             color1=c.RED,
         )
 
-        import traceback
-
-        traceback.print_exc()
+        # import traceback
+        #
+        # traceback.print_exc()
         return None
 
 
