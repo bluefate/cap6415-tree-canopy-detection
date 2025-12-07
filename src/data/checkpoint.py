@@ -132,12 +132,26 @@ def extract_model_info_fallback(model_path: Path) -> Dict[str, str]:
     model_keywords = [
         "simple_cnn",
         "unet",
+        "smp_unet",
+        "smp_fpn",
+        "smp_linknet",
+        "smp_deeplabv3",
+        "smp_deeplabv3plus",
+        "yolov8n",
         "yolov8s",
         "yolov8m",
         "yolov8l",
         "resnet",
         "efficientnet",
     ]
+
+    if model_name == "unknown":
+        parts = model_path.parts
+        for part in parts:
+            if part.lower().startswith("smp_") or part.lower().startswith("yolov8"):
+                model_name = part.lower()
+                break
+
     for keyword in model_keywords:
         if keyword in path_str:
             model_name = keyword
@@ -482,7 +496,12 @@ def generate_submission_for_model(model_path: Path, config) -> Optional[Path]:
         return submission_path
 
     except Exception as e:
-        p("Failed to generate submission", f"{e}", color1=c.RED)
+        p(
+            "Failed to generate submission",
+            f"{e} | model={model_name} | path={model_path}",
+            color1=c.RED,
+        )
+
         import traceback
 
         traceback.print_exc()
