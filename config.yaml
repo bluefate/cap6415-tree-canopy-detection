@@ -2,7 +2,7 @@
 
 paths:
   dataset_selector: "data1"
-
+  template: "src/data/data1/sample_answer.json"
 
   #train_images: "src/data/data1/train_images"
   #train_masks: "src/data/data1/train_masks"

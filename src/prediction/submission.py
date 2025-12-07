@@ -57,10 +57,7 @@ def mask_to_polygons_multiclass(
     return annotations
 
 
-def export_submission(
-    results: List[Dict[str, Any]],
-    output_path: Path,
-) -> None:
+def export_submission(results: List[Dict[str, Any]], output_path: Path, config) -> None:
     """
     Convert prediction results into expected submission JSON structure.
     Uses sample_answer.json as template to preserve cm_resolution and scene_type.
@@ -69,12 +66,13 @@ def export_submission(
     cm_resolution and scene_type come from the template.
     """
     # Load template - use raw string (r"...") for Windows paths
-    template_path = Path(
-        "/content/drive/MyDrive/TreeCanopyProject/data/data1/sample_answer.json"
-    )
+    # template_path = Path(
+    #     "/content/drive/MyDrive/TreeCanopyProject/data/data1/sample_answer.json"
+    # )
     # template_path = Path(
     #     r"C:\github\Tree-Canopy-Detection\src\data\data1\sample_answer.json"
     # )
+    template_path = config.paths.template
 
     if not template_path.exists():
         raise FileNotFoundError(f"Template not found: {template_path}")

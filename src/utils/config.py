@@ -24,6 +24,7 @@ class PathsConfig(BaseModel):
     models: Optional[Path] = None
     checkpoint: Optional[Path] = None
     best_model: Optional[Path] = None
+    template:Optional[Path] = None
 
     @validator("*", pre = True)
     def expand_paths( cls, value, values ):
