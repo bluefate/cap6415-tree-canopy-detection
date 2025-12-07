@@ -43,7 +43,7 @@ train:
   #  scheduler_factor: 0.5
 
   #for code COLAB
-  image_size: 512 # 256
+  image_size: 1024 #no resize #512 # 256
   num_workers: 12 #8 # ✓ 2 CPU threads pre-load data, 4 for A100 GPU
   seed: 42
   batch_size: 64 # 16 # 2 Critical for 2GB GPU, 4 for T4 GPU , 8 for L4 GPU, 16 for A100 GPU
