@@ -31,22 +31,22 @@ paths:
   plots: "plots"
 
 train:
-  #  #for code TESTING
-  #  image_size: 224 #64
+  #for code TESTING
+  #  image_size: 128
   #  num_workers: 2 # 0# ✓ Single-threaded (stable)
   #  seed: 42
   #  batch_size: 2  # ⚡ Quick test under 2GB GPU
-  #  epochs: 2  # ⚡ Quick test
-  #  learning_rate: 1e-2
-  #  early_stop_patience: 2 # Stops training entirely if validation loss doesn't improve for N epochs [10-15 (gives more chances)]
+  #  epochs: 50  # ⚡ Quick test
+  #  learning_rate: 4e-4
+  #  early_stop_patience: 10 # Stops training entirely if validation loss doesn't improve for N epochs [10-15 (gives more chances)]
   #  scheduler_patience: 3 # Reduces learning rate if validation loss doesn't improve for N epochs [3-5 (reduce LR earlier to recover)]
   #  scheduler_factor: 0.5
 
   #for code COLAB
-  image_size: 256 # 256
-  num_workers: 9 #8 # ✓ 2 CPU threads pre-load data, 4 for A100 GPU
+  image_size: 512 # 256
+  num_workers: 12 #8 # ✓ 2 CPU threads pre-load data, 4 for A100 GPU
   seed: 42
-  batch_size: 32 # 16 # 2 Critical for 2GB GPU, 4 for T4 GPU , 8 for L4 GPU, 16 for A100 GPU
+  batch_size: 64 # 16 # 2 Critical for 2GB GPU, 4 for T4 GPU , 8 for L4 GPU, 16 for A100 GPU
   epochs: 100
   learning_rate: 5e-4
   early_stop_patience: 10 #8 # Stops training entirely if validation loss doesn't improve for N epochs [10-15 (gives more chances)]
