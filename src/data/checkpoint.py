@@ -12,7 +12,7 @@ from src.prediction.pipeline import Predictor
 from src.utils.helpers import c, p, t
 
 
-def find_checkpoint_directories(base_path: Path) -> List[Path]:
+def find_checkpoint_directories(base_path: Path, config) -> List[Path]:
     """
     Find all checkpoint directories (checkpoints, checkpoints_copy, checkpoints2, etc.)
     """
@@ -28,7 +28,8 @@ def find_checkpoint_directories(base_path: Path) -> List[Path]:
         checkpoint_dirs.append(checkpoints_dir)
 
     # Look for variations like checkpoints_copy, checkpoints2, etc.
-    for item in base_path.iterdir():
+    root = config.paths.root
+    for item in root.iterdir():
         if item.is_dir():
             item_name_lower = item.name.lower()
             # Check for checkpoint variations OR numbered directories (like 03, 07, 10, 11)
@@ -259,12 +260,12 @@ def get_model_training_info(model_path: Path) -> Dict[str, Any]:
         return {"error": str(e), "epoch": None, "val_loss": None}
 
 
-def scan_all_models(base_path: Path) -> List[Dict[str, Any]]:
+def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
     """
     Scan all checkpoint directories and collect model information.
     """
     p("Base_path", base_path)
-    checkpoint_dirs = find_checkpoint_directories(base_path)
+    checkpoint_dirs = find_checkpoint_directories(base_path, config)
     all_models: List[Dict[str, Any]] = []
     p("Checkpoint directories found", checkpoint_dirs)
 
@@ -323,10 +324,18 @@ def scan_all_models(base_path: Path) -> List[Dict[str, Any]]:
                 )
                 has_submission = submission_path is not None
 
+                try:
+                    rel_path = str(model_file.relative_to(config.paths.root))
+                except ValueError:
+                    rel_path = str(
+                        model_file
+                    )  # fallback to full path if not under root
+
                 # Combine all information
                 model_data: Dict[str, Any] = {
                     "file_path": str(model_file),
-                    "relative_path": str(model_file.relative_to(base_path)),
+                    # "relative_path": str(model_file.relative_to(base_path)),
+                    "relative_path": rel_path,
                     "checkpoint_dir": checkpoint_dir.name,
                     "file_name": model_file.name,
                     "file_size_mb": round(file_size, 2),
@@ -840,7 +849,7 @@ def main_model_tracking_pipeline(config):
     # Step 1: Scan all models
     p()
     t("Step 1: Scanning All Models")
-    models_list = scan_all_models(config.paths.models)
+    models_list = scan_all_models(config.paths.models, config)
 
     if len(models_list) == 0:
         p("No models found! Check your paths.", color1=c.RED)
