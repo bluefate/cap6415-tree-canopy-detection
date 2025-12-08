@@ -90,9 +90,9 @@ def extract_model_info_from_path(model_path: Path, config) -> Dict[str, str]:
                 model_name = key
                 break
 
-    # Fail fast if we cannot resolve a model name
+    # Fallback to heuristic extractor if still unknown
     if model_name is None:
-        raise ValueError(f"Could not determine model name from path: {model_path}")
+        model_name = get_correct_model_name_from_path(model_path)
 
     # --- Mode detection ---
 
@@ -172,7 +172,7 @@ def extract_filters_from_path(model_path: Path) -> Optional[str]:
         return None
     if len(present) == 1:
         return present[0]
-    return
+    return "concat_filters"
 
 
 def get_model_training_info(model_path: Path) -> Dict[str, Any]:
@@ -213,8 +213,20 @@ def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
     """
     p("Base_path", base_path)
     checkpoint_dirs = find_checkpoint_directories(base_path, config)
+
+    # Fallback: if our heuristics find nothing, scan the whole base_path
+    if not checkpoint_dirs:
+        p(
+            "No checkpoint directories detected. Falling back to base path scan.",
+            color1=c.ORANGE,
+        )
+        checkpoint_dirs = [base_path]
+
     all_models: List[Dict[str, Any]] = []
     p("Checkpoint directories found", checkpoint_dirs)
+
+    t("Scanning Checkpoint Directories")
+    p(f"Found {len(checkpoint_dirs)} checkpoint directories")
 
     t(f"Scanning Checkpoint Directories")
     p(f"Found {len(checkpoint_dirs)} checkpoint directories")

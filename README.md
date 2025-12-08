@@ -108,44 +108,6 @@ the prescribed schema.
 
 ## Setup
 
-- **Structure**
-
-```
-mkdir -p {data/{raw/{images,annotations},processed/{tiles,masks},splits,sample_submission},notebooks,models,src/{data,models,scripts,utils,submission},submission}
-
-tree /mnt/c/github/Tree-Canopy-Detection -I ".ipynb_checkpoints|*.tif" --prune
-
-tree /mnt/c/github/Tree-Canopy-Detection -d
-
-cd "C:\github\Tree-Canopy-Detection"
-```
-
-- **Build Docker Environment**
-
-```
-docker build -t tree-canopy-detection .
-docker run --gpus all -it tree-canopy-detection
-```
-
-- **Local Development**
-
-```
-pip install -r requirements.txt
-jupyter lab /mnt/c/github/Tree-Canopy-Detection
-```
-
-- **Tree**
-
-```
-/Tree-Canopy-Detection
-├── LICENSE
-├── README.md
-└── src
-    └── data
-        ├── evaluation_images.zip
-        ├── sample_answer.json
-        ├── train_annotations.json
-        └── train_images.zip
-```
-
+- Project [README.md](README.md)
+- Notebooks [Documentation](README_DOCS.MD)
 
