@@ -125,8 +125,9 @@ def crop_bbox(image_dir, entry, item):
         FileNotFoundError: If image file not found.
         ValueError: If image cannot be loaded.
     """
+    img_path = image_dir / entry.image_path.name
+    if not img_path.exists():
         raise FileNotFoundError(f"Image not found: {img_path}")
-
     img = cv2.imread(str(img_path))
     if img is None:
         raise ValueError(f"Failed to load image: {img_path}")
@@ -147,6 +148,9 @@ def crop_mask(entry, item):
     Returns:
         np.ndarray: Binary mask for bbox region.
     """
+    mask = np.zeros((entry.height, entry.width), dtype=np.uint8)
+    seg = item.segmentation
+    if seg and len(seg) >= 4:
         poly = np.array(seg, dtype=np.int32).reshape(-1, 2)
         cv2.fillPoly(mask, [poly], 1)
     x1, y1, x2, y2 = item.bbox
@@ -167,7 +171,9 @@ def pad_to_size(img, target_h, target_w):
     Returns:
         np.ndarray: Padded image with shape (target_h, target_w, channels).
     """
-
+    h, w = img.shape[:2]
+    pad_h = target_h - h
+    pad_w = target_w - w
     top = pad_h // 2
     bottom = pad_h - top
     left = pad_w // 2

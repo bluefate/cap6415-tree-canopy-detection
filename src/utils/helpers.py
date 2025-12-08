@@ -234,17 +234,6 @@ class p:
                   ):
         """
         Initialize printer with formatting options.
-        
-        Args:
-            obj: Label or object to print.
-            value: Optional value to print after label.
-            precision (int): Decimal precision for floats. Defaults to 3.
-            show (int): Max items to show for lists/dicts. Defaults to 5.
-            schema (bool): Show type information. Defaults to False.
-            color1: Primary color for labels. Defaults to GREEN.
-            color2: Secondary color for values. Defaults to BLACK.
-            max_lines (int): Max lines for truncation. Defaults to 15.
-            bold (bool): Use bold formatting. Defaults to False.
         """
         self.obj = obj
         self.value = value

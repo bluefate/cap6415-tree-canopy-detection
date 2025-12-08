@@ -15,7 +15,7 @@ class AnnotationItem:
     def __init__(self, cls: str, segmentation: List[float], confidence: float = 1.0):
         """
         Initialize an annotation item.
-        
+
         Args:
             cls (str): Class name ('individual_tree' or 'group_of_trees').
             segmentation (list): Flat list of polygon coordinates [x1, y1, x2, y2, ...].
@@ -30,10 +30,10 @@ class AnnotationItem:
     def compute_bbox(seg: List[float]) -> List[int]:
         """
         Convert a flat segmentation polygon to bounding box coordinates.
-        
+
         Args:
             seg (List[float]): Flat list of polygon coordinates [x1, y1, x2, y2, ...].
-        
+
         Returns:
             List[int]: Bounding box as [x1, y1, x2, y2] (top-left and bottom-right corners).
         """
@@ -55,7 +55,7 @@ class AnnotationEntry:
     ):
         """
         Initialize an annotation entry for a single image.
-        
+
         Args:
             image_path (Path): Path to the image file.
             width (int): Image width in pixels.
@@ -70,9 +70,9 @@ class AnnotationEntry:
     def to_mask(self) -> np.ndarray:
         """
         Generate a binary mask from all polygon annotations in this entry.
-        
+
         Fills all polygons to create a single-channel mask with 0 (background) and 1 (object).
-        
+
         Returns:
             np.ndarray: Binary mask array of shape (height, width) with uint8 dtype.
         """
@@ -89,7 +89,7 @@ class AnnotationEntry:
 def load_json_annotations(json_path: Path) -> List[AnnotationEntry]:
     """
     Load annotation entries from JSON file with images and annotations.
-    
+
     Expected JSON structure:
     {
         "images": [
@@ -107,13 +107,13 @@ def load_json_annotations(json_path: Path) -> List[AnnotationEntry]:
             }
         ]
     }
-    
+
     Args:
         json_path (Path): Path to annotation JSON file.
-    
+
     Returns:
         List[AnnotationEntry]: List of annotation entries for each image.
-    
+
     Raises:
         FileNotFoundError: If annotation file does not exist.
     """
@@ -148,10 +148,10 @@ def load_json_annotations(json_path: Path) -> List[AnnotationEntry]:
 def get_unique_classes(entries: List[AnnotationEntry]) -> List[str]:
     """
     Extract and return sorted list of unique classes across all annotation entries.
-    
+
     Args:
         entries (List[AnnotationEntry]): List of annotation entries.
-    
+
     Returns:
         List[str]: Sorted list of unique class names.
     """

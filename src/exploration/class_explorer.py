@@ -28,7 +28,9 @@ def mask_for_class(entry: AnnotationEntry, cls: str):
     Returns:
         np.ndarray: Binary mask with 1s for specified class, 0s elsewhere.
     """
-
+    H = entry.height
+    W = entry.width
+    mask = np.zeros((H, W), dtype=np.uint8)
     for item in entry.items:
         if item.cls != cls:
             continue
@@ -51,6 +53,8 @@ def available_classes(entries):
     Returns:
         list: Sorted list of unique class names.
     """
+    classes = set()
+    for e in entries:
         for item in e.items:
             classes.add(item.cls)
     return sorted(classes)
@@ -66,6 +70,9 @@ def mask_all(entry: AnnotationEntry):
     Returns:
         np.ndarray: Binary mask with 1s for any annotation, 0s for background.
     """
+    H = entry.height
+    W = entry.width
+    mask = np.zeros((H, W), dtype=np.uint8)
     for item in entry.items:
         seg = item.segmentation
         if seg is None or len(seg) < 4:
@@ -91,7 +98,9 @@ def color_mask(config, entry: AnnotationEntry):
     Returns:
         np.ndarray: RGB image with class-specific colors filled in polygons.
     """
-
+    H = entry.height
+    W = entry.width
+    mask_rgb = np.zeros((H, W, 3), dtype=np.uint8)
     for item in entry.items:
         seg = item.segmentation
         if seg is None or len(seg) < 4:
@@ -116,6 +125,8 @@ def draw_bboxes(img, entry: AnnotationEntry):
     Returns:
         np.ndarray: Image with colored bounding boxes and class labels.
     """
+    out = img.copy()
+    for item in entry.items:
         seg = item.segmentation
         if seg is None or len(seg) < 4:
             continue
@@ -151,6 +162,8 @@ def draw_bboxes_for_class(img, entry: AnnotationEntry, cls: str):
     Returns:
         np.ndarray: Image with bounding boxes for specified class.
     """
+    out = img.copy()
+    for item in entry.items:
         if item.cls != cls:
             continue
         seg = item.segmentation
@@ -184,7 +197,10 @@ def explore_image(config, entry: AnnotationEntry):
         config: Configuration with MASK_COLORS and paths.
         entry (AnnotationEntry): Annotation entry to visualize.
     """
+    img = load_image(config.paths.train_images, entry)
 
+    mask_ind = mask_for_class(entry, "individual_tree")
+    mask_grp = mask_for_class(entry, "group_of_trees")
     color_ind = np.zeros_like(img)
     color_grp = np.zeros_like(img)
 
@@ -334,6 +350,8 @@ def show_single_class(config, entry: AnnotationEntry, cls: str):
         entry (AnnotationEntry): Annotation entry to visualize.
         cls (str): Class name to display.
     """
+    img = load_image(config.paths.train_images, entry)
+    mask = mask_for_class(entry, cls)
     show_side_by_side(
         img,
         (mask, cls),
@@ -350,7 +368,10 @@ def show_all_classes(config, entry: AnnotationEntry):
         config: Configuration with MASK_COLORS and paths.
         entry (AnnotationEntry): Annotation entry to visualize.
     """
+    img = load_image(config.paths.train_images, entry)
 
+    # build combined mask for both classes
+    mask = mask_all(entry)
     # build colored mask (per polygon, per class)
     mask_rgb = color_mask(config, entry)
 
@@ -374,7 +395,11 @@ def show_per_class(config, entry: AnnotationEntry):
         config: Configuration with MASK_COLORS and paths.
         entry (AnnotationEntry): Annotation entry to visualize.
     """
+    img = load_image(config.paths.train_images, entry)
+    classes = ["individual_tree", "group_of_trees"]
 
+    # masks must be tuples (mask, class_name) for coloring
+    imgs = [img] + [(mask_for_class(entry, c), c) for c in classes]
     titles = ["Image"] + classes
 
     show_side_by_side(
@@ -392,7 +417,9 @@ def show_overlay_all(config, entry: AnnotationEntry):
         config: Configuration with MASK_COLORS and paths.
         entry (AnnotationEntry): Annotation entry to visualize.
     """
-
+    img = load_image(config.paths.train_images, entry)
+    # mask = mask_all(entry)
+    mask = color_mask(config, entry)
     # show_overlay(img, mask, title="Overlay All")
     overlay = cv2.addWeighted(img, 0.6, mask, 0.4, 0)
 
@@ -411,7 +438,10 @@ def show_overlay_by_class(config, entry: AnnotationEntry):
         config: Configuration with MASK_COLORS and paths.
         entry (AnnotationEntry): Annotation entry to visualize.
     """
+    img = load_image(config.paths.train_images, entry)
 
+    m_ind = mask_for_class(entry, "individual_tree")
+    m_grp = mask_for_class(entry, "group_of_trees")
     col_ind = tuple(config.MASK_COLORS.get("individual_tree", [0, 255, 0]))
     col_grp = tuple(config.MASK_COLORS.get("group_of_trees", [255, 0, 0]))
 
@@ -447,6 +477,8 @@ def explore_color_overlay(config, entry: AnnotationEntry):
         config: Configuration with MASK_COLORS and paths.
         entry (AnnotationEntry): Annotation entry to visualize.
     """
+    img = load_image(config.paths.train_images, entry)
+    mask_rgb = color_mask(config, entry)
     overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
 
     show_side_by_side(
@@ -464,7 +496,10 @@ def explore_bboxes(config, entry: AnnotationEntry):
         config: Configuration with MASK_COLORS and paths.
         entry (AnnotationEntry): Annotation entry to visualize.
     """
-
+    img = load_image(config.paths.train_images, entry)
+    b_all = draw_bboxes(img, entry)
+    b_ind = draw_bboxes_for_class(img, entry, "individual_tree")
+    b_grp = draw_bboxes_for_class(img, entry, "group_of_trees")
     show_side_by_side(
         b_ind, b_grp, b_all, titles=("Individual bboxes", "Group bboxes", "All bboxes")
     )
@@ -480,6 +515,8 @@ def find_images_with_both(entries):
     Returns:
         list: Filtered list of entries containing both classes.
     """
+    out = []
+    for e in entries:
         classes = {item.cls for item in e.items}
         if "individual_tree" in classes and "group_of_trees" in classes:
             out.append(e)
@@ -496,6 +533,8 @@ def count_classes(entry: AnnotationEntry):
     Returns:
         dict: Class counts {'individual_tree': int, 'group_of_trees': int}.
     """
+    counts = {"individual_tree": 0, "group_of_trees": 0}
+    for item in entry.items:
         if item.cls in counts:
             counts[item.cls] += 1
     return counts
@@ -511,6 +550,10 @@ def class_distribution(entries):
     Returns:
         dict: Totals {'individual_tree': int, 'group_of_trees': int} across all entries.
     """
+    if isinstance(entries, AnnotationEntry):
+        entries = [entries]
+    total = {"individual_tree": 0, "group_of_trees": 0}
+    for e in entries:
         for item in e.items:
             if item.cls in total:
                 total[item.cls] += 1
@@ -526,7 +569,8 @@ def dataset_report(config, entries, sample_count=3):
         entries (list): List of annotation entries.
         sample_count (int): Number of sample images to visualize. Defaults to 3.
     """
-
+    dist = class_distribution(entries)
+    p("Class counts", dist)
     both = find_images_with_both(entries)
     p("Images containing both classes:", len(both))
 
@@ -548,6 +592,7 @@ def create_experiment_tracker():
     Returns:
         dict: Empty tracker with keys for models, losses, and metrics.
     """
+    return {
         "models": [],
         "val_loss": [],
         "iou": [],
@@ -571,6 +616,7 @@ def update_tracker(tracker, model_name, checkpoint_path):
     Returns:
         bool: True if successfully updated, False if checkpoint not found.
     """
+    if not checkpoint_path.exists():
         return False
 
     try:
@@ -600,6 +646,7 @@ def plot_experiment_results(tracker, save_path=None):
         tracker (dict): Experiment tracker with results.
         save_path (Path, optional): Path to save figure. If None, only displays.
     """
+    if len(tracker["models"]) == 0:
         print("No experiments completed yet.")
         return
 
@@ -704,6 +751,10 @@ def plot_training_history(trainer, title_prefix=""):
         trainer: Trainer object with history dictionary.
         title_prefix (str): Prefix for plot title. Defaults to "".
     """
+    history = trainer.history
+
+    train_loss = history.get("train_loss", [])
+    val_loss = history.get("val_loss", [])
     val_iou = history.get("val_iou", [])
     val_precision = history.get("val_precision", [])
     val_recall = history.get("val_recall", [])

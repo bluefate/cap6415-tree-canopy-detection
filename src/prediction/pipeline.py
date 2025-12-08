@@ -51,6 +51,7 @@ class Predictor:
         Raises:
             FileNotFoundError: If model weights file does not exist.
         """
+        if not self.model_path.exists():
             raise FileNotFoundError(f"Missing model weights {self.model_path}")
         state = torch.load(self.model_path, map_location=self.device)
 
@@ -225,53 +226,3 @@ class Predictor:
                 print(f"Processed {idx + 1}/{total} images")
 
         return results
-
-    # def run_on_folder(self, image_dir: Path, transform=None, num_samples: int = None):
-    #     """
-    #     Run prediction on a folder using sliding window.
-    #     """
-    #     image_files = sorted(
-    #         list(image_dir.glob("*.png")) + list(image_dir.glob("*.tif"))
-    #     )
-    #     results = []
-    #
-    #     total = (
-    #         len(image_files)
-    #         if num_samples is None
-    #         else min(num_samples, len(image_files))
-    #     )
-    #
-    #     for idx in range(total):
-    #         img_path = image_files[idx]
-    #
-    #         # Load RGB
-    #         original_img = cv2.imread(str(img_path))
-    #         if original_img is None:
-    #             continue
-    #         original_img = cv2.cvtColor(original_img, cv2.COLOR_BGR2RGB)
-    #
-    #         # Predict using sliding window (tile_size matches training size)
-    #         pred_mask = self.predict_sliding_window(
-    #             original_img, tile_size=self.image_size
-    #         )
-    #
-    #         # Create overlay
-    #         mask_rgb = np.zeros_like(original_img)
-    #         mask_rgb[pred_mask == 1] = [0, 255, 0]  # Individual = Green
-    #         mask_rgb[pred_mask == 2] = [255, 255, 0]  # Group = Yellow
-    #
-    #         overlay = cv2.addWeighted(original_img, 0.7, mask_rgb, 0.3, 0)
-    #
-    #         results.append(
-    #             {
-    #                 "name": img_path.name,
-    #                 "image": original_img,
-    #                 "mask": pred_mask,
-    #                 "overlay": overlay,
-    #             }
-    #         )
-    #
-    #         if (idx + 1) % 5 == 0:
-    #             print(f"Processed {idx + 1}/{total} images")
-    #
-    #     return results

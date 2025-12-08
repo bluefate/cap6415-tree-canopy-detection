@@ -41,7 +41,7 @@ class ImageMaskDataset(Dataset):
     ):
         """
         Initialize image-mask dataset.
-        
+
         Args:
             entries (List[AnnotationEntry]): List of annotation entries.
             image_dir (Path): Directory containing image files.
@@ -56,7 +56,7 @@ class ImageMaskDataset(Dataset):
     def __len__(self) -> int:
         """
         Get dataset size.
-        
+
         Returns:
             int: Number of samples in dataset.
         """
@@ -65,10 +65,10 @@ class ImageMaskDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         """
         Get image-mask pair by index.
-        
+
         Args:
             idx (int): Index of sample.
-        
+
         Returns:
             Tuple[torch.Tensor, torch.Tensor]: Image tensor [C, H, W] and mask tensor [H, W].
         """
@@ -147,7 +147,7 @@ class ImageOnlyDataset(Dataset):
     ):
         """
         Initialize image-only dataset for inference.
-        
+
         Args:
             image_dir (Path): Directory containing PNG images.
             transform: Albumentations composition for preprocessing.
@@ -165,10 +165,10 @@ class ImageOnlyDataset(Dataset):
     def __getitem__(self, idx: int) -> Tuple[str, torch.Tensor]:
         """
         Get image at specified index.
-        
+
         Args:
             idx (int): Index of image to retrieve.
-        
+
         Returns:
             tuple: (filename, image_tensor) where image_tensor has shape (C, H, W).
         """
@@ -202,13 +202,13 @@ class ImageOnlyDataset(Dataset):
     ) -> np.ndarray:
         """
         Load image from various source types with format handling.
-        
+
         Args:
             source: Image source (path, array, tensor, or PIL Image).
-        
+
         Returns:
             np.ndarray: RGB image array.
-        
+
         Raises:
             ValueError: If image cannot be loaded from source.
         """

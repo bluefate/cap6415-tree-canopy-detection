@@ -265,23 +265,6 @@ def analyze_validation_metrics(
         Dict[str, Any]: Summary metrics and performance assessment.
     """
 
-    Args:
-        val_loss: Validation loss (lower is better)
-        iou: Intersection over Union (0-1, higher is better)
-        accuracy: Pixel accuracy (0-1, higher is better)
-        precision: Precision (0-1, higher is better)
-        recall: Recall (0-1, higher is better)
-        f1_score: F1 score (0-1, higher is better)
-        individual_tree_iou: IoU for individual trees
-        group_tree_iou: IoU for tree groups
-        dice: Dice coefficient (0-1, higher is better)
-        model_name: Name for display
-        verbose: Print detailed analysis
-
-    Returns:
-        dict: Analysis results with scores and recommendations
-    """
-
     def get_performance_level(value, thresholds):
         """Get performance level based on thresholds [poor, fair, good, excellent]"""
         if value >= thresholds[2]:

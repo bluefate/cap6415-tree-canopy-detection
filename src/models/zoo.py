@@ -60,11 +60,11 @@ except ImportError:
 def create_simple_cnn(in_channels: int = 3, out_channels: int = 3):
     """
     Create a SimpleCNN model for baseline segmentation.
-    
+
     Args:
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         SimpleCNN: Initialized model.
     """
@@ -74,11 +74,11 @@ def create_simple_cnn(in_channels: int = 3, out_channels: int = 3):
 def create_unet(in_channels: int = 3, out_channels: int = 3):
     """
     Create a U-Net model for semantic segmentation.
-    
+
     Args:
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         UNet: Initialized model.
     """
@@ -93,16 +93,16 @@ def create_smp_unet(
 ):
     """
     Create a segmentation_models_pytorch U-Net with configurable encoder.
-    
+
     Args:
         encoder_name (str): Name of the encoder backbone. Defaults to "mobilenet_v2".
         encoder_weights (str): Pre-trained weights to load. Defaults to "imagenet".
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         smp.Unet: Initialized model.
-    
+
     Raises:
         ImportError: If segmentation_models_pytorch is not installed.
     """
@@ -125,16 +125,16 @@ def create_smp_fpn(
 ):
     """
     Create a Feature Pyramid Network (FPN) model.
-    
+
     Args:
         encoder_name (str): Name of the encoder backbone. Defaults to "mobilenet_v2".
         encoder_weights (str): Pre-trained weights to load. Defaults to "imagenet".
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         smp.FPN: Initialized model.
-    
+
     Raises:
         ImportError: If segmentation_models_pytorch is not installed.
     """
@@ -156,16 +156,16 @@ def create_smp_linknet(
 ):
     """
     Create a LinkNet model for fast semantic segmentation.
-    
+
     Args:
         encoder_name (str): Name of the encoder backbone. Defaults to "mobilenet_v2".
         encoder_weights (str): Pre-trained weights to load. Defaults to "imagenet".
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         smp.Linknet: Initialized model.
-    
+
     Raises:
         ImportError: If segmentation_models_pytorch is not installed.
     """
@@ -187,16 +187,16 @@ def create_smp_deeplabv3(
 ):
     """
     Create a DeepLabV3 model for semantic segmentation.
-    
+
     Args:
         encoder_name (str): Name of the encoder backbone. Defaults to "mobilenet_v2".
         encoder_weights (str): Pre-trained weights to load. Defaults to "imagenet".
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         smp.DeepLabV3: Initialized model.
-    
+
     Raises:
         ImportError: If segmentation_models_pytorch is not installed.
     """
@@ -218,16 +218,16 @@ def create_smp_deeplabv3plus(
 ):
     """
     Create a DeepLabV3+ model for semantic segmentation.
-    
+
     Args:
         encoder_name (str): Name of the encoder backbone. Defaults to "mobilenet_v2".
         encoder_weights (str): Pre-trained weights to load. Defaults to "imagenet".
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         smp.DeepLabV3Plus: Initialized model.
-    
+
     Raises:
         ImportError: If segmentation_models_pytorch is not installed.
     """
@@ -248,15 +248,15 @@ def create_segformer(
 ):
     """
     Create a SegFormer model from Hugging Face transformers.
-    
+
     Args:
         model_name (str): HuggingFace model identifier. Defaults to nvidia pretrained model.
         in_channels (int): Must be 3 (RGB only). Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         SegformerForSemanticSegmentation: Initialized model.
-    
+
     Raises:
         ImportError: If transformers not installed.
         ValueError: If in_channels is not 3.
@@ -278,11 +278,11 @@ def create_segformer(
 def create_timm_segformer(encoder_name="tf_mobilenet_v2_s", out_channels: int = 3):
     """
     Create SegFormer model using TIMM encoder (currently not implemented).
-    
+
     Args:
         encoder_name (str): TIMM encoder name. Defaults to 'tf_mobilenet_v2_s'.
         out_channels (int): Number of output classes. Defaults to 3.
-    
+
     Raises:
         ImportError: If timm not installed.
         NotImplementedError: Feature requires custom head implementation.
@@ -303,11 +303,11 @@ def create_timm_upernet(
 ):
     """
     Create UperNet model using TIMM encoder (currently not implemented).
-    
+
     Args:
         encoder_name (str): TIMM encoder name. Defaults to 'swin_base_patch4_window7_224'.
         out_channels (int): Number of output classes. Defaults to 3.
-    
+
     Raises:
         ImportError: If timm not installed.
         NotImplementedError: Feature available on request.
@@ -322,15 +322,14 @@ def create_timm_upernet(
 def create_yolov8n(in_channels: int = 3, out_channels: int = 3):
     """
     Create YOLOv8 Nano segmentation model.
-    
+
     Args:
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         YOLOv8SemanticSeg: Initialized nano model.
     """
-    """YOLOv8-nano semantic segmentation (~0.5M params)."""
     if not YOLO_SEG_AVAILABLE:
         raise ImportError("YOLOv8 segmentation not available.")
     return create_yolov8n_seg(in_channels=in_channels, out_channels=out_channels)
@@ -339,15 +338,14 @@ def create_yolov8n(in_channels: int = 3, out_channels: int = 3):
 def create_yolov8s(in_channels: int = 3, out_channels: int = 3):
     """
     Create YOLOv8 Small segmentation model.
-    
+
     Args:
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         YOLOv8SemanticSeg: Initialized small model.
     """
-    """YOLOv8-small semantic segmentation (~2M params)."""
     if not YOLO_SEG_AVAILABLE:
         raise ImportError("YOLOv8 segmentation not available.")
     return create_yolov8s_seg(in_channels=in_channels, out_channels=out_channels)
@@ -356,15 +354,14 @@ def create_yolov8s(in_channels: int = 3, out_channels: int = 3):
 def create_yolov8m(in_channels: int = 3, out_channels: int = 3):
     """
     Create YOLOv8 Medium segmentation model.
-    
+
     Args:
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         YOLOv8SemanticSeg: Initialized medium model.
     """
-    """YOLOv8-medium semantic segmentation (~6M params)."""
     if not YOLO_SEG_AVAILABLE:
         raise ImportError("YOLOv8 segmentation not available.")
     return create_yolov8m_seg(in_channels=in_channels, out_channels=out_channels)
@@ -373,15 +370,14 @@ def create_yolov8m(in_channels: int = 3, out_channels: int = 3):
 def create_yolov8l(in_channels: int = 3, out_channels: int = 3):
     """
     Create YOLOv8 Large segmentation model.
-    
+
     Args:
         in_channels (int): Number of input channels. Defaults to 3.
         out_channels (int): Number of output channels. Defaults to 3.
-    
+
     Returns:
         YOLOv8SemanticSeg: Initialized large model.
     """
-    """YOLOv8-large semantic segmentation (~15M params)."""
     if not YOLO_SEG_AVAILABLE:
         raise ImportError("YOLOv8 segmentation not available.")
     return create_yolov8l_seg(in_channels=in_channels, out_channels=out_channels)
@@ -423,10 +419,10 @@ MODEL_BENCHMARKS = {
 def MODEL_EXPERIMENTS(filter_sets=None):
     """
     Define list of model experiments with different architectures and configurations.
-    
+
     Args:
         filter_sets (list, optional): List of filter configurations to include. If None, uses default filters.
-    
+
     Returns:
         list: List of tuples (model_name, mode, filters) for experimentation.
     """
@@ -444,14 +440,14 @@ def MODEL_EXPERIMENTS(filter_sets=None):
 def build_model(name: str, **kwargs):
     """
     Factory function to build a model by name.
-    
+
     Args:
         name (str): Model name (e.g., 'simple_cnn', 'unet', 'smp_unet', 'segformer', 'yolov8l').
         **kwargs: Additional arguments passed to model factory function.
-    
+
     Returns:
         nn.Module: Initialized model.
-    
+
     Raises:
         ValueError: If model name is not recognized.
     """
@@ -464,11 +460,10 @@ def build_model(name: str, **kwargs):
 def list_available_models():
     """
     Get list of all available model names that can be built.
-    
+
     Returns:
         list: Names of available models.
     """
-    """List all available models."""
     t("Available models:")
     p("-" * 50)
 

@@ -195,6 +195,7 @@ class Config(BaseModel):
         Returns:
             None (modifies config in-place if enabled).
         """
+        p("auto_adjust disabled")
         # if self.train.image_size >= 512:
         #     if self.train.batch_size > 4:
         #         p("WARNING", f"Batch size {self.train.batch_size} too large for image size "

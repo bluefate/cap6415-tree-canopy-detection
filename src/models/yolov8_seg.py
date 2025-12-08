@@ -42,13 +42,13 @@ class YOLOv8SegmentationWrapper(nn.Module):
     ):
         """
         Initialize YOLOv8 segmentation wrapper.
-        
+
         Args:
             model_size (str): Model size ('n', 's', 'm', 'l', 'x'). Defaults to 'n'.
             num_classes (int): Number of output classes. Defaults to 3.
             pretrained (bool): Load pretrained weights. Defaults to True.
             image_size (int): Input image size. Defaults to 640.
-        
+
         Raises:
             ImportError: If ultralytics not installed.
         """
@@ -226,7 +226,7 @@ class YOLOv8SemanticSeg(nn.Module):
     ):
         """
         Initialize YOLOv8-style semantic segmentation model.
-        
+
         Args:
             in_channels (int): Number of input channels. Defaults to 3.
             out_channels (int): Number of output classes. Defaults to 3.
@@ -357,7 +357,7 @@ class Conv(nn.Module):
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, act=True):
         """
         Initialize convolution block.
-        
+
         Args:
             c1 (int): Input channels.
             c2 (int): Output channels.
@@ -385,7 +385,7 @@ class Bottleneck(nn.Module):
     def __init__(self, c1, c2, shortcut=True, g=1, e=0.5):
         """
         Initialize bottleneck block.
-        
+
         Args:
             c1 (int): Input channels.
             c2 (int): Output channels.
@@ -410,7 +410,7 @@ class C2f(nn.Module):
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
         """
         Initialize CSP Bottleneck with 2 convolutions.
-        
+
         Args:
             c1 (int): Input channels.
             c2 (int): Output channels.
@@ -440,7 +440,7 @@ class SPPF(nn.Module):
     def __init__(self, c1, c2, k=5):
         """
         Initialize Spatial Pyramid Pooling - Fast module.
-        
+
         Args:
             c1 (int): Input channels.
             c2 (int): Output channels.

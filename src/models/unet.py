@@ -91,6 +91,7 @@ class UNet(nn.Module):
         Returns:
             torch.Tensor: Output segmentation logits of shape [batch_size, out_channels, height, width].
         """
+        c1 = self.enc1(x)
         c2 = self.enc2(self.pool(c1))
         c3 = self.enc3(self.pool(c2))
         c4 = self.enc4(self.pool(c3))

@@ -20,18 +20,18 @@ def show_side_by_side(
 ) -> None:
     """
     Display multiple images/masks/figures in a grid layout.
-    
-    Handles various input types including numpy arrays, matplotlib figures, and 
-    colored mask tuples. Automatically scales images from [0,1] range to [0,255] 
+
+    Handles various input types including numpy arrays, matplotlib figures, and
+    colored mask tuples. Automatically scales images from [0,1] range to [0,255]
     for display.
-    
+
     Args:
-        *images: Variable number of images (np.ndarray, matplotlib Figure, or 
+        *images: Variable number of images (np.ndarray, matplotlib Figure, or
                 (mask, class_name) tuples for colored display).
         titles (tuple, optional): Titles for each image. If None, auto-generated.
         cmaps (tuple, optional): Matplotlib colormaps for each image.
         maxcolumns (int, optional): Maximum columns in grid. Auto-arranges into rows.
-        preserve_values (bool): If True, preserve raw numeric values for display. 
+        preserve_values (bool): If True, preserve raw numeric values for display.
                                Defaults to False.
         vmax (float, optional): Maximum value for symmetric colormapping.
         kernel (np.ndarray, optional): 2D kernel to display alongside images.
@@ -189,16 +189,16 @@ def show_image(
 ):
     """
     Display a single image using matplotlib.
-    
+
     Automatically handles image value scaling from [0,1] or raw ranges to [0,255].
-    
+
     Args:
         image (np.ndarray): Input image to display.
         title (str): Title for the image. Defaults to "".
-        return_img (bool): If True, return converted uint8 image instead of displaying. 
+        return_img (bool): If True, return converted uint8 image instead of displaying.
                           Defaults to False.
         cmap (str): Matplotlib colormap. Defaults to "gray".
-    
+
     Returns:
         np.ndarray or None: Converted uint8 image if return_img=True, else None.
     """
@@ -231,20 +231,19 @@ def show_image(
 def show_mask(mask: np.ndarray, title: str = "", return_img: bool = False, cmap="gray"):
     """
     Display a mask with proper handling of class indices and value ranges.
-    
+
     Supports multi-class masks with indices [0,1,2] and binary masks [0,1] or [0,255].
     Uses PIL for exact grayscale rendering.
-    
+
     Args:
         mask (np.ndarray): Input mask with class indices or binary values.
         title (str): Title for the mask. Defaults to "".
-        return_img (bool): If True, return converted uint8 mask instead of displaying. 
+        return_img (bool): If True, return converted uint8 mask instead of displaying.
                           Defaults to False.
         cmap (str): Matplotlib colormap. Defaults to "gray".
-    
+
     Returns:
         np.ndarray or None: Converted uint8 mask if return_img=True, else None.
-    """
     """
     # Handle multi-class masks (class indices 0,1,2)
     if mask.dtype != np.uint8:
@@ -290,19 +289,19 @@ def show_overlay(
 ):
     """
     Display image with red mask overlay for tree detection visualization.
-    
-    Converts multi-class masks to binary representation and overlays with 
+
+    Converts multi-class masks to binary representation and overlays with
     specified alpha blending.
-    
+
     Args:
         image (np.ndarray): Input RGB image.
         mask (np.ndarray): Multi-class mask [0,1,2] or binary mask.
-        alpha (float): Blending factor for overlay (0=image only, 1=mask only). 
+        alpha (float): Blending factor for overlay (0=image only, 1=mask only).
                       Defaults to 0.4.
         title (str): Title for the overlay. Defaults to "".
-        return_img (bool): If True, return overlay as uint8 image instead of displaying. 
+        return_img (bool): If True, return overlay as uint8 image instead of displaying.
                           Defaults to False.
-    
+
     Returns:
         np.ndarray or None: Blended overlay image if return_img=True, else None.
     """
@@ -340,12 +339,12 @@ def show_overlay(
 def show_stages(stages: dict, cmaps=None, maxcolumns=5) -> None:
     """
     Display pipeline stages (intermediate images) in a grid layout.
-    
+
     Useful for visualizing enhancement or filtering pipelines.
-    
+
     Args:
         stages (dict): Dictionary where keys are stage names and values are image arrays.
-        cmaps (list, optional): Matplotlib colormaps for each stage. If None, uses 
+        cmaps (list, optional): Matplotlib colormaps for each stage. If None, uses
                                'gray' for all. Defaults to None.
         maxcolumns (int): Maximum columns in the grid. Defaults to 5.
     """
