@@ -12,7 +12,15 @@ from src.utils.helpers import c, p, t
 
 
 def check_config(config):
-    """Verify config loads correctly."""
+    """
+    Verify configuration loads correctly and all critical paths exist.
+    
+    Args:
+        config: Configuration object to validate.
+    
+    Returns:
+        bool: True if all checks pass, False otherwise.
+    """
     t("Checking Configuration")
     try:
         p("✓ Config loaded", config.paths.root, color1 = c.GREEN)
@@ -40,7 +48,14 @@ def check_config(config):
 
 
 def check_gpu():
-    """Check GPU availability."""
+    """
+    Check GPU availability, device count, and memory capacity.
+    
+    Tests CUDA availability and performs a test memory allocation to verify GPU is working.
+    
+    Returns:
+        bool: True if GPU is available and working, False if CPU only.
+    """
     t("Checking GPU")
 
     if torch.cuda.is_available():
@@ -67,7 +82,17 @@ def check_gpu():
 
 
 def check_data(config):
-    """Check data can be loaded."""
+    """
+    Verify data can be loaded from configured paths.
+    
+    Checks that annotation file exists, contains valid entries, and sample images can be loaded.
+    
+    Args:
+        config: Configuration object with data paths.
+    
+    Returns:
+        bool: True if all data checks pass, False otherwise.
+    """
     t("Checking Data")
 
     try:
@@ -98,7 +123,17 @@ def check_data(config):
 
 
 def check_dataset(config):
-    """Test dataset creation."""
+    """
+    Test dataset creation and sample loading.
+    
+    Verifies that ImageMaskDataset can be instantiated and samples can be loaded with correct shapes.
+    
+    Args:
+        config: Configuration object with training parameters.
+    
+    Returns:
+        bool: True if dataset checks pass, False otherwise.
+    """
     t("Checking Dataset")
 
     try:
@@ -148,7 +183,15 @@ def check_dataset(config):
 
 
 def check_model():
-    """Test model creation."""
+    """
+    Test model creation and forward pass.
+    
+    Verifies that a simple CNN model can be created, parameters counted,
+    and a forward pass produces correct output shape.
+    
+    Returns:
+        bool: True if model checks pass, False otherwise.
+    """
     t("Checking Model")
 
     try:
@@ -189,7 +232,15 @@ def check_model():
 
 
 def check_disk_space(config):
-    """Check available disk space."""
+    """
+    Check available disk space at project root.
+    
+    Args:
+        config: Configuration object with root path.
+    
+    Returns:
+        None (prints disk space information to console).
+    """
     t("Checking Disk Space")
 
     try:

@@ -14,9 +14,21 @@ from src.utils.helpers import c, p
 
 def load_image(image_dir: Path, entry: AnnotationEntry) -> np.ndarray:
     """
-    Load an image with automatic format handling and fallback for TIFFs.
-    Tries OpenCV first (fastest), falls back to PIL for problematic TIFFs.
-    Automatically uses PNG version if it exists alongside TIFF.
+    Load image with automatic format handling and TIFF fallback.
+    
+    Tries OpenCV first (fastest), falls back to PIL for problematic TIFFs. 
+    Automatically uses PNG version if available. Ensures RGB output.
+    
+    Args:
+        image_dir (Path): Directory containing images.
+        entry (AnnotationEntry): Annotation entry with image path.
+    
+    Returns:
+        np.ndarray: RGB image array.
+    
+    Raises:
+        FileNotFoundError: If image not found.
+        ValueError: If image cannot be loaded by OpenCV or PIL.
     """
     image_path = Path(image_dir / entry.image_path.name)
 
@@ -55,7 +67,15 @@ def load_image(image_dir: Path, entry: AnnotationEntry) -> np.ndarray:
 
 def validate_image_directory(image_dir: Path) -> dict:
     """
-    Validate all images in a directory can be loaded.
+    Validate all images in directory can be loaded successfully.
+    
+    Checks each image file using PIL.open().verify() and reports results.
+    
+    Args:
+        image_dir (Path): Directory containing image files.
+    
+    Returns:
+        dict: Results with keys: total, valid, invalid, problematic_files (list).
     """
     from src.utils.helpers import p
 
@@ -99,8 +119,17 @@ def validate_image_directory(image_dir: Path) -> dict:
 
 def apply_all_filters(img):
     """
-    Apply all available filters to an image and return dict of results.
-    Uses unified registry from kernels + algorithmic filters.
+    Apply all available filters to image and return normalized results.
+    
+    Applies both kernel-based filters (Sobel, Laplacian, Gaussian, etc.) and 
+    algorithmic filters (CLAHE, etc.). All outputs normalized to uint8 with 
+    original image dimensions.
+    
+    Args:
+        img (np.ndarray): Input RGB image.
+    
+    Returns:
+        dict: Mapping of filter names to normalized grayscale output arrays.
     """
     from src.exploration.kernels import get_kernels, apply_kernel_using_convolution
     from src.exploration.enhancement import to_gray, clahe_enhance
@@ -250,8 +279,17 @@ def apply_all_filters(img):
 
 def create_enhanced_image(img, filter_names):
     """
-    Create multi-channel enhanced image using specified filters.
-    Returns 3-channel image suitable for model input.
+    Create multi-channel enhanced image from specified filters.
+    
+    Applies named filters using apply_all_filters(), normalizes outputs, 
+    and stacks into 3-channel array suitable for model input.
+    
+    Args:
+        img (np.ndarray): Input RGB image.
+        filter_names (list): Names of filters to apply (first 3 used).
+    
+    Returns:
+        np.ndarray: 3-channel enhanced image with same height/width as input.
     """
     filters_dict = apply_all_filters(img)
 

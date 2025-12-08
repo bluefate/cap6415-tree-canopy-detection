@@ -11,11 +11,14 @@ from src.data.masks import build_multiclass_mask
 class EnhancedImageMaskDataset(ImageMaskDataset):
     """
     Extended dataset that applies filter enhancements during loading.
-
-    Can operate in 3 modes:
-    1. 'rgb' - Original 3-channel RGB
-    2. 'filtered' - Top 3 filters as RGB channels
-    3. 'concat' - 6-channel (RGB + 3 filters)
+    
+    Supports multiple enhancement modes:
+    - 'rgb': Original 3-channel RGB
+    - 'filtered': Top 3 filters as RGB replacement channels
+    - 'concat': 6-channel concatenation (RGB + 3 filter channels)
+    
+    Applies filters before augmentation to avoid double normalization.
+    Handles both single-class and multi-class segmentation.
     """
 
     def __init__(
@@ -124,7 +127,13 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
 
     def apply_filters_to_enhanced_image(self, img):
         """
-        Apply specified filters and return as 3-channel image.
+        Apply specified filters and return as 3-channel enhanced image.
+        
+        Args:
+            img (np.ndarray): Input RGB image.
+        
+        Returns:
+            np.ndarray: 3-channel enhanced image from filter outputs.
         """
         from src.data.image_loader import create_enhanced_image
 
@@ -133,7 +142,13 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
     @classmethod
     def get_available_filters(cls):
         """
-        Get list of all available filter names.
+        Get comprehensive list of all available filter names.
+        
+        Combines kernel-based filters (Sobel, Laplacian, Gaussian, etc.) with 
+        algorithmic filters (CLAHE, median, bilateral, etc.).
+        
+        Returns:
+            list: Sorted list of available filter names.
         """
         from src.exploration.kernels import get_kernels
 

@@ -4,6 +4,16 @@ import numpy as np
 
 def refine_mask(mask: np.ndarray, min_area: int = 20) -> np.ndarray:
     """
+    Refine binary mask by removing small connected components (noise).
+    
+    Args:
+        mask (np.ndarray): Binary mask to refine.
+        min_area (int): Minimum area threshold for connected components. Defaults to 20.
+    
+    Returns:
+        np.ndarray: Refined mask with small components removed.
+    """
+    """
     Clean small artifacts in a binary mask.
     Removes connected components smaller than min_area.
     """
@@ -22,12 +32,33 @@ def refine_mask(mask: np.ndarray, min_area: int = 20) -> np.ndarray:
 
 def group_mask_threshold(mask: np.ndarray, threshold: float = 0.5) -> np.ndarray:
     """
+    Convert probabilistic mask to binary using threshold.
+    
+    Args:
+        mask (np.ndarray): Probabilistic mask (0-1 values).
+        threshold (float): Threshold value for binarization. Defaults to 0.5.
+    
+    Returns:
+        np.ndarray: Binary mask (0 or 1).
+    """
+    """
     Apply a direct threshold to a probability mask.
     """
     return (mask > threshold).astype(np.uint8)
 
 
 def overlay_mask(image: np.ndarray, mask: np.ndarray, alpha: float = 0.4) -> np.ndarray:
+    """
+    Overlay binary mask on RGB image with semi-transparency.
+    
+    Args:
+        image (np.ndarray): RGB image (0-255 or 0-1 range).
+        mask (np.ndarray): Binary mask (0-1 values).
+        alpha (float): Blending factor. Defaults to 0.4.
+    
+    Returns:
+        np.ndarray: Blended image with mask overlay.
+    """
     """
     Create a red overlay of the mask on top of an RGB image.
     """

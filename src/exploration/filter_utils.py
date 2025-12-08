@@ -12,7 +12,20 @@ from src.utils.helpers import c, p
 
 
 def get_input_channels(mode, filters, model_name):
-    """Get correct input channels for model and mode combination."""
+    """
+    Get correct input channel count for model and mode combination.
+    
+    Determines appropriate number of input channels based on processing mode 
+    and model architecture.
+    
+    Args:
+        mode (str): Processing mode ('rgb', 'filtered', or 'concat').
+        filters (list): List of filters to apply (used in 'concat' mode).
+        model_name (str): Name of model ('simple_cnn', 'unet', etc.).
+    
+    Returns:
+        int: Number of input channels (typically 3 or 6).
+    """
     if mode == "rgb":
         return 3
     elif mode == "filtered":
@@ -36,14 +49,17 @@ def get_input_channels(mode, filters, model_name):
 def normalize_filter_output(filtered, target_shape, dtype=np.uint8):
     """
     Normalize filter output to consistent shape and dtype.
+    
+    Handles grayscale conversion, resizing, and dtype normalization to ensure
+    consistent output across different filter implementations.
 
     Args:
-        filtered: Filter output (any shape, any dtype)
-        target_shape: Target (height, width) tuple
-        dtype: Output dtype (default: np.uint8)
+        filtered (np.ndarray): Filter output (any shape, any dtype).
+        target_shape (tuple): Target (height, width) shape.
+        dtype (type): Output dtype. Defaults to np.uint8.
 
     Returns:
-        Normalized 2D array with shape=target_shape and dtype=dtype
+        np.ndarray: Normalized 2D array with target shape and dtype.
     """
     target_h, target_w = target_shape
 
@@ -72,15 +88,16 @@ def normalize_filter_output(filtered, target_shape, dtype=np.uint8):
 
 def apply_filters_safe(img, filter_functions, filter_names=None):
     """
-    Apply multiple filters and return as dictionary with normalized outputs.
+    Apply multiple filters safely with error handling and normalization.
 
     Args:
-        img: Input RGB image
-        filter_functions: Dict of {name: callable} or list of callables
-        filter_names: Optional list of names (if filter_functions is a list)
+        img (np.ndarray): Input RGB image.
+        filter_functions (dict or list): Filter functions to apply. Either dict of 
+                                        {name: callable} or list of callables.
+        filter_names (list, optional): Names for filters if using list format.
 
     Returns:
-        Dict of {filter_name: normalized_output}
+        dict: Dictionary mapping filter names to normalized output arrays.
     """
     target_shape = img.shape[:2]
 
@@ -112,12 +129,17 @@ def create_multichannel_image(filter_outputs, channel_names=None, num_channels=3
     Create multi-channel image from filter outputs.
 
     Args:
-        filter_outputs: Dict of {name: 2D array} or list of 2D arrays
-        channel_names: List of channel names to use (in order)
-        num_channels: Number of channels in output (default: 3)
+        filter_outputs (dict or list): Filter output arrays. Dict of {name: 2D array} 
+                                       or list of 2D arrays.
+        channel_names (list, optional): Specific channel names to use in order. 
+                                       If None, uses first num_channels filters.
+        num_channels (int): Number of output channels. Defaults to 3.
 
     Returns:
-        Multi-channel image with shape (H, W, num_channels)
+        np.ndarray: Multi-channel image with shape (H, W, num_channels).
+    
+    Raises:
+        ValueError: If channel shapes are mismatched or invalid input format.
     """
     if isinstance(filter_outputs, dict):
         if channel_names is None:
@@ -145,15 +167,19 @@ def create_multichannel_image(filter_outputs, channel_names=None, num_channels=3
 
 def create_enhanced_image_robust(img, filter_names, filter_registry=None):
     """
-    Robust version of create_enhanced_image with automatic error handling.
+    Robustly create enhanced multi-channel image with automatic error handling.
+    
+    Applies filters from registry to image, normalizes outputs, and stacks into 
+    multi-channel result.
 
     Args:
-        img: Input RGB image
-        filter_names: List of filter names to apply
-        filter_registry: Optional dict of {name: callable}. If None, uses default filters.
+        img (np.ndarray): Input RGB image.
+        filter_names (list): Names of filters to apply.
+        filter_registry (dict, optional): Dict of {name: callable}. If None, uses 
+                                         default filters (laplacian, sobel, clahe).
 
     Returns:
-        3-channel enhanced image
+        np.ndarray: 3-channel enhanced image.
     """
     from src.exploration.enhancement import clahe_enhance, to_gray
     from src.exploration.filters import cv2_apply_laplacian, cv2_apply_sobel
@@ -182,14 +208,18 @@ def create_enhanced_image_robust(img, filter_names, filter_registry=None):
 # Convenience function for quick testing
 def test_filter_pipeline(img_path, filter_names=["laplacian", "sobel", "clahe"]):
     """
-    Test the complete filter pipeline on an image.
+    Test complete filter pipeline on an image file.
 
     Args:
-        img_path: Path to image file
-        filter_names: List of filters to apply
+        img_path (str): Path to image file to process.
+        filter_names (list): List of filters to apply. 
+                            Defaults to ["laplacian", "sobel", "clahe"].
 
     Returns:
-        Tuple of (original_img, enhanced_img, filter_outputs_dict)
+        tuple: (original_img, enhanced_img, filter_outputs_dict)
+    
+    Raises:
+        ValueError: If image file cannot be loaded.
     """
     import cv2
 

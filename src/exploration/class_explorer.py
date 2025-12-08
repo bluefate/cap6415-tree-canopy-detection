@@ -18,9 +18,16 @@ CLASS_NAMES = ["individual_tree", "group_of_trees"]
 
 
 def mask_for_class(entry: AnnotationEntry, cls: str):
-    H = entry.height
-    W = entry.width
-    mask = np.zeros((H, W), dtype=np.uint8)
+    """
+    Generate binary mask for specified class.
+    
+    Args:
+        entry (AnnotationEntry): Annotation entry with segmentation polygons.
+        cls (str): Class name ('individual_tree' or 'group_of_trees').
+    
+    Returns:
+        np.ndarray: Binary mask with 1s for specified class, 0s elsewhere.
+    """
 
     for item in entry.items:
         if item.cls != cls:
@@ -35,17 +42,30 @@ def mask_for_class(entry: AnnotationEntry, cls: str):
 
 
 def available_classes(entries):
-    classes = set()
-    for e in entries:
+    """
+    Extract unique class names from annotation entries.
+    
+    Args:
+        entries (list): List of AnnotationEntry objects.
+    
+    Returns:
+        list: Sorted list of unique class names.
+    """
         for item in e.items:
             classes.add(item.cls)
     return sorted(classes)
 
 
 def mask_all(entry: AnnotationEntry):
-    H = entry.height
-    W = entry.width
-    mask = np.zeros((H, W), dtype=np.uint8)
+    """
+    Generate binary mask for all objects (union of all classes).
+    
+    Args:
+        entry (AnnotationEntry): Annotation entry with segmentation polygons.
+    
+    Returns:
+        np.ndarray: Binary mask with 1s for any annotation, 0s for background.
+    """
     for item in entry.items:
         seg = item.segmentation
         if seg is None or len(seg) < 4:
@@ -61,9 +81,16 @@ def mask_all(entry: AnnotationEntry):
 
 
 def color_mask(config, entry: AnnotationEntry):
-    H = entry.height
-    W = entry.width
-    mask_rgb = np.zeros((H, W, 3), dtype=np.uint8)
+    """
+    Generate RGB mask with class-specific colors.
+    
+    Args:
+        config: Configuration with MASK_COLORS dictionary.
+        entry (AnnotationEntry): Annotation entry with segmentation polygons.
+    
+    Returns:
+        np.ndarray: RGB image with class-specific colors filled in polygons.
+    """
 
     for item in entry.items:
         seg = item.segmentation
@@ -79,8 +106,16 @@ def color_mask(config, entry: AnnotationEntry):
 
 
 def draw_bboxes(img, entry: AnnotationEntry):
-    out = img.copy()
-    for item in entry.items:
+    """
+    Draw bounding boxes for all annotations on image.
+    
+    Args:
+        img (np.ndarray): Input image to draw on.
+        entry (AnnotationEntry): Annotation entry with segmentation polygons.
+    
+    Returns:
+        np.ndarray: Image with colored bounding boxes and class labels.
+    """
         seg = item.segmentation
         if seg is None or len(seg) < 4:
             continue
@@ -105,8 +140,17 @@ def draw_bboxes(img, entry: AnnotationEntry):
 
 
 def draw_bboxes_for_class(img, entry: AnnotationEntry, cls: str):
-    out = img.copy()
-    for item in entry.items:
+    """
+    Draw bounding boxes for specified class only.
+    
+    Args:
+        img (np.ndarray): Input image to draw on.
+        entry (AnnotationEntry): Annotation entry with segmentation polygons.
+        cls (str): Class name to filter by.
+    
+    Returns:
+        np.ndarray: Image with bounding boxes for specified class.
+    """
         if item.cls != cls:
             continue
         seg = item.segmentation
@@ -131,10 +175,15 @@ def draw_bboxes_for_class(img, entry: AnnotationEntry, cls: str):
 
 
 def explore_image(config, entry: AnnotationEntry):
-    img = load_image(config.paths.train_images, entry)
-
-    mask_ind = mask_for_class(entry, "individual_tree")
-    mask_grp = mask_for_class(entry, "group_of_trees")
+    """
+    Visualize image with class-specific masks and overlays.
+    
+    Displays side-by-side: individual tree mask, group mask, and both overlays.
+    
+    Args:
+        config: Configuration with MASK_COLORS and paths.
+        entry (AnnotationEntry): Annotation entry to visualize.
+    """
 
     color_ind = np.zeros_like(img)
     color_grp = np.zeros_like(img)
@@ -169,8 +218,17 @@ def explore_image(config, entry: AnnotationEntry):
 
 def analyze_class_distribution(train_loader, val_loader=None):
     """
-    Analyze class distribution in training (and optionally validation) data.
-    Call this before training to understand class imbalance and get weight recommendations.
+    Analyze class distribution and compute loss weight recommendations.
+    
+    Examines class imbalance in training data and provides three weight calculation 
+    methods: inverse frequency, balanced (sklearn-style), and simple practical weights.
+    
+    Args:
+        train_loader: Training data loader yielding (image, mask) batches.
+        val_loader (optional): Validation data loader for comparison.
+    
+    Returns:
+        dict: Contains train_counts, train_percentages, and three weight tensors.
     """
 
     p()
@@ -268,8 +326,14 @@ def analyze_class_distribution(train_loader, val_loader=None):
 
 
 def show_single_class(config, entry: AnnotationEntry, cls: str):
-    img = load_image(config.paths.train_images, entry)
-    mask = mask_for_class(entry, cls)
+    """
+    Display image with mask for single class.
+    
+    Args:
+        config: Configuration with MASK_COLORS and paths.
+        entry (AnnotationEntry): Annotation entry to visualize.
+        cls (str): Class name to display.
+    """
     show_side_by_side(
         img,
         (mask, cls),
@@ -279,10 +343,13 @@ def show_single_class(config, entry: AnnotationEntry, cls: str):
 
 
 def show_all_classes(config, entry: AnnotationEntry):
-    img = load_image(config.paths.train_images, entry)
-
-    # build combined mask for both classes
-    mask = mask_all(entry)
+    """
+    Display image with combined colored mask for all classes.
+    
+    Args:
+        config: Configuration with MASK_COLORS and paths.
+        entry (AnnotationEntry): Annotation entry to visualize.
+    """
 
     # build colored mask (per polygon, per class)
     mask_rgb = color_mask(config, entry)
@@ -300,11 +367,13 @@ def show_all_classes(config, entry: AnnotationEntry):
 
 
 def show_per_class(config, entry: AnnotationEntry):
-    img = load_image(config.paths.train_images, entry)
-    classes = ["individual_tree", "group_of_trees"]
-
-    # masks must be tuples (mask, class_name) for coloring
-    imgs = [img] + [(mask_for_class(entry, c), c) for c in classes]
+    """
+    Display image with per-class masks for both tree classes.
+    
+    Args:
+        config: Configuration with MASK_COLORS and paths.
+        entry (AnnotationEntry): Annotation entry to visualize.
+    """
 
     titles = ["Image"] + classes
 
@@ -316,9 +385,13 @@ def show_per_class(config, entry: AnnotationEntry):
 
 
 def show_overlay_all(config, entry: AnnotationEntry):
-    img = load_image(config.paths.train_images, entry)
-    # mask = mask_all(entry)
-    mask = color_mask(config, entry)
+    """
+    Display image with colored mask overlay for all classes.
+    
+    Args:
+        config: Configuration with MASK_COLORS and paths.
+        entry (AnnotationEntry): Annotation entry to visualize.
+    """
 
     # show_overlay(img, mask, title="Overlay All")
     overlay = cv2.addWeighted(img, 0.6, mask, 0.4, 0)
@@ -331,10 +404,13 @@ def show_overlay_all(config, entry: AnnotationEntry):
 
 
 def show_overlay_by_class(config, entry: AnnotationEntry):
-    img = load_image(config.paths.train_images, entry)
-
-    m_ind = mask_for_class(entry, "individual_tree")
-    m_grp = mask_for_class(entry, "group_of_trees")
+    """
+    Display separate overlays for individual tree and group tree classes.
+    
+    Args:
+        config: Configuration with MASK_COLORS and paths.
+        entry (AnnotationEntry): Annotation entry to visualize.
+    """
 
     col_ind = tuple(config.MASK_COLORS.get("individual_tree", [0, 255, 0]))
     col_grp = tuple(config.MASK_COLORS.get("group_of_trees", [255, 0, 0]))
@@ -364,8 +440,13 @@ def show_overlay_by_class(config, entry: AnnotationEntry):
 
 
 def explore_color_overlay(config, entry: AnnotationEntry):
-    img = load_image(config.paths.train_images, entry)
-    mask_rgb = color_mask(config, entry)
+    """
+    Display color overlay visualization for annotation exploration.
+    
+    Args:
+        config: Configuration with MASK_COLORS and paths.
+        entry (AnnotationEntry): Annotation entry to visualize.
+    """
     overlay = cv2.addWeighted(img, 0.6, mask_rgb, 0.4, 0)
 
     show_side_by_side(
@@ -374,10 +455,15 @@ def explore_color_overlay(config, entry: AnnotationEntry):
 
 
 def explore_bboxes(config, entry: AnnotationEntry):
-    img = load_image(config.paths.train_images, entry)
-    b_all = draw_bboxes(img, entry)
-    b_ind = draw_bboxes_for_class(img, entry, "individual_tree")
-    b_grp = draw_bboxes_for_class(img, entry, "group_of_trees")
+    """
+    Display bounding box visualizations for annotation exploration.
+    
+    Shows bboxes for individual trees, group trees, and combined.
+    
+    Args:
+        config: Configuration with MASK_COLORS and paths.
+        entry (AnnotationEntry): Annotation entry to visualize.
+    """
 
     show_side_by_side(
         b_ind, b_grp, b_all, titles=("Individual bboxes", "Group bboxes", "All bboxes")
@@ -385,8 +471,15 @@ def explore_bboxes(config, entry: AnnotationEntry):
 
 
 def find_images_with_both(entries):
-    out = []
-    for e in entries:
+    """
+    Find images that contain both individual tree and group tree annotations.
+    
+    Args:
+        entries (list): List of AnnotationEntry objects.
+    
+    Returns:
+        list: Filtered list of entries containing both classes.
+    """
         classes = {item.cls for item in e.items}
         if "individual_tree" in classes and "group_of_trees" in classes:
             out.append(e)
@@ -394,18 +487,30 @@ def find_images_with_both(entries):
 
 
 def count_classes(entry: AnnotationEntry):
-    counts = {"individual_tree": 0, "group_of_trees": 0}
-    for item in entry.items:
+    """
+    Count number of each class in single annotation entry.
+    
+    Args:
+        entry (AnnotationEntry): Annotation entry to analyze.
+    
+    Returns:
+        dict: Class counts {'individual_tree': int, 'group_of_trees': int}.
+    """
         if item.cls in counts:
             counts[item.cls] += 1
     return counts
 
 
 def class_distribution(entries):
-    if isinstance(entries, AnnotationEntry):
-        entries = [entries]
-    total = {"individual_tree": 0, "group_of_trees": 0}
-    for e in entries:
+    """
+    Calculate class distribution across annotation entries.
+    
+    Args:
+        entries (list or AnnotationEntry): List of entries or single entry.
+    
+    Returns:
+        dict: Totals {'individual_tree': int, 'group_of_trees': int} across all entries.
+    """
         for item in e.items:
             if item.cls in total:
                 total[item.cls] += 1
@@ -413,8 +518,14 @@ def class_distribution(entries):
 
 
 def dataset_report(config, entries, sample_count=3):
-    dist = class_distribution(entries)
-    p("Class counts", dist)
+    """
+    Generate comprehensive report on dataset with class distribution and samples.
+    
+    Args:
+        config: Configuration with MASK_COLORS and paths.
+        entries (list): List of annotation entries.
+        sample_count (int): Number of sample images to visualize. Defaults to 3.
+    """
 
     both = find_images_with_both(entries)
     p("Images containing both classes:", len(both))
@@ -431,8 +542,12 @@ def dataset_report(config, entries, sample_count=3):
 
 
 def create_experiment_tracker():
-    """Create a tracker to store and plot experiment results."""
-    return {
+    """
+    Create tracker dictionary for storing experiment results and metrics.
+    
+    Returns:
+        dict: Empty tracker with keys for models, losses, and metrics.
+    """
         "models": [],
         "val_loss": [],
         "iou": [],
@@ -445,8 +560,17 @@ def create_experiment_tracker():
 
 
 def update_tracker(tracker, model_name, checkpoint_path):
-    """Update tracker with results from a completed experiment."""
-    if not checkpoint_path.exists():
+    """
+    Extract metrics from checkpoint and update experiment tracker.
+    
+    Args:
+        tracker (dict): Experiment tracker from create_experiment_tracker.
+        model_name (str): Name of model to track.
+        checkpoint_path (Path): Path to checkpoint file.
+    
+    Returns:
+        bool: True if successfully updated, False if checkpoint not found.
+    """
         return False
 
     try:
@@ -466,8 +590,16 @@ def update_tracker(tracker, model_name, checkpoint_path):
 
 
 def plot_experiment_results(tracker, save_path=None):
-    """Plot comparison of all completed experiments."""
-    if len(tracker["models"]) == 0:
+    """
+    Create comprehensive comparison plots for experiment results.
+    
+    Generates 6 subplots: validation loss, IoU, per-class IoU, precision, recall, F1.
+    Also prints summary table with best model highlighted.
+    
+    Args:
+        tracker (dict): Experiment tracker with results.
+        save_path (Path, optional): Path to save figure. If None, only displays.
+    """
         print("No experiments completed yet.")
         return
 
@@ -563,10 +695,15 @@ def plot_experiment_results(tracker, save_path=None):
 
 
 def plot_training_history(trainer, title_prefix=""):
-    history = trainer.history
-
-    train_loss = history.get("train_loss", [])
-    val_loss = history.get("val_loss", [])
+    """
+    Plot training history from trainer object across epochs.
+    
+    Creates 4 subplots: loss curves, IoU and F1, precision/recall, learning rate.
+    
+    Args:
+        trainer: Trainer object with history dictionary.
+        title_prefix (str): Prefix for plot title. Defaults to "".
+    """
     val_iou = history.get("val_iou", [])
     val_precision = history.get("val_precision", [])
     val_recall = history.get("val_recall", [])

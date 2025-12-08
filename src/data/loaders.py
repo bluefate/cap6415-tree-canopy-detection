@@ -39,15 +39,39 @@ class ImageMaskDataset(Dataset):
         classes: Optional[List[str]] = None,
         transform=None,
     ):
+        """
+        Initialize image-mask dataset.
+        
+        Args:
+            entries (List[AnnotationEntry]): List of annotation entries.
+            image_dir (Path): Directory containing image files.
+            classes (List[str], optional): List of class names for multi-class segmentation.
+            transform: Albumentations composition for augmentation.
+        """
         self.entries = entries
         self.image_dir = Path(image_dir)
         self.classes = classes
         self.transform = transform
 
     def __len__(self) -> int:
+        """
+        Get dataset size.
+        
+        Returns:
+            int: Number of samples in dataset.
+        """
         return len(self.entries)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
+        """
+        Get image-mask pair by index.
+        
+        Args:
+            idx (int): Index of sample.
+        
+        Returns:
+            Tuple[torch.Tensor, torch.Tensor]: Image tensor [C, H, W] and mask tensor [H, W].
+        """
         entry = self.entries[idx]
         img_path = self.image_dir / entry.image_path.name
 
@@ -121,6 +145,13 @@ class ImageOnlyDataset(Dataset):
         image_dir: Path,
         transform=None,
     ):
+        """
+        Initialize image-only dataset for inference.
+        
+        Args:
+            image_dir (Path): Directory containing PNG images.
+            transform: Albumentations composition for preprocessing.
+        """
         self.image_dir = Path(image_dir)
         self.transform = transform
         self.files = sorted(

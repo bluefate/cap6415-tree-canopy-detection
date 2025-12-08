@@ -26,6 +26,15 @@ import torch
 #     raise ValueError("Unsupported type")
 
 def format_time(seconds: float) -> str:
+    """
+    Convert seconds into a human-readable time format.
+    
+    Args:
+        seconds (float): Total number of seconds to convert.
+    
+    Returns:
+        str: Formatted time string (e.g., "2 hr 30 min" or "45 sec").
+    """
     # Break down into hours, minutes, seconds
     hours = int(seconds // 3600)
     minutes = int((seconds % 3600) // 60)
@@ -100,7 +109,16 @@ def normalize_type( obj: Any ) -> Any:
 
 def init_notebook( seed: int = 42 ) -> None:
     """
-    Initialize common notebook settings. Sets random seeds and default renderers.
+    Initialize Jupyter notebook environment with reproducible settings.
+    
+    Configures random seeds for reproducibility, suppresses common warnings from libraries,
+    and sets default Plotly rendering to PNG for stable notebook display.
+    
+    Args:
+        seed (int): Random seed for numpy, torch, and Python's random module. Defaults to 42.
+    
+    Returns:
+        None
     """
     t("init_notebook")
     warnings.filterwarnings('ignore', category = UserWarning, module = 'albumentations')
@@ -122,8 +140,17 @@ def init_notebook( seed: int = 42 ) -> None:
 
 def data_loader( data: List[Tuple[torch.Tensor, torch.Tensor]], batch_size: int ):
     """
-    Simple batch generator for in memory datasets.
-    Expects a list of (image, mask) tensors.
+    Simple batch generator for in-memory image-mask datasets.
+    
+    Yields batches of stacked image and mask tensors from a list of (image, mask) tuples.
+    Useful for small datasets that fit entirely in GPU memory.
+    
+    Args:
+        data (List[Tuple[torch.Tensor, torch.Tensor]]): List of (image, mask) tensor pairs.
+        batch_size (int): Number of samples per batch.
+    
+    Yields:
+        Tuple[torch.Tensor, torch.Tensor]: Batches of stacked images and masks.
     """
     for i in range(0, len(data), batch_size):
         batch = data[i: i + batch_size]
@@ -133,7 +160,12 @@ def data_loader( data: List[Tuple[torch.Tensor, torch.Tensor]], batch_size: int 
 
 
 class c(str, Enum):
-    """Color definitions"""
+    """
+    ANSI color code constants for terminal output formatting.
+    
+    Provides a set of predefined colors that can be used with terminal escape sequences
+    to create colored text output. Each color maps to an ANSI escape code.
+    """
     BLACK = "38;5;240"
     BLUE = "38;5;69"
     RED = "38;5;197"
@@ -147,14 +179,24 @@ class c(str, Enum):
 
     @classmethod
     def print_colors( cls ):
-        """Print all enum colors mappings"""
+        """
+        Display all available color codes with their names and ANSI values.
+        
+        Returns:
+            str: Empty string (for notebook display).
+        """
         for color in cls:
             print(f"\033[{color.value}m{color.name:<12} ({color.value})\033[0m")
         return ""
 
     @classmethod
     def print_color( self, obj ):
-        """Print all enum colors mappings"""
+        """
+        Display a single color with its name and ANSI value.
+        
+        Args:
+            obj: Color enum instance to display.
+        """
         print(f"\033[{obj.value}m{obj.name:<12} ({obj.value})\033[0m")
 
 
@@ -165,7 +207,19 @@ class c(str, Enum):
 
 
 class p:
-    """Lightweight printer with clean introspection for lists, dicts, arrays, and numbers."""
+    """
+    Lightweight pretty-printer with introspection for common data types.
+    
+    Provides clean formatting and colored output for:
+    - Numbers (integers, floats) with configurable precision
+    - Dictionaries and nested structures
+    - Lists and tuples with optional truncation
+    - PyTorch tensors (shows shape)
+    - NumPy arrays (shows shape)
+    - General objects
+    
+    Supports custom colors and formatting options for better readability in notebooks and terminals.
+    """
 
     def __init__( self, obj: Any = "",
                   value: Any = None,
@@ -486,7 +540,18 @@ def format_time( seconds ):
 
 
 def simple_estimate_runtime(config):
-    """Estimate total runtime."""
+    """
+    Estimate training runtime using simple calculations.
+    
+    Provides basic runtime estimates based on dataset size, batch size, and epochs.
+    Uses conservative assumptions about iteration speed.
+    
+    Args:
+        config: Configuration object with train paths and parameters.
+    
+    Returns:
+        None (prints estimates to console).
+    """
     t("Runtime Estimate")
     from src.data.annotations import load_json_annotations
 
@@ -511,7 +576,19 @@ def simple_estimate_runtime(config):
 
 
 def estimate_runtime_by_epcoh( experiments, epochs_per_exp = 10 ):
-    """Rough estimate of total training time"""
+    """
+    Estimate total training runtime for multiple experiments.
+    
+    Provides rough estimates using predefined time per epoch for each model type.
+    Accounts for filtered mode overhead.
+    
+    Args:
+        experiments (list): List of tuples (model_name, mode, filters).
+        epochs_per_exp (int): Number of epochs per experiment. Defaults to 10.
+    
+    Returns:
+        float: Estimated total training time in hours.
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Time per epoch estimates (in seconds)
@@ -550,8 +627,22 @@ def estimate_runtime_by_epcoh( experiments, epochs_per_exp = 10 ):
 
 def estimate_runtime( experiments, config, entries = None ):
     """
-    Estimate training runtime with GPU/CPU awareness, model complexity,
-    and experiment mode (rgb, filtered, concat) awareness.
+    Estimate training runtime with comprehensive device and model awareness.
+    
+    Provides accurate runtime predictions by considering:
+    - GPU/CPU device type and memory capacity
+    - Model complexity multipliers (simple_cnn, unet, segformer, yolov8, etc.)
+    - Input mode (rgb, filtered, concat) with corresponding overhead
+    - Dataset size and batch configuration
+    - Number of epochs per experiment
+    
+    Args:
+        experiments (list): List of tuples (model_name, mode, filters) to train.
+        config: Configuration object with training parameters.
+        entries (list, optional): Annotation entries for dataset size calculation.
+    
+    Returns:
+        None (prints detailed per-experiment and total estimates to console).
     """
 
     # --- Setup and Initialization ---

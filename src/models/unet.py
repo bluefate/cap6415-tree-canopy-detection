@@ -9,6 +9,13 @@ class DoubleConv(nn.Module):
     """
 
     def __init__(self, in_ch: int, out_ch: int):
+        """
+        Initialize a double convolution block.
+        
+        Args:
+            in_ch (int): Number of input channels.
+            out_ch (int): Number of output channels.
+        """
         super(DoubleConv, self).__init__()
         self.block = nn.Sequential(
             nn.Conv2d(in_ch, out_ch, kernel_size=3, padding=1),
@@ -20,6 +27,15 @@ class DoubleConv(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass through double convolution block.
+        
+        Args:
+            x (torch.Tensor): Input tensor.
+        
+        Returns:
+            torch.Tensor: Output tensor after two conv-batchnorm-relu sequences.
+        """
         return self.block(x)
 
 
@@ -30,6 +46,13 @@ class UNet(nn.Module):
     """
 
     def __init__(self, in_channels: int = 3, out_channels: int = 3):
+        """
+        Initialize U-Net architecture.
+        
+        Args:
+            in_channels (int): Number of input channels (e.g., 3 for RGB). Defaults to 3.
+            out_channels (int): Number of output channels for segmentation. Defaults to 3.
+        """
         super(UNet, self).__init__()
 
         self.enc1 = DoubleConv(in_channels, 64)
@@ -56,7 +79,18 @@ class UNet(nn.Module):
         self.out = nn.Conv2d(64, out_channels, kernel_size=1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        c1 = self.enc1(x)
+        """
+        Forward pass through U-Net.
+        
+        Encodes input through encoder path, processes through bottleneck,
+        then decodes with skip connections.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape [batch_size, in_channels, height, width].
+        
+        Returns:
+            torch.Tensor: Output segmentation logits of shape [batch_size, out_channels, height, width].
+        """
         c2 = self.enc2(self.pool(c1))
         c3 = self.enc3(self.pool(c2))
         c4 = self.enc4(self.pool(c3))

@@ -4,12 +4,25 @@ import numpy as np
 
 def crop_bbox_with_context(image_dir, entry, item, context_factor=1.5):
     """
-    Crop bbox with natural background context instead of artificial padding.
-
+    Crop bounding box with natural background context.
+    
+    Expands bbox edges to include surrounding context without artificial padding,
+    instead providing real background pixels for training.
+    
     Args:
-        entry: annotation entry
-        item: bbox item
-        context_factor: how much extra context to include (1.5 = 50% more on each side)
+        image_dir (Path): Directory containing images.
+        entry: Annotation entry with image metadata.
+        item: Annotation item with segmentation and bbox.
+        context_factor (float): Expansion factor (1.5 = 50% more on each side). 
+                               Defaults to 1.5.
+    
+    Returns:
+        tuple: (cropped_image_rgb, context_bbox) where context_bbox is 
+               (x1, y1, x2, y2) coordinates in original image space.
+    
+    Raises:
+        FileNotFoundError: If image file not found.
+        ValueError: If image cannot be loaded.
     """
     img_path = image_dir / entry.image_path.name
     if not img_path.exists():
@@ -45,7 +58,18 @@ def crop_bbox_with_context(image_dir, entry, item, context_factor=1.5):
 
 def crop_mask_with_context(entry, item, context_bbox):
     """
-    Create mask for the context-expanded crop.
+    Extract mask for context-expanded crop region.
+    
+    Creates binary mask covering the segmentation polygon, then crops to 
+    match the context-expanded bbox.
+    
+    Args:
+        entry: Annotation entry with height/width.
+        item: Annotation item with segmentation.
+        context_bbox (tuple): Expanded bbox coordinates (x1, y1, x2, y2) in original space.
+    
+    Returns:
+        np.ndarray: Binary mask for cropped region.
     """
     new_x1, new_y1, new_x2, new_y2 = context_bbox
 
@@ -64,7 +88,17 @@ def crop_mask_with_context(entry, item, context_bbox):
 def resize_to_standard(img, mask, target_size=256):
     """
     Resize crop and mask to standard size for training.
-    Much better than padding with zeros.
+    
+    Uses linear interpolation for image and nearest-neighbor for mask to preserve 
+    class labels.
+    
+    Args:
+        img (np.ndarray): Cropped image.
+        mask (np.ndarray): Cropped binary mask.
+        target_size (int): Target size for both dimensions. Defaults to 256.
+    
+    Returns:
+        tuple: (resized_image, resized_mask) with shape (target_size, target_size).
     """
     img_resized = cv2.resize(
         img, (target_size, target_size), interpolation=cv2.INTER_LINEAR
@@ -76,8 +110,21 @@ def resize_to_standard(img, mask, target_size=256):
 
 
 def crop_bbox(image_dir, entry, item):
-    img_path = image_dir / entry.image_path.name
-    if not img_path.exists():
+    """
+    Crop image to bounding box without context padding.
+    
+    Args:
+        image_dir (Path): Directory containing images.
+        entry: Annotation entry with image metadata.
+        item: Annotation item with bbox coordinates.
+    
+    Returns:
+        np.ndarray: Cropped image (RGB).
+    
+    Raises:
+        FileNotFoundError: If image file not found.
+        ValueError: If image cannot be loaded.
+    """
         raise FileNotFoundError(f"Image not found: {img_path}")
 
     img = cv2.imread(str(img_path))
@@ -90,9 +137,16 @@ def crop_bbox(image_dir, entry, item):
 
 
 def crop_mask(entry, item):
-    mask = np.zeros((entry.height, entry.width), dtype=np.uint8)
-    seg = item.segmentation
-    if seg and len(seg) >= 4:
+    """
+    Extract binary mask for bounding box region without context.
+    
+    Args:
+        entry: Annotation entry with height/width.
+        item: Annotation item with segmentation and bbox.
+    
+    Returns:
+        np.ndarray: Binary mask for bbox region.
+    """
         poly = np.array(seg, dtype=np.int32).reshape(-1, 2)
         cv2.fillPoly(mask, [poly], 1)
     x1, y1, x2, y2 = item.bbox
@@ -100,9 +154,19 @@ def crop_mask(entry, item):
 
 
 def pad_to_size(img, target_h, target_w):
-    h, w = img.shape[:2]
-    pad_h = target_h - h
-    pad_w = target_w - w
+    """
+    Pad image with zeros to reach target dimensions.
+    
+    Padding is centered - extra space is split equally between sides.
+    
+    Args:
+        img (np.ndarray): Input image.
+        target_h (int): Target height.
+        target_w (int): Target width.
+    
+    Returns:
+        np.ndarray: Padded image with shape (target_h, target_w, channels).
+    """
 
     top = pad_h // 2
     bottom = pad_h - top
@@ -116,7 +180,20 @@ def pad_to_size(img, target_h, target_w):
 
 def expand_crop_with_background(img, mask, bbox, target_h, target_w):
     """
-    Instead of padding with zeros, expand the crop to include more background.
+    Expand crop to target size by including natural background context.
+    
+    Instead of zero-padding, expands bbox to include surrounding image context. 
+    Falls back to resizing if not enough background available.
+    
+    Args:
+        img (np.ndarray): Full image.
+        mask (np.ndarray): Full image mask.
+        bbox (tuple): Original bbox coordinates (x1, y1, x2, y2).
+        target_h (int): Target height.
+        target_w (int): Target width.
+    
+    Returns:
+        tuple: (expanded_crop_image, expanded_crop_mask) with shape (target_h, target_w).
     """
     img_h, img_w = img.shape[:2]
     x1, y1, x2, y2 = bbox

@@ -15,7 +15,17 @@ from src.utils.helpers import c, p, t
 
 def find_checkpoint_directories(base_path: Path, config) -> List[Path]:
     """
-    Find all checkpoint directories (checkpoints, checkpoints_copy, checkpoints2, etc.)
+    Find all checkpoint directories in base path.
+    
+    Searches for 'checkpoints' and variations (checkpoints2, checkpoints_copy, etc.)
+    and numbered directories (03, 07, 10, 11) that may contain models.
+    
+    Args:
+        base_path (Path): Root directory to search from.
+        config: Configuration object with paths.
+    
+    Returns:
+        List[Path]: Sorted list of checkpoint directories found.
     """
     checkpoint_dirs = []
 
@@ -66,7 +76,17 @@ def find_checkpoint_directories(base_path: Path, config) -> List[Path]:
 
 def extract_model_info_from_path(model_path: Path, config) -> Dict[str, str]:
     """
-    Extract model information from the structured file path.
+    Extract structured model information from checkpoint file path.
+    
+    Parses directory structure to determine model name, processing mode, image size, 
+    version, and filters used. Uses MODEL_BUILDERS registry with fallback heuristics.
+    
+    Args:
+        model_path (Path): Full path to model checkpoint file.
+        config: Configuration object for defaults.
+    
+    Returns:
+        dict: Keys include model_name, mode, image_size, version, filters, structured_path.
     """
 
     parts = list(model_path.parts)
@@ -126,8 +146,15 @@ def extract_model_info_from_path(model_path: Path, config) -> Dict[str, str]:
 
 def extract_version_from_context(model_path: Path) -> str:
     """
-    Extract version information from the path.
-    Only matches 'vXXX' where XXX is numeric.
+    Extract version identifier from checkpoint path.
+    
+    Looks for version pattern 'vXXX' where XXX is numeric (e.g., v001, v042).
+    
+    Args:
+        model_path (Path): Full path to checkpoint.
+    
+    Returns:
+        str: Version identifier (e.g., 'v001') or None if not found.
     """
     # Look for vXXX (numeric only)
     for part in model_path.parts:
@@ -141,8 +168,17 @@ def extract_version_from_context(model_path: Path) -> str:
 
 def extract_size_from_context(model_path: Path, config) -> str:
     """
-    Extract image size from path context or filename.
-    Only matches 'size_XXX' when it appears as a directory name.
+    Extract image size from checkpoint path or configuration.
+    
+    Looks for 'size_XXX' pattern in path (e.g., size_256, size_512). 
+    Falls back to config.train.image_size if not found in path.
+    
+    Args:
+        model_path (Path): Full path to checkpoint.
+        config: Configuration object with default image size.
+    
+    Returns:
+        str: Image size as string (e.g., '256') or None.
     """
     path_str = str(model_path)
 
@@ -160,9 +196,16 @@ def extract_size_from_context(model_path: Path, config) -> str:
 
 def extract_filters_from_path(model_path: Path) -> Optional[str]:
     """
-    Extract filter information from the path.
-    Returns one of: 'sobel', 'canny', 'gaussian', 'laplacian', 'concat_filters', or None.
-    Only returns 'concat_filters' if ≥2 known filters are detected.
+    Extract filter information from checkpoint path.
+    
+    Detects use of edge detection and enhancement filters. Returns specific filter 
+    name if only one type found, or 'concat_filters' if multiple known filters detected.
+    
+    Args:
+        model_path (Path): Full path to checkpoint.
+    
+    Returns:
+        str: One of ['sobel', 'canny', 'gaussian', 'laplacian', 'concat_filters'] or None.
     """
     path_str = str(model_path).lower()
     known = ["sobel", "canny", "gaussian", "laplacian"]
@@ -177,7 +220,16 @@ def extract_filters_from_path(model_path: Path) -> Optional[str]:
 
 def get_model_training_info(model_path: Path) -> Dict[str, Any]:
     """
-    Extract training information from the model checkpoint.
+    Extract training metadata from model checkpoint.
+    
+    Loads checkpoint and extracts epoch, losses, learning rate, and performance metrics
+    like IoU, accuracy, precision, recall, F1, and Dice scores.
+    
+    Args:
+        model_path (Path): Path to checkpoint (.pth) file.
+    
+    Returns:
+        dict: Training information including epoch, losses, metrics, and state availability.
     """
     try:
         checkpoint = torch.load(model_path, map_location="cpu")
@@ -209,8 +261,17 @@ def get_model_training_info(model_path: Path) -> Dict[str, Any]:
 
 def scan_all_models(base_path: Path, config):
     """
-    Scan all checkpoint directories and collect model information.
-    Modified to work with Google Drive path structure.
+    Scan all checkpoint directories and collect comprehensive model information.
+    
+    Recursively finds all .pth checkpoint files, extracts model metadata, training info, 
+    and file statistics. Works with structured directory layouts (03/, 07/, 10/, etc.).
+    
+    Args:
+        base_path (Path): Root directory to scan from.
+        config: Configuration object.
+    
+    Returns:
+        list: List of dictionaries containing complete model information.
     """
     p("Base path for model search", base_path)
 

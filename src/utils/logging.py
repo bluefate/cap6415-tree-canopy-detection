@@ -12,6 +12,13 @@ class Logger:
     """
 
     def __init__( self, log_file: Optional[Path] = None ,cfg=None):
+        """
+        Initialize logger with optional file output.
+        
+        Args:
+            log_file (Path, optional): Path to log file. If provided, creates parent directories.
+            cfg (optional): Configuration object for model info extraction.
+        """
         self.log_file = Path(log_file) if log_file is not None else None
         self.cfg = cfg
         if self.log_file:
@@ -30,7 +37,13 @@ class Logger:
 
     def header( self, text: str ) -> None:
         """
-        Write a visible section header.
+        Write a visible section header with formatted output.
+        
+        Args:
+            text (str): Header text to display.
+        
+        Returns:
+            None
         """
         self.write(f"=== {text} ===")
         t(text)
@@ -44,8 +57,16 @@ class Logger:
 
     def info(self, text):
         """
-        Write informational output. If 'text' is a PyTorch model,
-        display a clean torchinfo summary instead of the raw model dump.
+        Write informational output with special handling for PyTorch models.
+        
+        If text is a PyTorch model, displays a clean torchinfo summary.
+        Otherwise logs as informational text.
+        
+        Args:
+            text: Text to log or PyTorch model to summarize.
+        
+        Returns:
+            None
         """
         from torchinfo import summary
         import torch.nn as nn
@@ -86,21 +107,40 @@ class Logger:
 
     def warn( self, text: str ) -> None:
         """
-        Write a warning line.
+        Write a warning line with colored output.
+        
+        Args:
+            text (str): Warning message to display.
+        
+        Returns:
+            None
         """
         self.write(f"Warning: {text}")
         p("[Warn]", text, color1 = c.ORANGE, color2 = c.BLACK)
 
     def error( self, text: str ) -> None:
         """
-        Write an error line.
+        Write an error line with colored output.
+        
+        Args:
+            text (str): Error message to display.
+        
+        Returns:
+            None
         """
         self.write(f"Error: {text}")
         p("[Error]", text, color1 = c.RED, color2 = c.BLACK)
 
     def exception(self, text: str, exc: Exception) -> None:
         """
-        Log an exception with traceback.
+        Log an exception with detailed traceback information.
+        
+        Args:
+            text (str): Description of the exception context.
+            exc (Exception): The exception object to log.
+        
+        Returns:
+            None
         """
         import traceback
 

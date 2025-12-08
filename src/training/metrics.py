@@ -4,8 +4,16 @@ import torch
 
 def _to_numpy(pred: torch.Tensor, true: torch.Tensor):
     """
-    Convert prediction and ground truth tensors to numpy arrays.
-    Applies sigmoid to prediction if needed, then thresholds at 0.5.
+    Convert prediction and ground truth tensors to binary numpy arrays.
+    
+    Applies sigmoid to predictions and thresholds at 0.5.
+    
+    Args:
+        pred (torch.Tensor): Prediction logits or probabilities.
+        true (torch.Tensor): Ground truth binary labels.
+    
+    Returns:
+        Tuple[np.ndarray, np.ndarray]: Binary predictions and ground truth arrays.
     """
     if isinstance(pred, torch.Tensor):
         pred = torch.sigmoid(pred).detach().cpu().numpy()
@@ -19,7 +27,14 @@ def _to_numpy(pred: torch.Tensor, true: torch.Tensor):
 
 def compute_confusion(pred_bin: np.ndarray, true_bin: np.ndarray):
     """
-    Compute basic confusion counts.
+    Compute confusion matrix components (TP, FP, FN, TN).
+    
+    Args:
+        pred_bin (np.ndarray): Binary predictions.
+        true_bin (np.ndarray): Binary ground truth.
+    
+    Returns:
+        Tuple[int, int, int, int]: (TP, FP, FN, TN) counts.
     """
     tp = np.logical_and(pred_bin == 1, true_bin == 1).sum()
     fp = np.logical_and(pred_bin == 1, true_bin == 0).sum()
@@ -30,7 +45,17 @@ def compute_confusion(pred_bin: np.ndarray, true_bin: np.ndarray):
 
 def compute_metrics(pred: torch.Tensor, true: torch.Tensor):
     """
-    Compute IoU, Dice, Accuracy for binary segmentation.
+    Compute segmentation metrics for binary classification.
+    
+    Calculates IoU, Dice, Accuracy, Precision, and Recall.
+    Handles prediction resizing and sigmoid activation.
+    
+    Args:
+        pred (torch.Tensor): Prediction logits/probabilities.
+        true (torch.Tensor): Ground truth binary labels.
+    
+    Returns:
+        Dict[str, float]: Dictionary with iou, dice, acc, precision, recall.
     """
     # Handle SegFormer output format
     if hasattr(pred, "logits"):
@@ -83,7 +108,18 @@ def compute_metrics_multiclass(
     pred: torch.Tensor, true: torch.Tensor, num_classes: int = 3
 ):
     """
-    Compute per-class IoU and mean IoU for multi-class segmentation.
+    Compute per-class and mean IoU for multi-class segmentation.
+    
+    Handles prediction resizing and softmax activation.
+    Classes: 0=background, 1=individual_tree, 2=group_of_trees.
+    
+    Args:
+        pred (torch.Tensor): Prediction logits of shape [B, C, H, W].
+        true (torch.Tensor): Ground truth class indices of shape [B, H, W].
+        num_classes (int): Number of classes. Defaults to 3.
+    
+    Returns:
+        Dict[str, float]: Per-class IoU and mean IoU.
     """
     # Handle SegFormer output format
     if hasattr(pred, "logits"):

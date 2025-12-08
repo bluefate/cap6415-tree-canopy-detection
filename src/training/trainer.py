@@ -12,7 +12,18 @@ from src.utils.versioning import VersionManager
 
 
 def create_splits(entries, seed=42):
-    """Create consistent train/val splits for all experiments."""
+    """
+    Create consistent train/validation splits from annotation entries.
+    
+    Shuffles entries with fixed seed for reproducibility, then splits at 80/20 ratio.
+    
+    Args:
+        entries (List[AnnotationEntry]): Annotation entries to split.
+        seed (int): Random seed for reproducibility. Defaults to 42.
+    
+    Returns:
+        Tuple[List[AnnotationEntry], List[AnnotationEntry]]: (train_entries, val_entries).
+    """
     random.seed(seed)
     shuffled_entries = entries.copy()
     random.shuffle(shuffled_entries)
@@ -40,6 +51,18 @@ class Trainer:
         config: Any,
         version_root: Path,
     ):
+        """
+        Initialize Trainer with model, data, and training configuration.
+        
+        Args:
+            model (torch.nn.Module): Neural network model to train.
+            optimizer (torch.optim.Optimizer): Optimizer for parameter updates.
+            criterion: Loss function for training.
+            train_loader (DataLoader): Training data loader.
+            val_loader (DataLoader): Validation data loader.
+            config (Any): Configuration object with training hyperparameters.
+            version_root (Path): Root directory for saving checkpoints and logs.
+        """
         # define device
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

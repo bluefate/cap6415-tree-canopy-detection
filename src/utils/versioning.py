@@ -13,14 +13,27 @@ class VersionManager:
 
     def __init__( self, base_dir: Path ):
         """
-        base_dir is the parent directory that holds version folders.
-        For example checkpoints or runs.
+        Initialize version manager for a directory.
+        
+        Args:
+            base_dir (Path): Parent directory that holds version folders (e.g., checkpoints or runs).
         """
         self.base_dir = Path(base_dir).resolve()
         self.base_dir.mkdir(parents = True, exist_ok = True)
 
 
     def _normalize_for_json( self, obj ):
+        """
+        Recursively convert objects to JSON-serializable types.
+        
+        Converts Path objects to strings and handles nested structures.
+        
+        Args:
+            obj: Object to normalize.
+        
+        Returns:
+            JSON-serializable version of the object.
+        """
         if isinstance(obj, dict):
             return { k: self._normalize_for_json(v) for k, v in obj.items() }
         if isinstance(obj, list):
@@ -33,7 +46,15 @@ class VersionManager:
 
     def compute_hash( self, cfg: Dict[str, Any] ) -> str:
         """
-        Compute a stable hash of the configuration dictionary.
+        Compute a stable MD5 hash of the configuration dictionary.
+        
+        Normalizes config to JSON and sorts keys for consistent hashing.
+        
+        Args:
+            cfg (Dict[str, Any]): Configuration dictionary to hash.
+        
+        Returns:
+            str: Hexadecimal MD5 hash of the configuration.
         """
         clean = self._normalize_for_json(cfg)
         cfg_json = json.dumps(clean, sort_keys = True)
@@ -41,7 +62,12 @@ class VersionManager:
 
     def find_latest( self ) -> Optional[Path]:
         """
-        Return the path of the latest version folder or None.
+        Return the path of the latest version folder or None if no versions exist.
+        
+        Versions are sorted numerically based on v001, v002, etc. naming.
+        
+        Returns:
+            Optional[Path]: Path to latest version folder, or None if none exist.
         """
         versions = sorted(self.base_dir.glob("v*"))
         if not versions:
@@ -50,8 +76,12 @@ class VersionManager:
 
     def create_next_version( self ) -> Path:
         """
-        Create the next version folder based on existing folders.
-        For example v001 then v002.
+        Create and return the next version folder.
+        
+        Increments the latest version number (v001 -> v002) or creates v001 if none exist.
+        
+        Returns:
+            Path: Path to newly created version folder.
         """
         latest = self.find_latest()
         if latest is None:
@@ -66,9 +96,16 @@ class VersionManager:
 
     def resolve_version( self, cfg: Dict[str, Any] ) -> Path:
         """
-        Determine the correct version folder for this config.
-        If the newest version has a matching hash, reuse it.
-        Otherwise, create a new version.
+        Determine the correct version folder for a configuration.
+        
+        If the latest version has a matching config hash, reuses it.
+        Otherwise, creates a new version with the config snapshot.
+        
+        Args:
+            cfg (Dict[str, Any]): Configuration dictionary to resolve.
+        
+        Returns:
+            Path: Version folder path (existing or newly created).
         """
         cfg_hash = self.compute_hash(cfg)
         latest = self.find_latest()
@@ -88,7 +125,17 @@ class VersionManager:
 
     def save_snapshot( self, version_dir: Path, cfg: Dict[str, Any], cfg_hash: str ) -> None:
         """
-        Save configuration and hash for reproducibility.
+        Save configuration and hash to version directory for reproducibility.
+        
+        Creates a config_snapshot.json file with config, hash, and creation timestamp.
+        
+        Args:
+            version_dir (Path): Directory to save snapshot to.
+            cfg (Dict[str, Any]): Configuration dictionary to save.
+            cfg_hash (str): Configuration hash.
+        
+        Returns:
+            None
         """
         clean_cfg = self._normalize_for_json(cfg)
 
@@ -106,7 +153,15 @@ class VersionManager:
 
     def get_paths( self, version_dir: Path ) -> Dict[str, Path]:
         """
-        Produce standard file paths used by training and evaluation.
+        Produce standard file paths used by training and evaluation workflows.
+        
+        Returns a dictionary with paths for checkpoints, best model, metrics, and logs.
+        
+        Args:
+            version_dir (Path): Version directory.
+        
+        Returns:
+            Dict[str, Path]: Mapping of purpose to file paths.
         """
         return {
             "checkpoint": version_dir / "checkpoint.pth",

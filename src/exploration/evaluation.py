@@ -4,7 +4,25 @@ from src.utils.helpers import p
 
 
 def load_best_model(model_name: str, config, notebook="10", mode="rgb", filters=None):
-    """Load the best trained model with correct path structure."""
+    """
+    Load the best trained model with correct path structure.
+    
+    Constructs model directory path from configuration and training parameters,
+    uses VersionManager to find latest version, and loads weights.
+    
+    Args:
+        model_name (str): Name of model architecture (e.g., 'unet', 'simple_cnn').
+        config: Configuration object with paths and train settings.
+        notebook (str): Notebook version identifier. Defaults to "10".
+        mode (str): Processing mode ('rgb', 'filtered', 'concat'). Defaults to 'rgb'.
+        filters (list or str, optional): Filter names if mode='filtered' or 'concat'.
+    
+    Returns:
+        torch.nn.Module: Model loaded on appropriate device (CUDA or CPU) in eval mode.
+    
+    Raises:
+        RuntimeError: If model directory or weights not found.
+    """
     from src.models.zoo import build_model
     from src.utils.versioning import VersionManager
 
@@ -88,7 +106,14 @@ def load_best_model(model_name: str, config, notebook="10", mode="rgb", filters=
 
 
 def diagnose_model_directory(config):
-    """Diagnose the actual directory structure."""
+    """
+    Diagnose and display actual model directory structure.
+    
+    Prints out full directory tree and file structure to help debug missing models.
+    
+    Args:
+        config: Configuration object with paths settings.
+    """
     models_dir = config.paths.models
     print(f"Models directory: {models_dir}")
     print(f"Exists: {models_dir.exists()}")

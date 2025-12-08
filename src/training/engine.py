@@ -12,7 +12,14 @@ from src.utils.config import Config
 
 def prepare_optimizer(model: torch.nn.Module, lr: float):
     """
-    Build Adam optimizer for the given model.
+    Create Adam optimizer for model training.
+    
+    Args:
+        model (torch.nn.Module): Model to optimize.
+        lr (float): Learning rate.
+    
+    Returns:
+        torch.optim.Adam: Configured Adam optimizer.
     """
     return torch.optim.Adam(model.parameters(), lr=lr)
 
@@ -24,7 +31,14 @@ def prepare_optimizer(model: torch.nn.Module, lr: float):
 
 
 def prepare_criterion():
-    """Weighted cross entropy for imbalanced 3-class segmentation."""
+    """
+    Create weighted cross-entropy loss for imbalanced 3-class segmentation.
+    
+    Classes: 0=background (weight 0.5), 1=individual_tree (weight 2.0), 2=group_of_trees (weight 3.0).
+    
+    Returns:
+        torch.nn.CrossEntropyLoss: Loss function with class weights.
+    """
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # weights = torch.tensor([1.00, 2.50, 7.00], device=device)  # [background, individual, group]
     # weights = torch.tensor([1.0, 5.0, 5.0], device=device)  # [background, individual, group]
@@ -44,7 +58,20 @@ def run_training(
     in_channels: int = 3,
 ):
     """
-    Builds model, optimizer, criterion, and Trainer. Then runs training.
+    Setup and execute model training.
+    
+    Builds model, optimizer, and loss function, then runs training loop via Trainer.
+    
+    Args:
+        config (Config): Configuration object with training parameters.
+        train_loader: Training data loader.
+        val_loader: Validation data loader.
+        version_root (Path): Directory for saving checkpoints and logs.
+        model_name (str): Name of model architecture. Defaults to "unet".
+        in_channels (int): Number of input channels. Defaults to 3.
+    
+    Returns:
+        Trainer: Trained trainer instance with results.
     """
     image_size = config.train.image_size
     lr = config.train.learning_rate

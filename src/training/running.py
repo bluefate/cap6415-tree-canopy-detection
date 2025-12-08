@@ -17,6 +17,26 @@ def get_version_config(
     i=None,
     experiments=None,
 ):
+    """
+    Setup configuration and paths for an experiment training run.
+    
+    Creates version directory structure, saves experiment config, checks for existing results,
+    and updates best model tracker if applicable.
+    
+    Args:
+        config: Main configuration object.
+        filters (list): Filter names to apply.
+        notebook (str): Notebook identifier (e.g., "10").
+        model_name (str): Model architecture name.
+        mode (str): Input mode ('rgb', 'filtered', 'concat').
+        in_channels (int): Number of input channels.
+        best_model_tracker (dict, optional): Tracker for best performing model.
+        i (int, optional): Current experiment index.
+        experiments (list, optional): List of all experiments.
+    
+    Returns:
+        Tuple: (key, version_root, exp_config, best_model_path, checkpoint_path, best_model_exists)
+    """
     version_root = config.paths.models / notebook / model_name / mode
     if filters:
         filter_str = "_".join(filters)
@@ -88,7 +108,13 @@ def get_version_config(
 
 def get_available_filters():
     """
-    Get list of all available filter names from the system.
+    Get list of all available filter names from the enhanced dataset module.
+    
+    Attempts to load filters dynamically from EnhancedImageMaskDataset.
+    Falls back to a hardcoded list if dynamic loading fails.
+    
+    Returns:
+        list: Filter names available for image enhancement.
     """
     try:
         available = EnhancedImageMaskDataset.get_available_filters()
@@ -122,7 +148,16 @@ def get_available_filters():
 
 def validate_filter_set(filter_names, available_filters):
     """
-    Validate a list of filter names against available filters.
+    Validate filter names against available filters.
+    
+    Checks if each filter name exists in available filters and provides suggestions for typos.
+    
+    Args:
+        filter_names (list): Filter names to validate.
+        available_filters (list): List of available filter names.
+    
+    Returns:
+        Tuple[bool, list, dict]: (is_valid, invalid_filters, suggestions)
     """
     invalid = []
     suggestions = {}

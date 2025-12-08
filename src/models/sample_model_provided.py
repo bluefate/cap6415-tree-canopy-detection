@@ -4,7 +4,9 @@ import torch.nn as nn
 
 class SampleModelProvided(nn.Module):
     """
-    U-Net style segmentation model rewritten to match the format of models used.
+    U-Net style segmentation model for semantic segmentation.
+    
+    Reference implementation with configurable batch normalization, dropout, and base features.
     """
 
     def __init__(
@@ -15,6 +17,16 @@ class SampleModelProvided(nn.Module):
         use_batchnorm=True,
         dropout=0.0,
     ):
+        """
+        Initialize SampleModelProvided.
+        
+        Args:
+            in_channels (int): Number of input channels. Defaults to 3.
+            out_channels (int): Number of output channels. Defaults to 3.
+            base_features (int): Base number of features in convolution blocks. Defaults to 64.
+            use_batchnorm (bool): Whether to use batch normalization. Defaults to True.
+            dropout (float): Dropout rate. Defaults to 0.0.
+        """
         super().__init__()
 
         def block(in_ch, out_ch):

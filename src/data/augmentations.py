@@ -11,8 +11,17 @@ from albumentations.pytorch import ToTensorV2
 # def get_train_augmentations(image_size: int = 256, mode: str = "rgb", num_channels: int = 3):
 def get_train_augmentations(image_size: int = 256, mode: str = "rgb"):
     """
-    Build augmentation pipeline for training.
-    Includes flips, brightness changes, distortions, and resizing.
+    Build augmentation pipeline for training with geometric and color transforms.
+    
+    Includes flips, rotations, brightness/contrast adjustments, and resizing.
+    Color transforms only applied for RGB mode.
+    
+    Args:
+        image_size (int): Target image size (square). Defaults to 256.
+        mode (str): Image mode ('rgb', 'filtered', or 'concat'). Color transforms only for rgb/filtered.
+    
+    Returns:
+        A.Compose: Albumentations composition of augmentations.
     """
     # Base transforms that work with any number of channels
     base_transforms = [
@@ -69,6 +78,15 @@ def get_train_augmentations(image_size: int = 256, mode: str = "rgb"):
 def get_val_augmentations(image_size: int = 256, mode: str = "rgb"):
     """
     Build validation and inference augmentation pipeline.
+    
+    Minimal transforms with padding and normalization only.
+    
+    Args:
+        image_size (int): Target image size (square). Defaults to 256.
+        mode (str): Image mode. Defaults to "rgb".
+    
+    Returns:
+        A.Compose: Albumentations composition of augmentations.
     """
     return A.Compose(
         [

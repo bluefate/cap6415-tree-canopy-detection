@@ -4,7 +4,15 @@ import numpy as np
 
 def to_gray(image: np.ndarray) -> np.ndarray:
     """
-    Convert an RGB image to grayscale.
+    Convert RGB image to grayscale.
+    
+    If image is already grayscale, returns unchanged.
+    
+    Args:
+        image (np.ndarray): Input image (RGB or grayscale).
+    
+    Returns:
+        np.ndarray: Grayscale image.
     """
     if image.ndim == 3:
         return cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -13,14 +21,32 @@ def to_gray(image: np.ndarray) -> np.ndarray:
 
 def equalize_hist(gray: np.ndarray) -> np.ndarray:
     """
-    Apply histogram equalization to a grayscale image.
+    Apply histogram equalization to improve contrast.
+    
+    Enhances contrast globally by stretching the histogram across the full range.
+    
+    Args:
+        gray (np.ndarray): Grayscale image.
+    
+    Returns:
+        np.ndarray: Histogram-equalized grayscale image.
     """
     return cv2.equalizeHist(gray)
 
 
 def clahe_enhance(gray: np.ndarray, clip: float = 2.0, tile: int = 8) -> np.ndarray:
     """
-    Apply CLAHE to improve local contrast.
+    Apply Contrast Limited Adaptive Histogram Equalization (CLAHE).
+    
+    Improves local contrast while preventing noise amplification in homogeneous regions.
+    
+    Args:
+        gray (np.ndarray): Grayscale image.
+        clip (float): Clip limit for histogram. Defaults to 2.0.
+        tile (int): Size of grid tiles. Defaults to 8.
+    
+    Returns:
+        np.ndarray: CLAHE-enhanced grayscale image.
     """
     clahe = cv2.createCLAHE(clipLimit=clip, tileGridSize=(tile, tile))
     return clahe.apply(gray)
@@ -28,7 +54,15 @@ def clahe_enhance(gray: np.ndarray, clip: float = 2.0, tile: int = 8) -> np.ndar
 
 def sharpen(gray: np.ndarray) -> np.ndarray:
     """
-    Apply a basic sharpening filter to enhance edges.
+    Apply unsharp masking filter to enhance edges.
+    
+    Uses a standard sharpening kernel to enhance high-frequency details.
+    
+    Args:
+        gray (np.ndarray): Grayscale image.
+    
+    Returns:
+        np.ndarray: Sharpened grayscale image with values clipped to [0, 255].
     """
     kernel = np.array(
         [
@@ -44,7 +78,13 @@ def sharpen(gray: np.ndarray) -> np.ndarray:
 
 def normalize(gray: np.ndarray) -> np.ndarray:
     """
-    Normalize pixel values to zero to one.
+    Normalize pixel values to [0, 1] range using min-max scaling.
+    
+    Args:
+        gray (np.ndarray): Grayscale image.
+    
+    Returns:
+        np.ndarray: Normalized image as float32 in range [0, 1].
     """
     g = gray.astype(np.float32)
     m = g.min()
@@ -56,15 +96,22 @@ def normalize(gray: np.ndarray) -> np.ndarray:
 
 def enhance_image_for_segmentation(image: np.ndarray) -> tuple:
     """
-    Full enhancement pipeline used in notebooks.
-    Returns enhanced image and intermediate stages.
-
-    Steps:
-    1. convert to grayscale
-    2. equalize histogram
-    3. apply CLAHE
-    4. sharpen
-    5. normalize to zero to one
+    Full image enhancement pipeline for segmentation preprocessing.
+    
+    Applies a sequence of enhancement techniques: grayscale conversion, histogram 
+    equalization, CLAHE, sharpening, and normalization. Intermediate stages are 
+    returned for analysis and visualization.
+    
+    Args:
+        image (np.ndarray): Input RGB image.
+    
+    Returns:
+        tuple: (normalized_image, stages_dict) where stages_dict contains:
+            - 'gray': Grayscale image
+            - 'equalized': After histogram equalization
+            - 'clahe': After CLAHE enhancement
+            - 'sharpened': After sharpening filter
+            - 'normalized': Final normalized output [0, 1]
     """
 
     stages = {}

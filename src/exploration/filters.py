@@ -6,15 +6,31 @@ def cv2_apply_gaussian(
     image: np.ndarray, ksize: int = 5, sigma: float = 1.0
 ) -> np.ndarray:
     """
-    Apply Gaussian blur to an RGB image.
+    Apply Gaussian blur filter to image.
+    
+    Args:
+        image (np.ndarray): Input image (RGB or grayscale).
+        ksize (int): Kernel size. Defaults to 5.
+        sigma (float): Gaussian standard deviation. Defaults to 1.0.
+    
+    Returns:
+        np.ndarray: Blurred image.
     """
     return cv2.GaussianBlur(image, (ksize, ksize), sigma)
 
 
 def cv2_apply_sobel(image: np.ndarray) -> np.ndarray:
     """
-    Apply Sobel edge detection to a grayscale or RGB image.
-    If RGB, converts to grayscale internally.
+    Apply Sobel edge detection filter.
+    
+    Computes directional derivatives to highlight edges. Converts RGB to grayscale 
+    internally if needed.
+    
+    Args:
+        image (np.ndarray): Input image (RGB or grayscale).
+    
+    Returns:
+        np.ndarray: Edge-detected image with magnitude values clipped to [0, 255].
     """
     if image.ndim == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -30,8 +46,16 @@ def cv2_apply_sobel(image: np.ndarray) -> np.ndarray:
 
 def cv2_apply_laplacian(image: np.ndarray) -> np.ndarray:
     """
-    Apply Laplacian edge detection.
-    Converts to grayscale if needed.
+    Apply Laplacian edge detection filter.
+    
+    Detects edges as zero-crossings of the Laplacian operator. Converts RGB to 
+    grayscale internally if needed.
+    
+    Args:
+        image (np.ndarray): Input image (RGB or grayscale).
+    
+    Returns:
+        np.ndarray: Edge-detected image with absolute values clipped to [0, 255].
     """
     if image.ndim == 3:
         gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
@@ -45,7 +69,17 @@ def cv2_apply_laplacian(image: np.ndarray) -> np.ndarray:
 
 def normalize_image(image: np.ndarray) -> np.ndarray:
     """
-    Normalize to range zero to one.
+    Normalize image values to [0, 1] range.
+    
+    Uses min-max normalization: (x - min) / (max - min). If min equals max,
+    returns the input unchanged.
+    
+    Args:
+        image (np.ndarray): Input image with any numeric dtype.
+    
+    Returns:
+        np.ndarray: Normalized image as float32 in range [0, 1], or unchanged if 
+                    min equals max.
     """
     img = image.astype(np.float32)
     m = img.min()

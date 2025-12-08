@@ -12,12 +12,16 @@ def mask_to_polygons_multiclass(
     mask: np.ndarray, id_to_class: dict = None
 ) -> List[dict]:
     """
-    Convert a multi-class mask to list of annotation dicts with correct class names.
-
-    Expected mask values:
-        0 = background
-        1 = individual_tree
-        2 = group_of_trees
+    Convert multi-class mask to list of polygon annotations.
+    
+    Extracts contours for each tree class and converts to polygon segmentation format.
+    
+    Args:
+        mask (np.ndarray): Multi-class mask with values 0=background, 1=individual_tree, 2=group_of_trees.
+        id_to_class (dict, optional): Mapping of class IDs to names.
+    
+    Returns:
+        List[dict]: List of annotation dictionaries with class, confidence, and segmentation.
     """
     if id_to_class is None:
         id_to_class = {1: "individual_tree", 2: "group_of_trees"}
@@ -59,11 +63,18 @@ def mask_to_polygons_multiclass(
 
 def export_submission(results: List[Dict[str, Any]], output_path: Path, config) -> None:
     """
-    Convert prediction results into expected submission JSON structure.
-    Uses sample_answer.json as template to preserve cm_resolution and scene_type.
-
-    IMPORTANT: Per admin guidance, only annotations should be modified.
-    cm_resolution and scene_type come from the template.
+    Export prediction results in required submission JSON format.
+    
+    Uses template file to preserve cm_resolution and scene_type while updating annotations
+    with model predictions.
+    
+    Args:
+        results (List[Dict]): Prediction results with image names and masks.
+        output_path (Path): Path to save submission JSON file.
+        config: Configuration object with paths including template file.
+    
+    Returns:
+        None
     """
     # Load template - use raw string (r"...") for Windows paths
     # template_path = Path(
@@ -143,8 +154,15 @@ def export_submission(results: List[Dict[str, Any]], output_path: Path, config) 
 
 def extract_cm_resolution(fname: str) -> int:
     """
-    Extract resolution in cm from filenames like 'forest_10cm_001.tif'
-    Returns integer resolution (eg: 10).
+    Extract resolution in centimeters from image filename.
+    
+    Parses filenames like 'forest_10cm_001.tif' to extract resolution value.
+    
+    Args:
+        fname (str): Image filename.
+    
+    Returns:
+        int: Resolution in centimeters (default 10 if not found).
     """
     name = Path(fname).stem.lower()
 

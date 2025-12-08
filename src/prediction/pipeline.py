@@ -18,6 +18,14 @@ class Predictor:
     def __init__(
         self, model_path: Path, model_name: str = "unet", image_size: int = 256
     ):
+        """
+        Initialize prediction pipeline with trained model.
+        
+        Args:
+            model_path (Path): Path to trained model weights.
+            model_name (str): Model architecture name. Defaults to "unet".
+            image_size (int): Target image size for inference. Defaults to 256.
+        """
         self.model_path = Path(model_path)
         self.model_name = model_name
         self.image_size = image_size
@@ -34,7 +42,15 @@ class Predictor:
         self._load_weights()
 
     def _load_weights(self):
-        if not self.model_path.exists():
+        """
+        Load trained model weights from checkpoint file.
+        
+        Returns:
+            None
+        
+        Raises:
+            FileNotFoundError: If model weights file does not exist.
+        """
             raise FileNotFoundError(f"Missing model weights {self.model_path}")
         state = torch.load(self.model_path, map_location=self.device)
 
@@ -55,7 +71,15 @@ class Predictor:
         self.logger.info(f"Loaded model weights from {self.model_path}")
 
     def predict_tensor(self, tensor: torch.Tensor) -> np.ndarray:
-        """Run inference on a single tensor. Returns a numpy mask."""
+        """
+        Run inference on a single image tensor.
+        
+        Args:
+            tensor (torch.Tensor): Image tensor of shape [C, H, W] (normalized).
+        
+        Returns:
+            np.ndarray: Prediction mask of shape [H, W] with class indices (0, 1, 2).
+        """
         tensor = tensor.unsqueeze(0).to(self.device)
         with torch.no_grad():
             pred = self.model(tensor)

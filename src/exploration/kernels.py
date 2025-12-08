@@ -7,7 +7,10 @@ from src.exploration.visualize import show_side_by_side
 
 def laplacian_kernel() -> np.ndarray:
     """
-    Standard 3x3 Laplacian kernel.
+    Generate standard 3x3 Laplacian edge detection kernel.
+    
+    Returns:
+        np.ndarray: 3x3 Laplacian kernel for edge detection.
     """
     return np.array(
         [
@@ -21,7 +24,15 @@ def laplacian_kernel() -> np.ndarray:
 
 def visualize_kernel(kernel, title="Kernel", cmap=None):
     """
-    Visualize a 2D convolution kernel as an image and 3D surface.
+    Visualize a 2D convolution kernel as heatmap and 3D surface plot.
+    
+    Automatically selects appropriate colormap (seismic for kernels with negative 
+    values, gray for non-negative kernels).
+    
+    Args:
+        kernel (np.ndarray): 2D convolution kernel to visualize.
+        title (str): Title for the visualization. Defaults to "Kernel".
+        cmap (str, optional): Matplotlib colormap name. If None, auto-selected.
     """
 
     # Auto-select colormap if not provided
@@ -53,7 +64,17 @@ def visualize_kernel(kernel, title="Kernel", cmap=None):
 
 def apply_kernel_using_convolution(image: np.ndarray, kernel: np.ndarray) -> np.ndarray:
     """
-    Apply a kernel to a grayscale image using convolution.
+    Apply a kernel to a grayscale image using scipy convolution.
+    
+    Args:
+        image (np.ndarray): Grayscale input image.
+        kernel (np.ndarray): 2D convolution kernel.
+    
+    Returns:
+        np.ndarray: Convolved image with values clipped to [0, 255] as uint8.
+    
+    Raises:
+        ValueError: If image has more than one channel.
     """
     from scipy.signal import convolve2d
 
@@ -67,7 +88,18 @@ def apply_kernel_using_convolution(image: np.ndarray, kernel: np.ndarray) -> np.
 
 def apply_custom_kernel(image, kernel, show_image=False):
     """
-    Apply a custom kernel to an image and visualize the response.
+    Apply a custom convolution kernel to an image.
+    
+    Converts RGB to grayscale internally and optionally displays side-by-side 
+    comparison of original and filtered result.
+    
+    Args:
+        image (np.ndarray): Input RGB image.
+        kernel (np.ndarray): 2D convolution kernel.
+        show_image (bool): Whether to display comparison plot. Defaults to False.
+    
+    Returns:
+        np.ndarray: Filtered grayscale image.
     """
     gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
     filtered = cv2.filter2D(gray, -1, kernel)
@@ -85,7 +117,22 @@ def apply_custom_kernel(image, kernel, show_image=False):
 
 def get_kernels(name: str = "all"):
     """
-    Return a dictionary of named standard kernels for exploration.
+    Return dictionary of named standard convolution kernels for exploration.
+    
+    Includes edge detection (Sobel, Prewitt, Scharr, Roberts, Laplacian), 
+    blur (Box, Gaussian, Motion), sharpening, embossing, and high-pass filters.
+    
+    Args:
+        name (str): Kernel name or 'all' for all kernels. Defaults to "all".
+                   Use 'keys' to get list of available names.
+    
+    Returns:
+        dict or np.ndarray: If name='all' returns dict of all kernels. 
+                           If name='keys' returns dict_keys of kernel names.
+                           Otherwise returns specific kernel array.
+    
+    Raises:
+        ValueError: If kernel name not found.
     """
     kernels = {
         "Identity": np.array(
@@ -254,7 +301,14 @@ def get_kernels(name: str = "all"):
 
     def gaussian_kernel(size: int = 5, sigma: float = 1.0) -> np.ndarray:
         """
-        Generate a 2D Gaussian kernel.
+        Generate a 2D Gaussian kernel of specified size and standard deviation.
+        
+        Args:
+            size (int): Kernel dimension. Defaults to 5.
+            sigma (float): Gaussian standard deviation. Defaults to 1.0.
+        
+        Returns:
+            np.ndarray: Normalized 2D Gaussian kernel.
         """
         k = size // 2
         x = np.arange(-k, k + 1)
@@ -286,7 +340,13 @@ def get_kernels(name: str = "all"):
 
 def display_standard_kernels(cmap="Greens_r"):
     """
-    Display all standard kernels from get_standard_kernels as heatmaps.
+    Display all standard kernels as a grid of annotated heatmaps.
+    
+    Creates a subplot grid showing kernel structure with values overlaid. 
+    Color indicates kernel value magnitude, text shows exact values.
+    
+    Args:
+        cmap (str): Matplotlib colormap name. Defaults to "Greens_r".
     """
     kernels = get_kernels()
 
@@ -348,7 +408,14 @@ def display_standard_kernels(cmap="Greens_r"):
 
 def make_motion_kernel(size: int = 9, angle: float = 0.0) -> np.ndarray:
     """
-    Create a motion blur kernel of a given size and angle.
+    Create a motion blur kernel with specified size and rotation angle.
+    
+    Args:
+        size (int): Kernel size (will be made odd). Defaults to 9.
+        angle (float): Rotation angle in degrees. Defaults to 0.0.
+    
+    Returns:
+        np.ndarray: Normalized motion blur kernel.
     """
     if size % 2 == 0:
         size += 1
@@ -371,6 +438,13 @@ def make_motion_kernel(size: int = 9, angle: float = 0.0) -> np.ndarray:
 def make_gaussian_kernel(size: int = 5, sigma: float = 1.0) -> np.ndarray:
     """
     Create a 2D Gaussian blur kernel.
+    
+    Args:
+        size (int): Kernel size (will be made odd). Defaults to 5.
+        sigma (float): Gaussian standard deviation. Defaults to 1.0.
+    
+    Returns:
+        np.ndarray: Normalized 2D Gaussian kernel.
     """
     if size % 2 == 0:
         size += 1
@@ -385,8 +459,21 @@ def make_directional_edge_kernel(
     size: int = 3, direction: str = "horizontal"
 ) -> np.ndarray:
     """
-    Create a simple directional edge detection kernel.
-
+    Create a directional edge detection kernel.
+    
+    Generates a kernel with gradient values along specified direction.
+    
+    Args:
+        size (int): Kernel size. Defaults to 3.
+        direction (str): Direction for gradient. Must be one of 'horizontal', 'vertical',
+                        'diag_pos' (top-left to bottom-right), 'diag_neg' (top-right to 
+                        bottom-left). Defaults to 'horizontal'.
+    
+    Returns:
+        np.ndarray: Normalized directional edge kernel.
+    
+    Raises:
+        ValueError: If size < 3 or direction not recognized.
     """
     if size < 3:
         raise ValueError("size must be at least 3")

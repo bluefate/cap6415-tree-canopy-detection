@@ -9,6 +9,17 @@ class Tester:
     """
 
     def __init__( self, obj = "", value = None, precision = 3, color1 = c.GREEN, color2 = c.BLACK, bold = False ):
+        """
+        Initialize test printer with formatting options.
+        
+        Args:
+            obj: Label or object name to display.
+            value: Value to inspect and display.
+            precision: Decimal precision for floating point numbers.
+            color1: Primary color for labels.
+            color2: Secondary color for values.
+            bold: Whether to use bold formatting.
+        """
         self.obj = obj
         self.value = value
         self.precision = precision
@@ -17,6 +28,12 @@ class Tester:
         self.bold = bold
 
     def _print( self ):
+        """
+        Print the test object and value with configured colors and formatting.
+        
+        Returns:
+            None
+        """
         p(self.obj,
           self.value,
           precision = self.precision,
@@ -27,6 +44,14 @@ class Tester:
 
 
 def p_test():
+    """
+    Run comprehensive tests of printer functionality.
+    
+    Tests all data types (numbers, dicts, lists, arrays, strings) and color options.
+    
+    Returns:
+        None (prints test output to console).
+    """
     p("--- Testing Number ---")
     Tester("num", 42)._print()
     Tester("float", 3.14159)._print()

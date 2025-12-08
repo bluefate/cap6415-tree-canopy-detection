@@ -16,8 +16,15 @@ ID_TO_CLASS = {v: k for k, v in CLASS_TO_ID.items()}
 
 def build_binary_mask(segmentation: List[float], width: int, height: int) -> np.ndarray:
     """
-    Convert one segmentation polygon into a binary mask.
-    segmentation is a flat list of coordinates.
+    Convert polygon segmentation into a binary mask.
+    
+    Args:
+        segmentation (List[float]): Flat list of polygon coordinates [x1, y1, x2, y2, ...].
+        width (int): Mask width.
+        height (int): Mask height.
+    
+    Returns:
+        np.ndarray: Binary mask (0 = background, 1 = object).
     """
     mask = np.zeros((height, width), dtype=np.uint8)
     if segmentation is None or len(segmentation) < 4:
@@ -29,8 +36,16 @@ def build_binary_mask(segmentation: List[float], width: int, height: int) -> np.
 
 def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
     """
-    Build mask with class indices for multi-class segmentation.
-    Background=0, individual_tree=1, group_of_trees=2
+    Build multi-class segmentation mask with class indices.
+    
+    Background=0, individual_tree=1, group_of_trees=2, unknown classes are skipped.
+    
+    Args:
+        entry (AnnotationEntry): Annotation entry with image dimensions and items.
+        class_to_id (dict, optional): Mapping from class name to ID. Defaults to standard mapping.
+    
+    Returns:
+        np.ndarray: Multi-class mask with dtype=uint8.
     """
     if class_to_id is None:
         class_to_id = CLASS_TO_ID
@@ -56,7 +71,14 @@ def build_multiclass_mask(entry, class_to_id: dict = None) -> np.ndarray:
 
 def save_mask(mask: np.ndarray, path: Path) -> None:
     """
-    Save a binary mask. Values are written as 0 or 255.
+    Save binary mask to disk with values converted to 0 or 255.
+    
+    Args:
+        mask (np.ndarray): Binary mask (values 0-1).
+        path (Path): Output file path.
+    
+    Returns:
+        None
     """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -66,7 +88,16 @@ def save_mask(mask: np.ndarray, path: Path) -> None:
 
 def load_mask(path: Path) -> np.ndarray:
     """
-    Load a binary mask from disk. Converts 255 to 1.
+    Load binary mask from disk and convert 255 values to 1.
+    
+    Args:
+        path (Path): Path to mask file.
+    
+    Returns:
+        np.ndarray: Binary mask (0-1 values).
+    
+    Raises:
+        FileNotFoundError: If mask file does not exist.
     """
     path = Path(path)
     img = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
@@ -79,7 +110,15 @@ def mask_to_overlay(
     image: np.ndarray, mask: np.ndarray, alpha: float = 0.4
 ) -> np.ndarray:
     """
-    Overlay a binary mask on an RGB image. Mask is shown in red.
+    Overlay a binary mask on an RGB image with semi-transparency.
+    
+    Args:
+        image (np.ndarray): RGB image (0-255 or 0-1 range).
+        mask (np.ndarray): Binary mask (0-1 values).
+        alpha (float): Blending factor (0-1). Defaults to 0.4.
+    
+    Returns:
+        np.ndarray: Overlaid image with mask shown in red.
     """
     if image.max() <= 1.0:
         img_u8 = (image * 255).astype(np.uint8)

@@ -16,6 +16,16 @@ class SimpleCNN(nn.Module):
         use_batchnorm: bool = True,
         dropout: float = 0.0,
     ):
+        """
+        Initialize SimpleCNN model.
+        
+        Args:
+            in_channels (int): Number of input channels (e.g., 3 for RGB). Defaults to 3.
+            out_channels (int): Number of output channels for segmentation. Defaults to 3.
+            features (int): Base number of features in convolution filters. Defaults to 32.
+            use_batchnorm (bool): Whether to use batch normalization. Defaults to True.
+            dropout (float): Dropout rate (0-1). Defaults to 0.0.
+        """
         super(SimpleCNN, self).__init__()
 
         def block(in_ch, out_ch):
@@ -39,6 +49,15 @@ class SimpleCNN(nn.Module):
         self.head = nn.Conv2d(features, out_channels, kernel_size=1)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """
+        Forward pass through the network.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape [batch_size, in_channels, height, width].
+        
+        Returns:
+            torch.Tensor: Output logits of shape [batch_size, out_channels, height, width].
+        """
         x = self.encoder(x)
         logits = self.head(x)
         # return torch.sigmoid(logits)

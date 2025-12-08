@@ -15,19 +15,15 @@ from src.utils.helpers import c, p, t
 
 def validate_submission_format(submission_path: Path) -> Dict[str, Any]:
     """
-    Validate submission matches required format.
-
+    Validate submission JSON matches required format and structure.
+    
+    Checks for required fields, valid class names, proper array formats, etc.
+    
     Args:
-        submission_path: Path to submission JSON file
-
+        submission_path (Path): Path to submission JSON file.
+    
     Returns:
-        Dictionary containing:
-        - valid: bool indicating if validation passed
-        - total_images: number of images
-        - total_annotations: total annotation count
-        - class_distribution: dict of class counts
-        - resolution_distribution: dict of resolution counts
-        - issues: list of validation issues found
+        Dict[str, Any]: Validation report with status, statistics, and issues found.
     """
     with open(submission_path, "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -139,10 +135,13 @@ def validate_submission_format(submission_path: Path) -> Dict[str, Any]:
 
 def print_validation_results(stats: Dict[str, Any]) -> None:
     """
-    Pretty print validation results.
-
+    Pretty print validation results to console.
+    
     Args:
-        stats: Validation statistics dictionary from validate_submission_format
+        stats (Dict[str, Any]): Validation statistics from validate_submission_format.
+    
+    Returns:
+        None
     """
     t("VALIDATION RESULTS")
 
@@ -194,7 +193,18 @@ def print_validation_results(stats: Dict[str, Any]) -> None:
 
 
 def validate_data_loader(data_loader, name="DataLoader"):
-    """Validate data loader outputs for debugging."""
+    """
+    Validate data loader outputs for debugging and diagnostic purposes.
+    
+    Checks tensor shapes, dtypes, and value ranges for a few batches.
+    
+    Args:
+        data_loader: PyTorch data loader to validate.
+        name (str): Name of loader for output display. Defaults to "DataLoader".
+    
+    Returns:
+        None (prints validation info to console).
+    """
     t(f"Validating {name}")
     for i, (images, masks) in enumerate(data_loader):
         p(
@@ -236,7 +246,24 @@ def analyze_validation_metrics(
     verbose=True,
 ):
     """
-    Analyze validation metrics and provide performance assessment.
+    Analyze and summarize validation metrics with performance assessment.
+    
+    Args:
+        val_loss (float, optional): Validation loss value.
+        iou (float, optional): Intersection over Union score.
+        accuracy (float, optional): Accuracy score.
+        precision (float, optional): Precision score.
+        recall (float, optional): Recall score.
+        f1_score (float, optional): F1 score.
+        individual_tree_iou (float, optional): Per-class IoU for individual trees.
+        group_tree_iou (float, optional): Per-class IoU for tree groups.
+        dice (float, optional): Dice coefficient.
+        model_name (str): Model name for display. Defaults to "Model".
+        verbose (bool): Print results to console. Defaults to True.
+    
+    Returns:
+        Dict[str, Any]: Summary metrics and performance assessment.
+    """
 
     Args:
         val_loss: Validation loss (lower is better)
