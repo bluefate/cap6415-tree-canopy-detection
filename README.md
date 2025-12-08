@@ -32,7 +32,7 @@ workflow.
 For running, setup, and documentation, please see below:
 
 - Project [Setup Guide](README_setup.md)
-- Notebooks [Documentation](README_DOCS.MD)
+- Notebooks [Documentation](README_DOCS.md)
 
 ------
 
