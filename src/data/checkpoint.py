@@ -207,61 +207,42 @@ def get_model_training_info(model_path: Path) -> Dict[str, Any]:
         }  #: str(e)
 
 
-def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
+def scan_all_models(base_path: Path, config):
     """
     Scan all checkpoint directories and collect model information.
+    Modified to work with Google Drive path structure.
     """
-    p("Base_path", base_path)
-    checkpoint_dirs = find_checkpoint_directories(base_path, config)
+    p("Base path for model search", base_path)
 
-    # Fallback: if our heuristics find nothing, scan the whole base_path
-    if not checkpoint_dirs:
-        p(
-            "No checkpoint directories detected. Falling back to base path scan.",
-            color1=c.ORANGE,
-        )
-        checkpoint_dirs = [base_path]
+    # Ensure base path exists
+    if not base_path.exists():
+        p(f"Base path does not exist: {base_path}", color1=c.RED)
+        return []
+
+    # Find potential checkpoint directories
+    checkpoint_dirs = []
+
+    # Look for directories like 03, 07, 10, 11
+    for item in base_path.iterdir():
+        if item.is_dir() and item.name.isdigit():
+            checkpoint_dirs.append(item)
+
+    p(f"Found checkpoint base directories: {[d.name for d in checkpoint_dirs]}")
 
     all_models: List[Dict[str, Any]] = []
-    p("Checkpoint directories found", checkpoint_dirs)
-
-    t("Scanning Checkpoint Directories")
-    p(f"Found {len(checkpoint_dirs)} checkpoint directories")
-
-    t(f"Scanning Checkpoint Directories")
-    p(f"Found {len(checkpoint_dirs)} checkpoint directories")
 
     for checkpoint_dir in checkpoint_dirs:
-        p(f"Scanning: {checkpoint_dir.name}", color1=c.BLUE)
+        p(f"Scanning checkpoint directory: {checkpoint_dir.name}")
 
-        # Find all .pth files recursively
+        # Recursively find .pth files
         model_files = list(checkpoint_dir.rglob("*.pth"))
-        p(f"  Found {len(model_files)} model files")
 
-        # Show directory structure for first few files
-        if len(model_files) > 0:
-            p(f"  Sample paths")
-            for model_file in model_files[:3]:
-                rel_path = model_file.relative_to(checkpoint_dir)
-                p(f"    {rel_path}")
-            if len(model_files) > 3:
-                p(f"    ... and {len(model_files) - 3} more")
+        p(f"Found {len(model_files)} .pth files in {checkpoint_dir.name}")
 
         for model_file in model_files:
             try:
                 # Extract basic info using improved parser
                 model_info = extract_model_info_from_path(model_file, config)
-
-                # Show parsing result for first few models
-                if len(all_models) < 3:
-                    p(
-                        f"  Parsed {model_file.name}: "
-                        f"{model_info['model_name']}/"
-                        f"{model_info['mode']}/"
-                        f"{model_info['image_size']}/"
-                        f"{model_info['version']}",
-                        color1=c.CYAN,
-                    )
 
                 # File stats
                 file_stats = model_file.stat()
@@ -271,7 +252,7 @@ def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
                 # Training info
                 training_info = get_model_training_info(model_file)
 
-                # Robust submission detection in this folder
+                # Submission detection
                 submission_path = next(
                     (
                         f
@@ -283,17 +264,15 @@ def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
                 )
                 has_submission = submission_path is not None
 
+                # Relative path handling
                 try:
-                    rel_path = str(model_file.relative_to(config.paths.root))
+                    rel_path = str(model_file.relative_to(base_path))
                 except ValueError:
-                    rel_path = str(
-                        model_file
-                    )  # fallback to full path if not under root
+                    rel_path = str(model_file)
 
                 # Combine all information
                 model_data: Dict[str, Any] = {
                     "file_path": str(model_file),
-                    # "relative_path": str(model_file.relative_to(base_path)),
                     "relative_path": rel_path,
                     "checkpoint_dir": checkpoint_dir.name,
                     "file_name": model_file.name,
@@ -310,32 +289,9 @@ def scan_all_models(base_path: Path, config) -> List[Dict[str, Any]]:
                 all_models.append(model_data)
 
             except Exception as e:
-                p(f"  Error processing {model_file}", color1=c.ORANGE)  #: {str(e)}
-                # import traceback
-                #
-                # traceback.print_exc()
+                p(f"Error processing {model_file}", color1=c.ORANGE)
 
     p(f"Total models found: {len(all_models)}")
-
-    # Summary of discovered models
-    if all_models:
-        t("Model Discovery Summary")
-        model_counts: Dict[str, int] = {}
-        mode_counts: Dict[str, int] = {}
-
-        for model in all_models:
-            model_name = model.get("model_name", "unknown")
-            mode = model.get("mode", "unknown")
-
-            model_counts[model_name] = model_counts.get(model_name, 0) + 1
-            mode_counts[mode] = mode_counts.get(mode, 0) + 1
-
-        p("Models by type", model_counts)
-        p("Models by mode", mode_counts)
-
-        # Models with and without submissions
-        with_sub = sum(1 for m in all_models if m.get("has_submission"))
-        p(f"Models with submissions: {with_sub}/{len(all_models)}")
 
     return all_models
 
