@@ -43,11 +43,11 @@ train:
   #  scheduler_factor: 0.5
 
   #for code COLAB
-  image_size: 512 #no resize #1024 # 256
-  num_workers: 8 #8 # ✓ 2 CPU threads pre-load data, 4 for A100 GPU
+  image_size: 64 #no resize #1024 # 256
+  num_workers: 2 #8 # ✓ 2 CPU threads pre-load data, 4 for A100 GPU
   seed: 42
-  batch_size: 8 # 16 # 2 Critical for 2GB GPU, 4 for T4 GPU , 8 for L4 GPU, 16 for A100 GPU
-  epochs: 100
+  batch_size: 2 # 16 # 2 Critical for 2GB GPU, 4 for T4 GPU , 8 for L4 GPU, 16 for A100 GPU
+  epochs: 30
   learning_rate: 5e-4
   early_stop_patience: 10 #8 # Stops training entirely if validation loss doesn't improve for N epochs [10-15 (gives more chances)]
   scheduler_patience: 3 # Reduces learning rate if validation loss doesn't improve for N epochs [3-5 (reduce LR earlier to recover)]
