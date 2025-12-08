@@ -167,8 +167,7 @@ the prescribed schema.
     - If using NVIDIA GPUs, ensure support for **CUDA 11.8+**.
 - **Models**
     - The **YOLO series models from Ultralytics** are explicitly allowed.
-    - Semantic segmentation models can be used, but you must adapt them for **instance segmentation
-      ** or apply **post-processing** (e.g., watershed with distance maps + Gaussian smoothing +
+    - Semantic segmentation models can be used, but you must adapt them for **instance segmentation** or apply **post-processing** (e.g., watershed with distance maps + Gaussian smoothing +
       local peak detection).
 - **Evaluation**
     - You do **not** need to train a classification model for `scene_type` or `cm_resolution`.
