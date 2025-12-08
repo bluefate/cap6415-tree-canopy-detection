@@ -45,7 +45,7 @@ def find_checkpoint_directories(base_path: Path, config) -> List[Path]:
                 # Look for suffix variations
                 re.match(r"checkpoints?_\w+", item_name_lower)
                 or
-                # NEW: Look for pure numbered directories (like 03, 07, 10, 11)
+                # Look for pure numbered directories (like 03, 07, 10, 11)
                 re.match(r"^\d{2,3}$", item.name)
             ):
                 checkpoint_dirs.append(item)
