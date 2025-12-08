@@ -31,7 +31,7 @@ workflow.
 
 For running, setup, and documentation, please see below:
 
-- Project [Setup](README_setup.md)
+- Project [Setup Guide](README_setup.md)
 - Notebooks [Documentation](README_DOCS.MD)
 
 ------

@@ -4,136 +4,136 @@
 
 ### 00_preflight_check.py
 
-- **Purpose**: Initial environment and dependency verification
-- **Key Methods**:
-    * Verify Python environment setup
-    * Check required library installations
-    * Validate system configurations
+- **Purpose:** Performs initial environment and dependency verification
+- **Key Methods:**
+    - Verifies Python environment setup
+    - Checks required library installations
+    - Validates system configurations
 
 ### 00_image_extract.py
 
-- **Purpose**: Data extraction and initial preprocessing
-- **Key Methods**:
-    * Unpack training and evaluation image archives
-    * Remove extraneous system folders (e.g., `__MACOSX`)
-    * Generate binary mask TIFFs from JSON polygon annotations
-    * Visualize image samples and channel statistics
-    * Validate image and annotation alignments
+- **Purpose:** Handles data extraction and initial preprocessing
+- **Key Methods:**
+    - Unpacks training and evaluation image archives
+    - Removes extraneous system folders (such as `__MACOSX`)
+    - Generates binary mask TIFFs from JSON polygon annotations
+    - Visualizes image samples and channel statistics
+    - Validates image and annotation alignment
 
 ### 01_starter_sample.py
 
-- **Purpose**: Initial model prototyping and demonstration
-- **Key Methods**:
-    * Implement basic PyTorch U-Net examples
-    * Set up initial data loading infrastructure
-    * Perform sanity checks on model and data
+- **Purpose:** Demonstrates initial model prototyping
+- **Key Methods:**
+    - Implements basic PyTorch U-Net examples
+    - Sets up initial data loading infrastructure
+    - Performs sanity checks on model and data
 
 ### 02_class.py
 
-- **Purpose**: Define core model and data processing classes
-- **Key Methods**:
-    * Create custom Dataset and Model classes
-    * Implement data augmentation strategies
-    * Build flexible data handling utilities
+- **Purpose:** Defines core model and data processing classes
+- **Key Methods:**
+    - Creates custom Dataset and Model classes
+    - Implements data augmentation strategies
+    - Builds flexible data handling utilities
 
 ### 02_exploration.py
 
-- **Purpose**: Comprehensive data and model exploration
-- **Key Methods**:
-    * Visualization of training data
-    * Image and mask statistical analysis
-    * Kernel and filter exploration
-    * Performance metric investigations
+- **Purpose:** Explores data and early model behavior
+- **Key Methods:**
+    - Visualizes training data
+    - Analyzes image and mask statistics
+    - Explores kernels and filters
+    - Investigates performance metrics
 
 ### 03_training.py
 
-- **Purpose**: Advanced model training workflows
-- **Key Methods**:
-    * Configure training pipelines
-    * Implement loss functions
-    * Set up model checkpointing
-    * Develop validation strategies
+- **Purpose:** Runs advanced model training workflows
+- **Key Methods:**
+    - Configures training pipelines
+    - Implements loss functions
+    - Sets up model checkpointing
+    - Defines and runs validation strategies
 
 ### 04_evaluation.py
 
-- **Purpose**: Model performance assessment
-- **Key Methods**:
-    * Calculate performance metrics (IoU, Dice, Accuracy)
-    * Generate confusion matrices
-    * Visualize model predictions
-    * Compare model architectures
+- **Purpose:** Evaluates model performance
+- **Key Methods:**
+    - Calculates performance metrics such as IoU, Dice, and Accuracy
+    - Generates confusion matrices
+    - Visualizes model predictions
+    - Compares different model architectures
 
 ### 05_prediction.py
 
-- **Purpose**: Model inference and submission generation
-- **Key Methods**:
-    * Load trained models
-    * Run inference on test datasets
-    * Generate competition submissions
-    * Visualize prediction overlays
+- **Purpose:** Runs model inference and builds submissions
+- **Key Methods:**
+    - Loads trained models and configuration
+    - Runs inference on evaluation or test datasets
+    - Generates competition submission JSON files
+    - Visualizes prediction overlays on images
 
 ### 06_benchmark_models.py
 
-- **Purpose**: Comparative model performance analysis
-- **Key Methods**:
-    * Benchmark multiple model architectures
-    * Track inference speed and resource usage
-    * Generate comprehensive performance reports
+- **Purpose:** Benchmarks multiple model configurations
+- **Key Methods:**
+    - Benchmarks different model architectures
+    - Tracks inference speed and resource usage
+    - Generates summary performance reports
 
 ### 07_data_analysis.py
 
-- **Purpose**: In-depth data and model insights
-- **Key Methods**:
-    * Statistical analysis of training data
-    * Feature importance investigation
-    * Error analysis and model weaknesses
+- **Purpose:** Provides detailed data and error analysis
+- **Key Methods:**
+    - Runs statistical analysis on training and validation data
+    - Investigates feature behavior and distributions
+    - Performs error analysis and identifies model weaknesses
 
 ### 08_filter_experimentation.py
 
-- **Purpose**: Image enhancement and filtering strategies
-- **Key Methods**:
-    * Implement and test various image filters
-    * Evaluate filter performance
-    * Generate enhanced training images
+- **Purpose:** Experiments with image filtering pipelines
+- **Key Methods:**
+    - Implements and tests different image filters
+    - Evaluates the impact of filters on training data
+    - Generates filtered and enhanced training images
 
 ### 10_master_execution_plan_*.py
 
-- **Purpose**: Comprehensive experiment orchestration
-- **Key Methods**:
-    * Coordinate end-to-end experiment workflows
-    * Manage model training, validation, and submission
-    * Track and compare experimental results
+- **Purpose:** Orchestrates end to end experiments
+- **Key Methods:**
+    - Coordinates data preprocessing, training, evaluation, and prediction
+    - Manages model training, validation, and submission generation
+    - Tracks and compares experiment results across runs
 
 ## Cross-Cutting Methodologies
 
 ### Data Preprocessing
 
-- GeoTIFF to PNG conversion
-- Polygon annotation processing
-- Data augmentation
-- Mask generation
+- Converts GeoTIFF to PNG with consistent channels
+- Processes polygon annotations and builds masks
+- Applies data augmentation policies
+- Generates training and validation masks
 
 ### Model Development
 
-- Semantic segmentation architectures (U-Net, SimpleCNN)
-- Transfer learning strategies
-- Multi-class and instance segmentation support
+- Implements semantic segmentation architectures such as U-Net and SimpleCNN
+- Applies transfer learning when possible
+- Supports multi class segmentation setups
 
 ### Performance Tracking
 
-- Metrics computation (IoU, Dice, Accuracy)
-- Model checkpoint management
-- Experiment result aggregation
+- Computes metrics such as IoU, Dice, and Accuracy
+- Manages model checkpoints and versioned runs
+- Aggregates and summarizes experiment results
 
 ### Visualization Techniques
 
-- Image and mask overlay generation
-- Performance metric visualization
-- Model prediction comparisons
+- Generates image and mask overlays
+- Visualizes performance curves and metric trends
+- Compares model predictions across architectures
 
 ## Best Practices and Recommendations
 
-- Always use appropriate data augmentation
-- Implement cross-validation
-- Monitor computational resources
-- Maintain reproducible experimental setups
+- Uses appropriate data augmentation for robustness
+- Applies cross validation or strong validation splits
+- Monitors GPU memory and runtime during experiments
+- Keeps configuration driven and reproducible experimental setups  
