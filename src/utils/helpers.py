@@ -201,6 +201,7 @@ class c(str, Enum):
 
 
     def __str__( self ):
+        """Return string representation of color code."""
         return str(self.value)
 
     __repr__ = __str__
@@ -231,6 +232,20 @@ class p:
                   max_lines: int = 15,
                   bold: bool = False,
                   ):
+        """
+        Initialize printer with formatting options.
+        
+        Args:
+            obj: Label or object to print.
+            value: Optional value to print after label.
+            precision (int): Decimal precision for floats. Defaults to 3.
+            show (int): Max items to show for lists/dicts. Defaults to 5.
+            schema (bool): Show type information. Defaults to False.
+            color1: Primary color for labels. Defaults to GREEN.
+            color2: Secondary color for values. Defaults to BLACK.
+            max_lines (int): Max lines for truncation. Defaults to 15.
+            bold (bool): Use bold formatting. Defaults to False.
+        """
         self.obj = obj
         self.value = value
         self.precision = precision
@@ -252,6 +267,7 @@ class p:
     # Nested dict pretty-printer
     # ---------------------------------------------
     def _print_dict( self, d, indent = 2 ):
+        """Print nested dictionary with indentation."""
         pad = " " * indent
         for k, v in d.items():
             if isinstance(v, dict):
@@ -265,9 +281,11 @@ class p:
     # Existence checks
     # ---------------------------------------------
     def _label_exists( self ):
+        """Check if label is provided and non-empty."""
         return self.obj is not None and str(self.obj) != ""
 
     def _value_exists( self ):
+        """Check if value is provided and non-empty."""
         v = self.value
         if v is None:
             return False
@@ -280,6 +298,7 @@ class p:
     # Core print logic
     # -----------------------
     def _print( self ):
+        """Core print logic handling different object types and formatting."""
 
         try:
             label_exists = self._label_exists()
@@ -353,6 +372,7 @@ class p:
             p.print_exception(e, self.obj, self.value)
 
     def _title( self, obj ):
+        """Print formatted title with bold styling."""
         self.print_with_color(f"=== {obj} ===", bold = True)
         return
 
@@ -366,6 +386,16 @@ class p:
                           value_color: c = None,
                           bold = None,
                           ):
+        """
+        Print colored and formatted text with optional bold styling.
+        
+        Args:
+            label: Text to print as label.
+            value: Text to print as value.
+            label_color: Color for label. Defaults to self.color1.
+            value_color: Color for value. Defaults to self.color2.
+            bold (bool): Use bold formatting. Defaults to self.bold.
+        """
         bold = bold or self.bold
         label_color = label_color or self.color1
         value_color = value_color or self.color2
@@ -397,6 +427,14 @@ class p:
     # Exception printer
     # -----------------------
     def print_exception( e: Exception, obj = None, val = None ):
+        """
+        Print exception with context and traceback.
+        
+        Args:
+            e (Exception): Exception object.
+            obj: Optional context object.
+            val: Optional context value.
+        """
         import traceback
         from dotenv import load_dotenv
         import os

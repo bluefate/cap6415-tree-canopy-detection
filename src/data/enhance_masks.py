@@ -30,11 +30,31 @@ class EnhancedImageMaskDataset(ImageMaskDataset):
         classes=None,
         transform=None,
     ):
+        """
+        Initialize enhanced dataset with filter support.
+        
+        Args:
+            entries: List of annotation entries.
+            image_dir (Path): Directory containing images.
+            mode (str): Processing mode ('rgb', 'filtered', or 'concat'). Defaults to 'rgb'.
+            filter_names (list, optional): Names of filters to apply. Defaults to ['laplacian', 'sobel', 'clahe'].
+            classes (list, optional): Classes to include. If None, includes all classes.
+            transform: Albumentations transform pipeline.
+        """
         super().__init__(entries, image_dir, classes, transform)
         self.mode = mode
         self.filter_names = filter_names or ["laplacian", "sobel", "clahe"]
 
     def __getitem__(self, idx: int):
+        """
+        Get image-mask pair with optional filter enhancements.
+        
+        Args:
+            idx (int): Index of item to retrieve.
+        
+        Returns:
+            tuple: (image_tensor, mask_tensor) where image has 3 or 6 channels depending on mode.
+        """
         entry = self.entries[idx]
         img_path = self.image_dir / entry.image_path.name
 

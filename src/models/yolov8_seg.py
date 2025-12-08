@@ -40,6 +40,18 @@ class YOLOv8SegmentationWrapper(nn.Module):
         pretrained: bool = True,
         image_size: int = 640,
     ):
+        """
+        Initialize YOLOv8 segmentation wrapper.
+        
+        Args:
+            model_size (str): Model size ('n', 's', 'm', 'l', 'x'). Defaults to 'n'.
+            num_classes (int): Number of output classes. Defaults to 3.
+            pretrained (bool): Load pretrained weights. Defaults to True.
+            image_size (int): Input image size. Defaults to 640.
+        
+        Raises:
+            ImportError: If ultralytics not installed.
+        """
         super().__init__()
 
         if not YOLO_AVAILABLE:
@@ -212,6 +224,16 @@ class YOLOv8SemanticSeg(nn.Module):
         depth_multiple: float = 0.33,
         width_multiple: float = 0.25,
     ):
+        """
+        Initialize YOLOv8-style semantic segmentation model.
+        
+        Args:
+            in_channels (int): Number of input channels. Defaults to 3.
+            out_channels (int): Number of output classes. Defaults to 3.
+            base_channels (int): Base channel count. Defaults to 32.
+            depth_multiple (float): Depth scaling factor. Defaults to 0.33.
+            width_multiple (float): Width scaling factor. Defaults to 0.25.
+        """
         super().__init__()
 
         self.in_channels = in_channels
@@ -275,6 +297,7 @@ class YOLOv8SemanticSeg(nn.Module):
         self._initialize_weights()
 
     def _initialize_weights(self):
+        """Initialize model weights using kaiming initialization."""
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
@@ -332,6 +355,18 @@ class Conv(nn.Module):
     """Standard convolution with batch norm and activation."""
 
     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, act=True):
+        """
+        Initialize convolution block.
+        
+        Args:
+            c1 (int): Input channels.
+            c2 (int): Output channels.
+            k (int): Kernel size. Defaults to 1.
+            s (int): Stride. Defaults to 1.
+            p (int, optional): Padding. If None, uses k//2.
+            g (int): Groups. Defaults to 1.
+            act (bool): Use activation. Defaults to True.
+        """
         super().__init__()
         self.conv = nn.Conv2d(
             c1, c2, k, s, padding=k // 2 if p is None else p, groups=g, bias=False
@@ -340,6 +375,7 @@ class Conv(nn.Module):
         self.act = nn.SiLU(inplace=True) if act else nn.Identity()
 
     def forward(self, x):
+        """Apply convolution, batch norm, and activation."""
         return self.act(self.bn(self.conv(x)))
 
 
@@ -347,6 +383,16 @@ class Bottleneck(nn.Module):
     """Standard bottleneck block."""
 
     def __init__(self, c1, c2, shortcut=True, g=1, e=0.5):
+        """
+        Initialize bottleneck block.
+        
+        Args:
+            c1 (int): Input channels.
+            c2 (int): Output channels.
+            shortcut (bool): Use residual connection. Defaults to True.
+            g (int): Groups for grouped convolution. Defaults to 1.
+            e (float): Expansion ratio. Defaults to 0.5.
+        """
         super().__init__()
         c_ = int(c2 * e)
         self.cv1 = Conv(c1, c_, 1, 1)
@@ -354,6 +400,7 @@ class Bottleneck(nn.Module):
         self.add = shortcut and c1 == c2
 
     def forward(self, x):
+        """Apply bottleneck with optional residual connection."""
         return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))
 
 
@@ -361,6 +408,17 @@ class C2f(nn.Module):
     """CSP Bottleneck with 2 convolutions (YOLOv8 style)."""
 
     def __init__(self, c1, c2, n=1, shortcut=False, g=1, e=0.5):
+        """
+        Initialize CSP Bottleneck with 2 convolutions.
+        
+        Args:
+            c1 (int): Input channels.
+            c2 (int): Output channels.
+            n (int): Number of bottleneck blocks. Defaults to 1.
+            shortcut (bool): Use shortcut connections. Defaults to False.
+            g (int): Groups for grouped convolution. Defaults to 1.
+            e (float): Expansion ratio. Defaults to 0.5.
+        """
         super().__init__()
         self.c = int(c2 * e)
         self.cv1 = Conv(c1, 2 * self.c, 1, 1)
@@ -370,6 +428,7 @@ class C2f(nn.Module):
         )
 
     def forward(self, x):
+        """Apply CSP bottleneck with cross-stage feature fusion."""
         y = list(self.cv1(x).chunk(2, 1))
         y.extend(m(y[-1]) for m in self.m)
         return self.cv2(torch.cat(y, 1))
@@ -379,6 +438,14 @@ class SPPF(nn.Module):
     """Spatial Pyramid Pooling - Fast."""
 
     def __init__(self, c1, c2, k=5):
+        """
+        Initialize Spatial Pyramid Pooling - Fast module.
+        
+        Args:
+            c1 (int): Input channels.
+            c2 (int): Output channels.
+            k (int): Kernel size for max pooling. Defaults to 5.
+        """
         super().__init__()
         c_ = c1 // 2
         self.cv1 = Conv(c1, c_, 1, 1)
@@ -386,6 +453,7 @@ class SPPF(nn.Module):
         self.m = nn.MaxPool2d(kernel_size=k, stride=1, padding=k // 2)
 
     def forward(self, x):
+        """Apply spatial pyramid pooling with multiple scales."""
         x = self.cv1(x)
         y1 = self.m(x)
         y2 = self.m(y1)

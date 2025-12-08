@@ -8,6 +8,11 @@ class CustomNormalize6Channel:
     """
 
     def __init__(self):
+        """
+        Initialize normalization parameters for 6-channel images.
+        
+        Sets up ImageNet statistics for RGB channels and custom statistics for filter channels.
+        """
         # ImageNet normalization stats for RGB channels (0:3)
         self.rgb_mean = [0.485, 0.456, 0.406]
         self.rgb_std = [0.229, 0.224, 0.225]

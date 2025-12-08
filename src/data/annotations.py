@@ -13,6 +13,14 @@ class AnnotationItem:
     """
 
     def __init__(self, cls: str, segmentation: List[float], confidence: float = 1.0):
+        """
+        Initialize an annotation item.
+        
+        Args:
+            cls (str): Class name ('individual_tree' or 'group_of_trees').
+            segmentation (list): Flat list of polygon coordinates [x1, y1, x2, y2, ...].
+            confidence (float): Confidence score. Defaults to 1.0.
+        """
         self.cls = cls
         self.segmentation = segmentation
         self.confidence = confidence
@@ -45,6 +53,15 @@ class AnnotationEntry:
     def __init__(
         self, image_path: Path, width: int, height: int, items: List[AnnotationItem]
     ):
+        """
+        Initialize an annotation entry for a single image.
+        
+        Args:
+            image_path (Path): Path to the image file.
+            width (int): Image width in pixels.
+            height (int): Image height in pixels.
+            items (list): List of AnnotationItem objects for this image.
+        """
         self.image_path = image_path
         self.width = width
         self.height = height

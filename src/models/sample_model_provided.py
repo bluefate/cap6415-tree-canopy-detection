@@ -74,6 +74,15 @@ class SampleModelProvided(nn.Module):
         self.head = nn.Conv2d(f1, out_channels, 1)
 
     def forward(self, x):
+        """
+        Forward pass through U-Net architecture.
+        
+        Args:
+            x (torch.Tensor): Input tensor with shape (B, C, H, W).
+        
+        Returns:
+            torch.Tensor: Output segmentation logits with shape (B, num_classes, H, W).
+        """
         c1 = self.enc1(x)
         c2 = self.enc2(self.pool(c1))
         c3 = self.enc3(self.pool(c2))

@@ -159,9 +159,19 @@ class ImageOnlyDataset(Dataset):
         )
 
     def __len__(self) -> int:
+        """Return number of images in dataset."""
         return len(self.files)
 
     def __getitem__(self, idx: int) -> Tuple[str, torch.Tensor]:
+        """
+        Get image at specified index.
+        
+        Args:
+            idx (int): Index of image to retrieve.
+        
+        Returns:
+            tuple: (filename, image_tensor) where image_tensor has shape (C, H, W).
+        """
         path = self.files[idx]
         image = self._load_image(path)
 
@@ -190,6 +200,18 @@ class ImageOnlyDataset(Dataset):
     def _load_image(
         self, source: Union[str, Path, np.ndarray, torch.Tensor, Image.Image]
     ) -> np.ndarray:
+        """
+        Load image from various source types with format handling.
+        
+        Args:
+            source: Image source (path, array, tensor, or PIL Image).
+        
+        Returns:
+            np.ndarray: RGB image array.
+        
+        Raises:
+            ValueError: If image cannot be loaded from source.
+        """
         if isinstance(source, np.ndarray):
             img = source
             if img.ndim == 2:

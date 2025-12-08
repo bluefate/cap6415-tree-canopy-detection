@@ -30,6 +30,14 @@ class ImageConverter:
     """
 
     def __init__(self, source_dir: Path, target_dir: Optional[Path] = None, logger: Optional[Logger] = None):
+        """
+        Initialize image converter.
+        
+        Args:
+            source_dir (Path): Directory containing source TIFF files.
+            target_dir (Path, optional): Target directory for PNG files. If None, uses source_dir.
+            logger (Logger, optional): Logger instance. If None, creates new logger.
+        """
         self.source_dir = Path(source_dir)
         self.target_dir = Path(target_dir) if target_dir else self.source_dir
         self.logger = logger or Logger()

@@ -276,6 +276,17 @@ def create_segformer(
 
 
 def create_timm_segformer(encoder_name="tf_mobilenet_v2_s", out_channels: int = 3):
+    """
+    Create SegFormer model using TIMM encoder (currently not implemented).
+    
+    Args:
+        encoder_name (str): TIMM encoder name. Defaults to 'tf_mobilenet_v2_s'.
+        out_channels (int): Number of output classes. Defaults to 3.
+    
+    Raises:
+        ImportError: If timm not installed.
+        NotImplementedError: Feature requires custom head implementation.
+    """
     if not TIMM_AVAILABLE:
         raise ImportError("timm not installed")
     backbone = timm.create_model(
@@ -290,6 +301,17 @@ def create_timm_segformer(encoder_name="tf_mobilenet_v2_s", out_channels: int = 
 def create_timm_upernet(
     encoder_name="swin_base_patch4_window7_224", out_channels: int = 3
 ):
+    """
+    Create UperNet model using TIMM encoder (currently not implemented).
+    
+    Args:
+        encoder_name (str): TIMM encoder name. Defaults to 'swin_base_patch4_window7_224'.
+        out_channels (int): Number of output classes. Defaults to 3.
+    
+    Raises:
+        ImportError: If timm not installed.
+        NotImplementedError: Feature available on request.
+    """
     if not TIMM_AVAILABLE:
         raise ImportError("timm not installed")
     raise NotImplementedError(
