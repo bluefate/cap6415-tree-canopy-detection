@@ -25,7 +25,7 @@ geospatial analysis."
 
 **Transcript**:
 "Tree canopy detection is crucial for understanding urban ecosystems, climate change impacts, and
-land use planning. Our challenge was to develop a machine learning model that can accurately segment
+land use planning. The challenge was to develop a machine learning model that can accurately segment
 and identify tree canopies from high-resolution aerial and satellite imagery."
 
 ### Slide 3: Dataset Overview (2 minutes)
