@@ -1,3 +1,16 @@
+# Moved
+
+This project now lives in the FAU coursework portfolio:
+
+**https://github.com/bluefate/fau-coursework/tree/main/masters/CAP6415-computer-vision/projects/tree-canopy-detection**
+
+This repository is archived and no longer maintained here.
+
+
+
+
+
+
 # Tree Canopy Detection
 
 Project for the **Solafune Tree Canopy Detection** competition.
