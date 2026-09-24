@@ -59,10 +59,9 @@ Notebooks live under `notebooks/` as `.ipynb` files with unique numbers `01`–`
 ## Educational / exploration (`notebooks/`)
 
 
-### `16_competition_submission.ipynb`
+### `16_advanced_test.ipynb`
 
-- Competition-oriented DeepLabV3+ train → instance watershed → submission JSON
-- Sample GT/pred views and metric plots
+- Advanced U-Net train → samples/metrics → instance post-process → submission JSON
 
 
 ### `04_starter_sample.ipynb`
