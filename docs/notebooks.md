@@ -43,13 +43,13 @@ Notebooks live under `notebooks/` as `.ipynb` files with unique numbers `01`–`
 
 - Systematic filter trials for canopy boundary enhancement
 
-### `13_master_execution_plan_512_rgb.ipynb`
+### `13_master_execution_plan_rgb.ipynb`
 
-- End-to-end pipeline at tile size 512 (RGB / no-filter experiment set)
+- End-to-end pipeline RGB / no-filter experiment set (image size from config.yaml)
 
-### `14_master_execution_plan_512_all.ipynb`
+### `14_master_execution_plan_all.ipynb`
 
-- End-to-end pipeline at tile size 512 including filter experiment variants
+- End-to-end pipeline including filter experiment variants (image size from config.yaml)
 
 ### `15_model_tracker_submission_manager.ipynb`
 
@@ -90,5 +90,5 @@ Notebooks live under `notebooks/` as `.ipynb` files with unique numbers `01`–`
 ## Best practices
 
 - Prefer `config.yaml` + `src/` over duplicating logic in notebooks
-- Use the 512 master plans for full runs; use 04–06 for teaching and EDA
+- Use the master execution plans for full runs; use 04–06 for teaching and EDA
 - Keep configuration-driven, reproducible experiment setups

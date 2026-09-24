@@ -307,11 +307,9 @@ them in Jupyter or Colab.
 If you want to run the full pipeline from preprocessing to training to submission in one pass, use
 one of the master execution plan notebooks:
 
-- `13_master_execution_plan_512_rgb.ipynb` (models on RGB / no-filter set)
-- `14_master_execution_plan_512_all.ipynb` (includes filter experiment variants)
+- `13_master_execution_plan_rgb.ipynb` (models on RGB / no-filter set)
+- `14_master_execution_plan_all.ipynb` (includes filter experiment variants)
 
-
-In these filenames, `512` is the tile/image size used when resizing.
 
 These master notebooks:
 
