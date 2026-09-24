@@ -1,6 +1,6 @@
 # Project Notebooks and Methods Documentation
 
-Notebooks live under `notebooks/` as `.ipynb` files with unique numbers `01`–`15`.
+Notebooks live under `notebooks/` as `.ipynb` files with unique numbers `01`–`16`.
 
 ## Pipeline (keep these for day-to-day work)
 
@@ -57,6 +57,13 @@ Notebooks live under `notebooks/` as `.ipynb` files with unique numbers `01`–`
 
 
 ## Educational / exploration (`notebooks/`)
+
+
+### `16_competition_submission.ipynb`
+
+- Competition-oriented DeepLabV3+ train → instance watershed → submission JSON
+- Sample GT/pred views and metric plots
+
 
 ### `04_starter_sample.ipynb`
 

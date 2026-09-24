@@ -3,7 +3,7 @@ import torch
 from src.utils.helpers import p
 
 
-def load_best_model(model_name: str, config, notebook="10", mode="rgb", filters=None):
+def load_best_model(model_name: str, config, notebook="10", mode="rgb", filters=None, **model_kwargs):
     """
     Load the best trained model with correct path structure.
     
@@ -16,6 +16,7 @@ def load_best_model(model_name: str, config, notebook="10", mode="rgb", filters=
         notebook (str): Notebook version identifier. Defaults to "10".
         mode (str): Processing mode ('rgb', 'filtered', 'concat'). Defaults to 'rgb'.
         filters (list or str, optional): Filter names if mode='filtered' or 'concat'.
+        **model_kwargs: Extra build_model args (e.g. encoder_name for SMP).
     
     Returns:
         torch.nn.Module: Model loaded on appropriate device (CUDA or CPU) in eval mode.
@@ -89,7 +90,12 @@ def load_best_model(model_name: str, config, notebook="10", mode="rgb", filters=
 
     # Build and load model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model = build_model(model_name, in_channels=in_channels, out_channels=3)
+    model = build_model(
+        model_name,
+        in_channels=in_channels,
+        out_channels=3,
+        **model_kwargs,
+    )
 
     # Load weights
     state = torch.load(model_path, map_location=device)

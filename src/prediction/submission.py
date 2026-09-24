@@ -8,6 +8,67 @@ import numpy as np
 from src.utils.helpers import p, t
 
 
+def separate_instances(
+    mask: np.ndarray,
+    min_area: int = 25,
+    dist_thresh: float = 0.35,
+) -> np.ndarray:
+    """
+    Split connected canopy regions into instance-like components per class.
+
+    Distance transform + watershed so contour extraction yields separate
+    polygons (semantic → instance post-process for weighted mAP).
+
+    Args:
+        mask: Multiclass mask {0=bg, 1=individual_tree, 2=group_of_trees}.
+        min_area: Drop components smaller than this (pixels).
+        dist_thresh: Fraction of max distance used as seed threshold.
+
+    Returns:
+        Multiclass mask with class ids; watershed ridges left as 0 so
+        external contours separate adjacent trees of the same class.
+    """
+    out = np.zeros_like(mask, dtype=np.uint8)
+
+    for class_id in (1, 2):
+        binary = (mask == class_id).astype(np.uint8)
+        if int(binary.sum()) == 0:
+            continue
+
+        dist = cv2.distanceTransform(binary, cv2.DIST_L2, 5)
+        peak = float(dist.max()) if dist.size else 0.0
+        if peak <= 0:
+            out[binary == 1] = class_id
+            continue
+
+        _, sure_fg = cv2.threshold(dist, dist_thresh * peak, 255, cv2.THRESH_BINARY)
+        sure_fg = sure_fg.astype(np.uint8)
+        n_labels, markers = cv2.connectedComponents(sure_fg)
+        if n_labels <= 1:
+            # No seeds — keep whole component as one instance
+            n_cc, cc = cv2.connectedComponents(binary)
+            for lab in range(1, n_cc):
+                comp = cc == lab
+                if int(comp.sum()) >= min_area:
+                    out[comp] = class_id
+            continue
+
+        markers = markers.astype(np.int32)
+        # Background must be 0; shift labels so 0 stays bg for watershed
+        markers[binary == 0] = 0
+        ws = cv2.cvtColor(binary * 255, cv2.COLOR_GRAY2BGR)
+        cv2.watershed(ws, markers)
+
+        for lab in range(1, int(markers.max()) + 1):
+            comp = markers == lab
+            if int(comp.sum()) < min_area:
+                continue
+            out[comp] = class_id
+        # Leave markers == -1 (boundaries) as 0 → separates contours
+
+    return out
+
+
 def mask_to_polygons_multiclass(
     mask: np.ndarray, id_to_class: dict = None
 ) -> List[dict]:
@@ -109,7 +170,8 @@ def export_submission(results: List[Dict[str, Any]], output_path: Path, config) 
             mask = r.get("mask", None)
 
             if mask is not None:
-                annotations = mask_to_polygons_multiclass(mask)
+                instance_mask = separate_instances(mask)
+                annotations = mask_to_polygons_multiclass(instance_mask)
             else:
                 annotations = []
 
