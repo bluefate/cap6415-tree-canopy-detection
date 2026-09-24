@@ -112,13 +112,20 @@ class Config(BaseModel):
         if root is None:
             raise ValueError("Missing required field 'root'. Pass it via load(root=...).")
 
+        root = Path(root).resolve()
         if yaml_path is None:
-            # use passed root — cwd may be notebooks/explore/
-            yaml_path = Path(root) / "config.yaml"
-
-        yaml_path = Path(yaml_path).resolve()
-        if not yaml_path.exists():
-            raise FileNotFoundError(f"Missing config file {yaml_path}")
+            # walk up — Jupyter often starts in notebooks/ or notebooks/explore/
+            yaml_path = next(
+                (p / "config.yaml" for p in [root, *root.parents] if (p / "config.yaml").exists()),
+                None,
+            )
+            if yaml_path is None:
+                raise FileNotFoundError(f"Missing config.yaml above {root}")
+            root = yaml_path.parent
+        else:
+            yaml_path = Path(yaml_path).resolve()
+            if not yaml_path.exists():
+                raise FileNotFoundError(f"Missing config file {yaml_path}")
 
         with open(yaml_path, "r") as f:
             raw = yaml.safe_load(f)
