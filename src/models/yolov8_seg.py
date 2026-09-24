@@ -2,16 +2,6 @@ import torch
 import torch.nn as nn
 
 
-# Check if ultralytics is available
-try:
-    from ultralytics import YOLO
-
-    YOLO_AVAILABLE = True
-except ImportError:
-    YOLO_AVAILABLE = False
-    print("Warning: ultralytics not installed. Install with: pip install ultralytics")
-
-
 class YOLOv8SemanticSeg(nn.Module):
     """
     Simplified YOLOv8-style architecture for semantic segmentation.
