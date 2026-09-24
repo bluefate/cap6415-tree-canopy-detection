@@ -310,9 +310,6 @@ one of the master execution plan notebooks:
 - `13_master_execution_plan_512_rgb.ipynb` (models on RGB / no-filter set)
 - `14_master_execution_plan_512_all.ipynb` (includes filter experiment variants)
 
-Or use the convenience runner:
-
-- `_run_512.ipynb` (runs `512_all` master plan + `15_model_tracker_submission_manager.ipynb`)
 
 In these filenames, `512` is the tile/image size used when resizing.
 

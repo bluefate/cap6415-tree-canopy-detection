@@ -55,9 +55,6 @@ Notebooks live under `notebooks/` as `.ipynb` files with unique numbers `01`–`
 
 - Scan checkpoints, rank models, build/refresh submission JSON files
 
-### `_run_512.ipynb`
-
-- Convenience runner that executes the 512 master plan + tracker
 
 ## Educational / exploration (`notebooks/`)
 
