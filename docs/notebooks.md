@@ -45,7 +45,7 @@ Notebooks live under `notebooks/` as `.ipynb` files. Names below match the files
     - Implements basic PyTorch U-Net examples
     - Sets up initial data loading infrastructure
     - Performs sanity checks on model and data
-      ![img.png](img.png)
+      ![img.png](assets/img.png)
 
 ### `02_class.ipynb`
 
@@ -54,7 +54,7 @@ Notebooks live under `notebooks/` as `.ipynb` files. Names below match the files
     - Creates custom Dataset and Model classes
     - Implements data augmentation strategies
     - Builds flexible data handling utilities
-      ![img_1.png](img_1.png)
+      ![img_1.png](assets/img_1.png)
 
 ### `02_exploration.ipynb`
 
@@ -64,7 +64,7 @@ Notebooks live under `notebooks/` as `.ipynb` files. Names below match the files
     - Analyzes image and mask statistics
     - Explores kernels and filters
     - Investigates performance metrics
-      ![img_2.png](img_2.png)
+      ![img_2.png](assets/img_2.png)
 
 ### `03_training.ipynb`
 
@@ -83,7 +83,7 @@ Notebooks live under `notebooks/` as `.ipynb` files. Names below match the files
     - Generates confusion matrices
     - Visualizes model predictions
     - Compares different model architectures
-      ![img_3.png](img_3.png)
+      ![img_3.png](assets/img_3.png)
 
 ### `05_prediction.ipynb`
 
@@ -109,7 +109,7 @@ Notebooks live under `notebooks/` as `.ipynb` files. Names below match the files
     - Runs statistical analysis on training and validation data
     - Investigates feature behavior and distributions
     - Performs error analysis and identifies model weaknesses
-      ![img_4.png](img_4.png)
+      ![img_4.png](assets/img_4.png)
 
 ### `08_filter_experimentation.ipynb`
 
@@ -118,7 +118,7 @@ Notebooks live under `notebooks/` as `.ipynb` files. Names below match the files
     - Implements and tests different image filters
     - Evaluates the impact of filters on training data
     - Generates filtered and enhanced training images
-      ![img_5.png](img_5.png)
+      ![img_5.png](assets/img_5.png)
 
 ### `10_master_execution_plan_*.ipynb`
 

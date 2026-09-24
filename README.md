@@ -36,9 +36,10 @@ workflow.
 
 For running, setup, and documentation, see:
 
-- Project [Setup Guide](README_setup.md)
-- Notebooks [Documentation](README_DOCS.md)
-- Presentation outline [README_powerpoint.md](README_powerpoint.md)
+- Project [Setup Guide](docs/setup.md)
+- Notebooks [Documentation](docs/notebooks.md)
+- Presentation outline [docs/presentation.md](docs/presentation.md)
+- Weekly logs [docs/weeklylogs/](docs/weeklylogs/)
 
 ---
 
