@@ -43,34 +43,6 @@ def get_train_augmentations(image_size: int = 256, mode: str = "rgb"):
         ToTensorV2(),
     ]
 
-    # if num_channels == 3:
-    #     # RGB mode - full augmentations
-    #     color_transforms = [
-    #         A.RandomBrightnessContrast(p=0.5),
-    #         A.HueSaturationValue(p=0.3),
-    #     ]
-    #     base_transforms.extend(color_transforms)
-    #
-    #     # Standard ImageNet normalization
-    #     final_transforms = [
-    #         A.Normalize(mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)),
-    #         ToTensorV2(),
-    #     ]
-    # elif num_channels == 6:
-    #     # Concat mode - custom normalization
-    #     # Normalize first 3 channels (RGB) with ImageNet stats
-    #     # Normalize last 3 channels (filters) differently
-    #     final_transforms = [
-    #         CustomNormalize6Channel(),
-    #         ToTensorV2(),
-    #     ]
-    # else:
-    #     # Fallback
-    #     final_transforms = [
-    #         A.Normalize(mean=(0.5,) * num_channels, std=(0.5,) * num_channels),
-    #         ToTensorV2(),
-    #     ]
-
     base_transforms.extend(final_transforms)
     return A.Compose(base_transforms)
 

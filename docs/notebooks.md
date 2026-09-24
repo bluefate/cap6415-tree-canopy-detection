@@ -51,10 +51,6 @@ Notebooks live under `notebooks/` as `.ipynb` files.
 
 - End-to-end pipeline at tile size 512 including filter experiment variants
 
-### `11 simple model filter test.ipynb`
-
-- Focused model × filter combo experiments
-
 ### `12_model_tracker_submission_manager.ipynb`
 
 - Scan checkpoints, rank models, build/refresh submission JSON files
