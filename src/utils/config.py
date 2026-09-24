@@ -113,9 +113,8 @@ class Config(BaseModel):
             raise ValueError("Missing required field 'root'. Pass it via load(root=...).")
 
         if yaml_path is None:
-            load_dotenv()
-            project_root: Path = Path(os.getenv("PROJECT_ROOT", Path.cwd())).resolve()
-            yaml_path = project_root / "config.yaml"
+            # use passed root — cwd may be notebooks/explore/
+            yaml_path = Path(root) / "config.yaml"
 
         yaml_path = Path(yaml_path).resolve()
         if not yaml_path.exists():
