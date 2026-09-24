@@ -326,32 +326,3 @@ def create_yolov8l_seg(in_channels: int = 3, out_channels: int = 3) -> nn.Module
 # =============================================================================
 
 
-def test_yolov8_seg():
-    """Test the YOLOv8 segmentation model."""
-    print("Testing YOLOv8 Semantic Segmentation...")
-
-    # Test different sizes
-    for size in ["n", "s", "m"]:
-        model = create_yolov8_seg(in_channels=3, out_channels=3, model_size=size)
-
-        # Count parameters
-        params = sum(p.numel() for p in model.parameters())
-
-        # Test forward pass
-        x = torch.randn(2, 3, 256, 256)
-        with torch.no_grad():
-            y = model(x)
-
-        print(
-            f"YOLOv8-{size}: params={params/1e6:.2f}M, "
-            f"input={tuple(x.shape)}, output={tuple(y.shape)}"
-        )
-
-        # Verify output shape
-        assert y.shape == (2, 3, 256, 256), f"Expected (2, 3, 256, 256), got {y.shape}"
-
-    print("All tests passed!")
-
-
-if __name__ == "__main__":
-    test_yolov8_seg()

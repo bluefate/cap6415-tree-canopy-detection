@@ -220,18 +220,3 @@ class ImageConverter:
             return False
 
 
-def batch_convert_tiff_to_png(
-    image_dir: Path,
-    annotations_path: Optional[Path] = None,
-    overwrite: bool = False
-) -> dict:
-    """
-    Convenience function to convert all TIFFs and update annotations.
-    """
-    converter = ImageConverter(image_dir)
-    stats = converter.convert_batch(overwrite=overwrite)
-
-    if annotations_path and Path(annotations_path).exists():
-        converter.update_annotations(annotations_path)
-
-    return stats

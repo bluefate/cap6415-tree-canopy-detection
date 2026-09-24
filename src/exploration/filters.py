@@ -67,23 +67,3 @@ def cv2_apply_laplacian(image: np.ndarray) -> np.ndarray:
     return out
 
 
-def normalize_image(image: np.ndarray) -> np.ndarray:
-    """
-    Normalize image values to [0, 1] range.
-    
-    Uses min-max normalization: (x - min) / (max - min). If min equals max,
-    returns the input unchanged.
-    
-    Args:
-        image (np.ndarray): Input image with any numeric dtype.
-    
-    Returns:
-        np.ndarray: Normalized image as float32 in range [0, 1], or unchanged if 
-                    min equals max.
-    """
-    img = image.astype(np.float32)
-    m = img.min()
-    M = img.max()
-    if M <= m:
-        return img
-    return (img - m) / (M - m)

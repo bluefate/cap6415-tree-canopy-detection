@@ -152,26 +152,3 @@ def export_submission(results: List[Dict[str, Any]], output_path: Path, config) 
     p("✓ group_of_trees annotations", group_count)
 
 
-def extract_cm_resolution(fname: str) -> int:
-    """
-    Extract resolution in centimeters from image filename.
-    
-    Parses filenames like 'forest_10cm_001.tif' to extract resolution value.
-    
-    Args:
-        fname (str): Image filename.
-    
-    Returns:
-        int: Resolution in centimeters (default 10 if not found).
-    """
-    name = Path(fname).stem.lower()
-
-    # Search for patterns like 5cm, 10cm, 20cm, etc.
-    import re
-
-    match = re.search(r"(\d+)\s*cm", name)
-    if match:
-        return int(match.group(1))
-
-    # If no information found, return fallback
-    return 10

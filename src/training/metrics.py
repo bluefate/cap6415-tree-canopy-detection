@@ -2,47 +2,6 @@ import numpy as np
 import torch
 
 
-def _to_numpy(pred: torch.Tensor, true: torch.Tensor):
-    """
-    Convert prediction and ground truth tensors to binary numpy arrays.
-    
-    Applies sigmoid to predictions and thresholds at 0.5.
-    
-    Args:
-        pred (torch.Tensor): Prediction logits or probabilities.
-        true (torch.Tensor): Ground truth binary labels.
-    
-    Returns:
-        Tuple[np.ndarray, np.ndarray]: Binary predictions and ground truth arrays.
-    """
-    if isinstance(pred, torch.Tensor):
-        pred = torch.sigmoid(pred).detach().cpu().numpy()
-    if isinstance(true, torch.Tensor):
-        true = true.detach().cpu().numpy()
-
-    pred_bin = (pred > 0.5).astype(np.uint8)
-    true_bin = (true > 0.5).astype(np.uint8)
-    return pred_bin, true_bin
-
-
-def compute_confusion(pred_bin: np.ndarray, true_bin: np.ndarray):
-    """
-    Compute confusion matrix components (TP, FP, FN, TN).
-    
-    Args:
-        pred_bin (np.ndarray): Binary predictions.
-        true_bin (np.ndarray): Binary ground truth.
-    
-    Returns:
-        Tuple[int, int, int, int]: (TP, FP, FN, TN) counts.
-    """
-    tp = np.logical_and(pred_bin == 1, true_bin == 1).sum()
-    fp = np.logical_and(pred_bin == 1, true_bin == 0).sum()
-    fn = np.logical_and(pred_bin == 0, true_bin == 1).sum()
-    tn = np.logical_and(pred_bin == 0, true_bin == 0).sum()
-    return tp, fp, fn, tn
-
-
 def compute_metrics(pred: torch.Tensor, true: torch.Tensor):
     """
     Compute segmentation metrics for binary classification.
