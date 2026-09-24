@@ -711,3 +711,6 @@ _proc/
 
 # Ignore root inside .codebackup
 #.codebackup/root/*
+
+# graphify knowledge graph output
+graphify-out/
