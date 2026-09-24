@@ -130,19 +130,30 @@ class Config(BaseModel):
         with open(yaml_path, "r") as f:
             raw = yaml.safe_load(f)
 
-        raw_paths = raw.get("paths", { })
+        raw_paths = dict(raw.get("paths", {}) or {})
         raw_paths["root"] = str(root)
 
+        raw_train = raw.get("train", {})
+        extra = {k: v for k, v in raw.items() if k not in ["paths", "train"]}
 
-        raw_train = raw.get("train", { })
-        extra = { k: v for k, v in raw.items() if k not in ["paths", "train"] }
+        # Merge dataset.sources.<active>.paths over top-level paths (public sample).
+        dataset = extra.get("dataset") or {}
+        active = dataset.get("active")
+        sources = dataset.get("sources") or {}
+        if active and isinstance(sources.get(active), dict):
+            overrides = sources[active].get("paths") or {}
+            if isinstance(overrides, dict):
+                for key, value in overrides.items():
+                    if value is None:
+                        raw_paths.pop(key, None)
+                    else:
+                        raw_paths[key] = value
 
         paths_cfg = PathsConfig(**raw_paths)
         train_cfg = TrainConfig(**raw_train)
 
         instance = cls(paths=paths_cfg, train=train_cfg, extra=extra)
         instance.ensure_output_dirs()
-        instance.auto_adjust()
         return instance
 
     def ensure_output_dirs(self) -> None:
@@ -201,32 +212,6 @@ class Config(BaseModel):
             p("Extra")
             for k, v in self.extra.items():
                 p("", f"  {k}: {clean_value(v)}")
-
-
-    def auto_adjust( self ):
-        """
-        Auto-adjust configuration based on image size and available memory.
-        
-        Currently disabled but can implement automatic batch size and worker reductions
-        for large image sizes to prevent out-of-memory errors.
-        
-        Returns:
-            None (modifies config in-place if enabled).
-        """
-        p("auto_adjust disabled")
-        # if self.train.image_size >= 512:
-        #     if self.train.batch_size > 4:
-        #         p("WARNING", f"Batch size {self.train.batch_size} too large for image size "
-        #                      f"{self.train.image_size}. "
-        #                      f"Reducing batch size to 4 to prevent OOM", color1 = c.RED)
-        #         self.train.batch_size = 4
-        #
-        #     # Also reduce workers for large images
-        #     if self.train.num_workers > 2:
-        #         p("WARNING", f"Num of Workers size {self.train.num_workers} too large for image "
-        #                      f"size {self.train.image_size}. "
-        #                      f"Reducing num_workers to 2 to prevent OOM", color1 = c.RED)
-        #         self.train.num_workers = 2
 
     @property
     def MASK_COLORS(self):

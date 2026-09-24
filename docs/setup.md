@@ -12,13 +12,20 @@ The best way to reproduce experiments is to:
 
 Most notebooks read their settings from `config.yml` / `config.yaml`, including
 `train.image_size`. Change the size there (testing vs Colab presets); master plans
-no longer override it in the notebook.
+no longer override it in the notebook. Use a **multiple of 16** (U-Net pools four
+times). Testing preset is `128`.
 
 ---
 
 ## 1. Project root and configuration
 
 The project expects a single project root. Use one of these examples.
+
+Local (example):
+
+```python
+root = Path("/Projects/cap6415-tree-canopy-detection")
+```
 
 In Colab:
 
@@ -29,13 +36,13 @@ root = Path("/content/drive/MyDrive/TreeCanopyProject")
 In Windows:
 
 ```python
-root = Path("C:/github/Tree-Canopy-Detection")
+root = Path("C:/Projects/cap6415-tree-canopy-detection")
 ```
 
-`config.yml` should live under this root. For example:
+`config.yml` / `config.yaml` should live under this root. For example:
 
 ```text
-C:/github/Tree-Canopy-Detection/config.yml
+/Projects/cap6415-tree-canopy-detection/config.yaml
 ```
 
 or
@@ -43,6 +50,9 @@ or
 ```text
 /content/drive/MyDrive/TreeCanopyProject/config.yml
 ```
+
+Keep local data, checkpoints, and downloads under that same project root (relative
+`paths:` / `download_dir` in `config.yaml` resolve from `PROJECT_ROOT`).
 
 ### 1.1 config.yml paths
 
@@ -70,7 +80,7 @@ paths:
   data: "data"
 ```
 
-With this setup, once you set `PROJECT_ROOT`, an internal helper can join `PROJECT_ROOT` and these
+With this setup, once we set `PROJECT_ROOT`, an internal helper can join `PROJECT_ROOT` and these
 relative paths.
 
 Note: all notebooks read these values from `config.yml` unless manually overwritten, as in the
@@ -80,7 +90,16 @@ Note: all notebooks read these values from `config.yml` unless manually overwrit
 
 ## 2. .env configuration
 
-You can use a `.env` file so code can detect the project root and other values without hardcoding.
+We can use a `.env` file so code can detect the project root and other values without hardcoding.
+Copy `.env.example` → `.env` and edit. `.env` is gitignored.
+
+Local example:
+
+```env
+PROJECT_ROOT=/Projects/cap6415-tree-canopy-detection
+PYTHONPATH=/Projects/cap6415-tree-canopy-detection
+SOLAFUNE_TOKEN=
+```
 
 In Colab:
 
@@ -88,50 +107,79 @@ In Colab:
 env_path = "/content/drive/MyDrive/TreeCanopyProject/.env"
 ```
 
-In Windows:
-
-```python
-env_path = "C:/github/Tree-Canopy-Detection/.env"
-```
-
-Example `.env` content for Windows:
-
-```env
-PROJECT_ROOT=C:\github\Tree-Canopy-Detection
-PYTHONPATH=C:\github\Tree-Canopy-Detection
-TOKEN=enter_your_github_token_here
-```
-
-Example `.env` content for Colab:
-
 ```env
 PROJECT_ROOT=/content/drive/MyDrive/TreeCanopyProject
 PYTHONPATH=/content/drive/MyDrive/TreeCanopyProject
-TOKEN=enter_your_github_token_here
+SOLAFUNE_TOKEN=enter_your_solafune_token_here
 ```
 
-`TOKEN` is an optional GitHub personal access token used only by Colab setup cells to clone a
-private copy of the repo. Keep the real value in `.env` (gitignored) — never commit it.
+In Windows:
 
-Make sure your environment loader reads this file before importing project modules.
+```env
+PROJECT_ROOT=C:\Projects\cap6415-tree-canopy-detection
+PYTHONPATH=C:\Projects\cap6415-tree-canopy-detection
+SOLAFUNE_TOKEN=enter_your_solafune_token_here
+```
+
+`SOLAFUNE_TOKEN` is an optional Solafune competition credential for authorized data access.
+Keep the real value in `.env` (gitignored) — never commit it.
+
+Make sure the environment loader reads this file before importing project modules.
 
 ---
 
 ## 3. Dataset download
 
-You must obtain the dataset directly from the Solafune competition page:
+Download sources are configured in `config.yaml` under `dataset`. Switch modes with
+`dataset.active`:
 
-Solafune Tree Canopy Detection data:
+| Value | Purpose |
+|-------|---------|
+| `public` (default) | [NeonTreeEvaluation crown subset](https://zenodo.org/records/15354422) → Solafune-shaped sample under `data/public_sample/` |
+| `competition` | Solafune zips/JSON — local only; do not commit or redistribute |
+
+Each source lists `catalog`, `download_dir`, `files`, and optional `paths` overrides
+(public mode remaps paths to `data/public_sample/`).
+
+### 3.1 Public mode (default)
+
+1. Run `notebooks/00_data_retrieval/00_build_public_sample.ipynb` — builds a publishable
+   alternate dataset (NEON crowns → Solafune-shaped RGB + JSON under `data/public_sample/`)
+   because competition imagery cannot be redistributed. Use this for testing and public demos.
+2. Run `notebooks/00_data_retrieval/01_preflight_check.ipynb`.
+
+Layout after build:
+
+```text
+<PROJECT_ROOT>/data/public_sample/raw/data.zip
+<PROJECT_ROOT>/data/public_sample/train_images/
+<PROJECT_ROOT>/data/public_sample/evaluation_images/
+<PROJECT_ROOT>/data/public_sample/train_annotations.json
+<PROJECT_ROOT>/data/public_sample/sample_answer.json
+```
+
+Catalog: https://zenodo.org/records/15354422
+
+Optional later (not wired): [AgML crowns](https://huggingface.co/datasets/Project-AgML/tree_crown_segmentation),
+[Open Forest Observatory](https://openforestobservatory.org/data/).
+
+### 3.2 Competition mode
+
+Set `dataset.active: competition` in `config.yaml`. Solafune does not expose public
+direct URLs — download manually from the competition data page (login required):
+
 https://community.solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?menu=data
 
-Download all four required files:
+Then run `notebooks/00_data_retrieval/01_preflight_check.ipynb` (it lists any still-missing filenames).
+
+Required files (place under `data/`):
 
 - `train_images.zip`
 - `train_annotations.json`
 - `evaluation_images.zip`
 - `sample_answer.json`
 
-Place them under top-level `data/` so they match `config.yaml`. For example:
+Example layout:
 
 ```text
 <PROJECT_ROOT>/data/train_images.zip
@@ -162,6 +210,8 @@ The model checkpoints, notebooks, and dataset folders use:
 <PROJECT_ROOT>/data
 ```
 
+Do not commit competition imagery; `/data/` is gitignored.
+
 ---
 
 ## 4. Local Jupyter setup
@@ -169,7 +219,7 @@ The model checkpoints, notebooks, and dataset folders use:
 ### 4.1 Prerequisites
 
 - Python 3.8 or newer
-- CUDA 11.8 or compatible GPU drivers if you want GPU acceleration
+- CUDA 11.8 or compatible GPU drivers if we want GPU acceleration
 - Git
 
 ### 4.2 Clone and environment
@@ -185,13 +235,13 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
-Set your `.env` file as described earlier, then start Jupyter:
+Set the `.env` file as described earlier, then start Jupyter:
 
 ```bash
 jupyter notebook
 ```
 
-Open the `notebooks` folder and run `01_preflight_check.ipynb` to confirm the environment.
+Open `notebooks/00_data_retrieval/` and run `01_preflight_check.ipynb` to confirm the environment.
 
 ---
 
@@ -202,9 +252,9 @@ Open the `notebooks` folder and run `01_preflight_check.ipynb` to confirm the en
 1. Mount Google Drive
 2. Point `PROJECT_ROOT` to a folder inside Drive
 3. Clone the GitHub repository into that folder
-4. Run `01_preflight_check.ipynb` to validate the environment
+4. Run `00_data_retrieval/01_preflight_check.ipynb` to validate the environment
 
-Place your files in the MyDrive directory as shown below:
+Place the files in the MyDrive directory as shown below:
 
 ```text
 /content/drive/MyDrive/TreeCanopyProject/config.yml
@@ -223,7 +273,7 @@ and make sure the config loader uses:
 root = Path("/content/drive/MyDrive/TreeCanopyProject")
 ```
 
-Then you can open any notebook from:
+Then we can open any notebook from:
 
 ```text
 /content/drive/MyDrive/TreeCanopyProject/cap6415-tree-canopy-detection/notebooks
@@ -238,30 +288,33 @@ Select GPU in Colab:
 
 ## 6. Preprocessing and data preparation
 
-After you have the dataset and configuration in place, run the preprocessing notebooks in this
-order:
+After we have the dataset and configuration in place, run the notebooks under
+`notebooks/00_data_retrieval/` in this order (see that folder’s README):
 
-1. `01_preflight_check.ipynb`
+1. `00_build_public_sample.ipynb` (public mode only)
+    - Builds the Solafune-shaped NEON sample under `data/public_sample/`.
+
+2. `01_preflight_check.ipynb`
     - Verifies Python installation, libraries, and GPU.
 
-2. `02_image_extract.ipynb`
+3. `02_image_extract.ipynb`
     - Reads the paths from `config.yml`.
     - Extracts `train_images.zip` and `evaluation_images.zip` into the `train_images` and
       `evaluation_images` folders.
     - Validates that images and annotations align.
 
-3. `03_preprocess_images.ipynb`
+4. `03_preprocess_images.ipynb`
     - Converts TIFF images to a consistent RGB PNG format.
     - Generates masks from polygon annotations for training and evaluation.
     - Populates `train_masks` and `evaluation_masks`.
 
-Once these three steps complete, the data is ready for model experiments.
+Once these steps complete, the data is ready for model experiments.
 
 ---
 
 ## 7. Running notebooks for quick review
 
-To quickly review individual parts of the pipeline, you can run the main notebooks one by one. Each
+To quickly review individual parts of the pipeline, we can run the main notebooks one by one. Each
 notebook reads paths from `config.yml` and assumes the preprocessing above has completed.
 
 Recommended order:
@@ -293,14 +346,14 @@ Recommended order:
 9. `12_filter_experimentation.ipynb`
     - Tests filter pipelines and image transforms.
 
-Each of these notebooks uses `config.yml` to find data, checkpoints, and output paths. You can run
+Each of these notebooks uses `config.yml` to find data, checkpoints, and output paths. We can run
 them in Jupyter or Colab.
 
 ---
 
 ## 8. Running master execution plans (end to end)
 
-If you want to run the full pipeline from preprocessing to training to submission in one pass, use
+If we want to run the full pipeline from preprocessing to training to submission in one pass, use
 one of the master execution plan notebooks:
 
 - `13_master_execution_plan_rgb.ipynb` (models on RGB / no-filter set)
@@ -319,11 +372,11 @@ These master notebooks:
 Note:
 
 - Unlike the other notebooks, the master execution notebooks can contain explicit path overrides.
-- Check the top of each master notebook for any `root = Path(...)` lines and confirm they match your
+- Check the top of each master notebook for any `root = Path(...)` lines and confirm they match the
   `PROJECT_ROOT` location.
 - Every `13_*` / `14_*` master execution plan notebook contains a section labeled “Setup experiments to run”
   that controls which experiment combinations are executed.
-- For example, to select all models without filters you can do the following:
+- For example, to select all models without filters we can do the following:
     ```python
     experiments = [
         exp for exp in all_experiments if exp[1] == "rgb"
@@ -344,7 +397,7 @@ Note:
     experiments = [all_experiments[0]]
     ```
 
-Here is a list of all the available experiments. You will also see this in the notebook when
+Here is a list of all the available experiments. We will also see this in the notebook when
 executed
 
 ```text
@@ -438,13 +491,13 @@ All experiments: 84 items
 
 ## 9. Reproducibility notes
 
-To keep your runs reproducible:
+To keep runs reproducible:
 
 - Use `config.yml` as the single source of truth for paths and core settings.
 - Keep `PROJECT_ROOT` and `PYTHONPATH` in `.env` in sync with the actual root.
 - Use fixed random seeds where possible.
-- Record GPU type and Colab runtime details when you produce final results.
+- Record GPU type and Colab runtime details when we produce final results.
 
-With `config.yml` and `.env` set up correctly, you can switch between local Jupyter and Google Colab
+With `config.yml` and `.env` set up correctly, we can switch between local Jupyter and Google Colab
 without changing code in most notebooks. Only the master execution plans may need a quick check for
 path overrides at the top of the file.

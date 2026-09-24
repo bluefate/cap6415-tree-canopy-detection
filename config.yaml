@@ -1,5 +1,59 @@
 # Dataset lives under top-level data/ (src/data/ is the Python package only).
 # Active train block = local testing. Uncomment the Colab preset when needed.
+#
+# Dataset mode (dataset.active):
+#   public      — NeonTreeEvaluation crown subset → Solafune-shaped sample (default)
+#   competition — Solafune zips/JSON (local only; do not redistribute)
+#
+# After switching to public, run notebooks/00_data_retrieval/00_build_public_sample.ipynb once.
+
+dataset:
+  active: public
+
+  sources:
+    public:
+      name: "NeonTreeEvaluation crown subset (Solafune-shaped)"
+      catalog: "https://zenodo.org/records/15354422"
+      notes: >
+        Public individual-tree crowns (~11 MB). Converted by notebook 00 into
+        Solafune JSON under data/public_sample/. Not a drop-in for group_of_trees.
+      download_dir: "data/public_sample/raw"
+      files:
+        - key: neon_data
+          filename: "data.zip"
+          url: "https://zenodo.org/api/records/15354422/files/data.zip/content"
+      paths:
+        annotations: "data/public_sample/train_annotations.json"
+        template: "data/public_sample/sample_answer.json"
+        train_images: "data/public_sample/train_images"
+        train_masks: "data/public_sample/train_masks"
+        train_images_zip: "data/public_sample/raw/data.zip"
+        eval_images: "data/public_sample/evaluation_images"
+        eval_masks: "data/public_sample/evaluation_masks"
+        eval_images_zip: null
+        data: "data/public_sample"
+
+    competition:
+      name: "Solafune Tree Canopy Detection"
+      catalog: "https://community.solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?menu=data"
+      notes: >
+        Competition imagery and labels are not redistributable. Download manually
+        from the competition data page (login required) into download_dir.
+        Direct urls stay empty — fill them only if we have authorized mirrors.
+      download_dir: "data"
+      files:
+        - key: train_images
+          filename: "train_images.zip"
+          url: null
+        - key: train_annotations
+          filename: "train_annotations.json"
+          url: null
+        - key: evaluation_images
+          filename: "evaluation_images.zip"
+          url: null
+        - key: sample_answer
+          filename: "sample_answer.json"
+          url: null
 
 paths:
   data: "data"
@@ -20,10 +74,11 @@ paths:
 
 train:
   # --- testing (active) ---
-  image_size: 64
-  batch_size: 3
+  # Must be a multiple of 16 (U-Net pools ×4). Public NEON tiles are ~400 after 00.
+  image_size: 128
+  batch_size: 2
   num_workers: 1
-  epochs: 10
+  epochs: 5
   learning_rate: 4e-4
   seed: 42
   early_stop_patience: 10

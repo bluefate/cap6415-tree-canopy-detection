@@ -1,11 +1,23 @@
 # Project Notebooks and Methods Documentation
 
-Notebooks live under `notebooks/` as `.ipynb` files with unique numbers `01`–`16`.
+Notebooks live under `notebooks/`. Data ingest lives in `notebooks/00_data_retrieval/`;
+experiment notebooks are numbered `04`–`16` at the top level.
 
-## Pipeline (keep these for day-to-day work)
+## Data retrieval (`notebooks/00_data_retrieval/`)
+
+See that folder’s [README](../notebooks/00_data_retrieval/README.md). Short version:
+
+### `00_build_public_sample.ipynb`
+
+- Build a **public alternate** of the competition layout for testing and publication
+- Solafune imagery/labels are private and must not be redistributed; this notebook downloads the NeonTreeEvaluation crown subset instead and converts it to Solafune-shaped RGB + JSON under `data/public_sample/`
+- PNGs are padded to a multiple of 16 (U-Net-safe); keep `train.image_size` a multiple of 16 as well
+- Use when `dataset.active: public`; skip when using local competition data
 
 ### `01_preflight_check.ipynb`
 
+- Download active dataset from `config.yaml` (`dataset.sources`)
+- Nudge to run `00` if the public sample is not built yet
 - Environment and dependency verification
 
 ### `02_image_extract.ipynb`
@@ -18,6 +30,8 @@ Notebooks live under `notebooks/` as `.ipynb` files with unique numbers `01`–`
 
 - Convert TIFF → RGB PNG
 - Populate `train_masks` / `evaluation_masks`
+
+## Pipeline (day-to-day experiments)
 
 ### `07_training.ipynb`
 

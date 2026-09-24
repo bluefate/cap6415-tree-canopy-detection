@@ -11,6 +11,23 @@ Competition: [Solafune – Tree Canopy Detection](https://community.solafune.com
 Also mirrored in the FAU coursework portfolio:
 https://github.com/bluefate/fau-coursework/tree/main/masters/CAP6415-computer-vision/projects/tree-canopy-detection
 
+## Datasets (modular via `config.yaml`)
+
+Solafune competition imagery **cannot be redistributed**. Switch modes in `config.yaml` under `dataset.active`.
+
+| Mode | `dataset.active` | What we get | Publishable? |
+|------|------------------|--------------|--------------|
+| **Public (default)** | `public` | [NeonTreeEvaluation crown subset](https://zenodo.org/records/15354422) (~11 MB) converted to Solafune-shaped RGB + JSON | Yes |
+| **Competition** | `competition` | Solafune train/eval zips + JSON (manual from the [data page](https://community.solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?menu=data)) | No — keep under local `data/` only |
+
+**Public path:** run `notebooks/00_data_retrieval/` in order (see that folder’s README) — `00` builds a publishable Solafune-shaped alternate (NEON crowns) under `data/public_sample/` because competition data cannot be shared — then `01` preflight.
+
+**Competition path:** place Solafune files under `data/`, set `active: competition`, then run from `01` (skip notebook `00`).
+
+Optional later sources (not wired yet): [AgML tree crown segmentation](https://huggingface.co/datasets/Project-AgML/tree_crown_segmentation), [Open Forest Observatory](https://openforestobservatory.org/data/).
+
+See [Setup Guide](docs/setup.md) § Dataset download.
+
 ## Project Abstract
 
 I worked on the Solafune Tree Canopy Detection challenge, where the goal is to detect tree canopy
