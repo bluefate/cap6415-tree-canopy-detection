@@ -126,7 +126,7 @@ Make sure your environment loader reads this file before importing project modul
 You must obtain the dataset directly from the Solafune competition page:
 
 Solafune Tree Canopy Detection data:
-https://solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?menu=data
+https://community.solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?menu=data
 
 Download all four required files:
 
