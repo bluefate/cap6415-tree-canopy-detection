@@ -10,13 +10,9 @@ The best way to reproduce experiments is to:
 4. Run the preprocessing notebooks.
 5. Run either the individual experiment notebooks or one of the master execution plans.
 
-Most notebooks read their settings from `config.yml` / `config.yaml`.
-Only the `13_master_execution_plan_*.ipynb` / `14_master_execution_plan_*.ipynb` notebooks have additional manual overrides for the image
-size hardcoded, or other values that overwrite the configured size.
-
-```python
-config.train.image_size = 512
-```
+Most notebooks read their settings from `config.yml` / `config.yaml`, including
+`train.image_size`. Change the size there (testing vs Colab presets); master plans
+no longer override it in the notebook.
 
 ---
 
