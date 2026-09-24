@@ -1,6 +1,6 @@
 # Project Notebooks and Methods Documentation
 
-Notebooks live under `notebooks/` as `.ipynb` files. Numbers are unique across the repo (including `explore/`).
+Notebooks live under `notebooks/` as `.ipynb` files with unique numbers `01`–`15`.
 
 ## Pipeline (keep these for day-to-day work)
 
@@ -59,19 +59,19 @@ Notebooks live under `notebooks/` as `.ipynb` files. Numbers are unique across t
 
 - Convenience runner that executes the 512 master plan + tracker
 
-## Educational / exploration (`notebooks/explore/`)
+## Educational / exploration (`notebooks/`)
 
-### `explore/04_starter_sample.ipynb`
+### `04_starter_sample.ipynb`
 
 - Early prototyping walkthrough (dataset + sample model sanity checks)
   ![img.png](assets/img.png)
 
-### `explore/05_class.ipynb`
+### `05_class.ipynb`
 
 - Mask/class/bbox exploration utilities
   ![img_1.png](assets/img_1.png)
 
-### `explore/06_exploration.ipynb`
+### `06_exploration.ipynb`
 
 - Frequency space, kernels, filters, enhancement visualizations
   ![img_2.png](assets/img_2.png)
@@ -93,5 +93,5 @@ Notebooks live under `notebooks/` as `.ipynb` files. Numbers are unique across t
 ## Best practices
 
 - Prefer `config.yaml` + `src/` over duplicating logic in notebooks
-- Use the 512 master plans for full runs; use `explore/` for teaching and EDA
+- Use the 512 master plans for full runs; use 04–06 for teaching and EDA
 - Keep configuration-driven, reproducible experiment setups

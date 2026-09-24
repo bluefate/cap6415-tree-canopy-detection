@@ -270,13 +270,13 @@ notebook reads paths from `config.yml` and assumes the preprocessing above has c
 
 Recommended order:
 
-1. `explore/04_starter_sample.ipynb`
+1. `04_starter_sample.ipynb`
     - Educational starter: dataset + sample model sanity checks.
 
-2. `explore/05_class.ipynb`
+2. `05_class.ipynb`
     - Mask/class/bbox exploration utilities.
 
-3. `explore/06_exploration.ipynb`
+3. `06_exploration.ipynb`
     - Explores data statistics, filters, and visualizations.
 
 4. `07_training.ipynb`
