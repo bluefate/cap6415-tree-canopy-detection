@@ -10,9 +10,9 @@ The best way to reproduce experiments is to:
 4. Run the preprocessing notebooks.
 5. Run either the individual experiment notebooks or one of the master execution plans.
 
-Most notebooks read their settings from `config.yml`.
-Only the `10_master_execution_plan_*.py` notebooks has additional manual overrides for the imagesize
-hardcoded or others to overwrite the size
+Most notebooks read their settings from `config.yml` / `config.yaml`.
+Only the `10_master_execution_plan_*.ipynb` notebooks have additional manual overrides for the image
+size hardcoded, or other values that overwrite the configured size.
 
 ```python
 config.train.image_size = 512
@@ -77,8 +77,8 @@ paths:
 With this setup, once you set `PROJECT_ROOT`, an internal helper can join `PROJECT_ROOT` and these
 relative paths.
 
-Note: all notebooks read these values from `config.yml` unless manully overwritten like in the
-`10_master_execution_plan_*.py`notebooks.
+Note: all notebooks read these values from `config.yml` unless manually overwritten, as in the
+`10_master_execution_plan_*.ipynb` notebooks.
 
 ---
 
@@ -113,6 +113,9 @@ PROJECT_ROOT=/content/drive/MyDrive/TreeCanopyProject
 PYTHONPATH=/content/drive/MyDrive/TreeCanopyProject
 TOKEN=enter_your_github_token_here
 ```
+
+`TOKEN` is an optional GitHub personal access token used only by Colab setup cells to clone a
+private copy of the repo. Keep the real value in `.env` (gitignored) — never commit it.
 
 Make sure your environment loader reads this file before importing project modules.
 
@@ -171,8 +174,8 @@ The model checkpoints, notebooks, and data folders use:
 ### 4.2 Clone and environment
 
 ```bash
-git clone https://github.com/bluefate/CAP6415_F25_project-Tree-Canopy-Detection.git
-cd CAP6415_F25_project-Tree-Canopy-Detection
+git clone https://github.com/bluefate/cap6415-tree-canopy-detection.git
+cd cap6415-tree-canopy-detection
 ```
 
 Install dependencies:
@@ -187,11 +190,7 @@ Set your `.env` file as described earlier, then start Jupyter:
 jupyter notebook
 ```
 
-Open the `notebooks` folder and run `00_preflight_check.py` to confirm the environment:
-
-```bash
-python notebooks/00_preflight_check.py
-```
+Open the `notebooks` folder and run `00 preflight check.ipynb` to confirm the environment.
 
 ---
 
@@ -202,7 +201,7 @@ python notebooks/00_preflight_check.py
 1. Mount Google Drive
 2. Point `PROJECT_ROOT` to a folder inside Drive
 3. Clone the GitHub repository into that folder
-4. Run the `00_colab_setup.ipynb` notebook to validate the environment
+4. Run the `00 colab setup.ipynb` notebook to validate the environment
 
 Place your files in the MyDrive directory as shown below:
 
@@ -226,7 +225,7 @@ root = Path("/content/drive/MyDrive/TreeCanopyProject")
 Then you can open any notebook from:
 
 ```text
-/content/drive/MyDrive/TreeCanopyProject/CAP6415_F25_project-Tree-Canopy-Detection/notebooks
+/content/drive/MyDrive/TreeCanopyProject/cap6415-tree-canopy-detection/notebooks
 ```
 
 Select GPU in Colab:
@@ -241,16 +240,16 @@ Select GPU in Colab:
 After you have the dataset and configuration in place, run the preprocessing notebooks in this
 order:
 
-1. `00_preflight_check.py`
+1. `00 preflight check.ipynb`
     - Verifies Python installation, libraries, and GPU.
 
-2. `00_image_extract.py`
+2. `00_image_extract.ipynb`
     - Reads the paths from `config.yml`.
     - Extracts `train_images.zip` and `evaluation_images.zip` into the `train_images` and
       `evaluation_images` folders.
     - Validates that images and annotations align.
 
-3. `00_preprocess_images.py`
+3. `00_preprocess_images.ipynb`
     - Converts TIFF images to a consistent RGB PNG format.
     - Generates masks from polygon annotations for training and evaluation.
     - Populates `train_masks` and `evaluation_masks`.
@@ -266,28 +265,28 @@ notebook reads paths from `config.yml` and assumes the preprocessing above has c
 
 Recommended order:
 
-1. `02_class.py`
+1. `02_class.ipynb`
     - Defines core dataset and model classes, plus augmentation logic.
 
-2. `02_exploration.py`
+2. `02_exploration.ipynb`
     - Explores data statistics and visualizations.
 
-3. `03_training.py`
+3. `03_training.ipynb`
     - Configures training loops and runs one or more experiments.
 
-4. `04_evaluation.py`
+4. `04_evaluation.ipynb`
     - Evaluates trained models and computes metrics.
 
-5. `05_prediction.py`
+5. `05_prediction.ipynb`
     - Runs inference on evaluation images and generates submission predictions.
 
-6. `06_benchmark_models.py`
+6. `06_benchmark_models.ipynb`
     - Benchmarks multiple architectures and compares results.
 
-7. `07_data_analysis.py`
+7. `07_data_analysis.ipynb`
     - Does deeper error analysis and data insights.
 
-8. `08_filter_experimentation.py`
+8. `08_filter_experimentation.ipynb`
     - Tests filter pipelines and image transforms.
 
 Each of these notebooks uses `config.yml` to find data, checkpoints, and output paths. You can run
@@ -300,9 +299,9 @@ them in Jupyter or Colab.
 If you want to run the full pipeline from preprocessing to training to submission in one pass, use
 one of the master execution plan notebooks:
 
-- `10_master_execution_plan_512_rgb.py` (all models, no filters)
-- `10_master_execution_plan_512_all.py` (preselected model, with filters)
-- `10_master_execution_plan_*` (any other file)
+- `10_master_execution_plan_512_rgb.ipynb` (all models, no filters)
+- `10_master_execution_plan_512_all.ipynb` (preselected model, with filters)
+- `10_master_execution_plan_*.ipynb` (other sizes such as 64, 128, 320, 1024)
 
 In these filenames, the number such as `512` is the image size that the pipeline uses when
 resizing tiles.
@@ -321,26 +320,26 @@ Note:
 - Unlike the other notebooks, the master execution notebooks can contain explicit path overrides.
 - Check the top of each master notebook for any `root = Path(...)` lines and confirm they match your
   `PROJECT_ROOT` location.
-- Every `10_master_execution_plan_*` notebook contains there is a section labeled “Setup experiments
-  to run” that controls which experiment combinations are executed.
-- For example to select all models wihtouth filters you can do the following
-    ```
+- Every `10_master_execution_plan_*` notebook contains a section labeled “Setup experiments to run”
+  that controls which experiment combinations are executed.
+- For example, to select all models without filters you can do the following:
+    ```python
     experiments = [
         exp for exp in all_experiments if exp[1] == "rgb"
     ]
     ```
-- To run all filters on just one model
-    ```
+- To run all filters on just one model:
+    ```python
     experiments = [
         exp for exp in all_experiments if exp[0] == "simple_cnn"
     ]
     ```
-- To run all experiments
+- To run all experiments:
+    ```python
+    experiments = all_experiments
     ```
-    eexperiments = all_experiments
-    ```
-- To run one experiments
-    ```
+- To run one experiment:
+    ```python
     experiments = [all_experiments[0]]
     ```
 
