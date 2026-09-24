@@ -201,7 +201,7 @@ Open the `notebooks` folder and run `00 preflight check.ipynb` to confirm the en
 1. Mount Google Drive
 2. Point `PROJECT_ROOT` to a folder inside Drive
 3. Clone the GitHub repository into that folder
-4. Run the `00 colab setup.ipynb` notebook to validate the environment
+4. Run `00 preflight check.ipynb` to validate the environment
 
 Place your files in the MyDrive directory as shown below:
 
@@ -265,28 +265,31 @@ notebook reads paths from `config.yml` and assumes the preprocessing above has c
 
 Recommended order:
 
-1. `02_class.ipynb`
-    - Defines core dataset and model classes, plus augmentation logic.
+1. `explore/01_starter_sample.ipynb`
+    - Educational starter: dataset + sample model sanity checks.
 
-2. `02_exploration.ipynb`
-    - Explores data statistics and visualizations.
+2. `explore/02_class.ipynb`
+    - Mask/class/bbox exploration utilities.
 
-3. `03_training.ipynb`
+3. `explore/02_exploration.ipynb`
+    - Explores data statistics, filters, and visualizations.
+
+4. `03_training.ipynb`
     - Configures training loops and runs one or more experiments.
 
-4. `04_evaluation.ipynb`
+5. `04_evaluation.ipynb`
     - Evaluates trained models and computes metrics.
 
-5. `05_prediction.ipynb`
+6. `05_prediction.ipynb`
     - Runs inference on evaluation images and generates submission predictions.
 
-6. `06_benchmark_models.ipynb`
+7. `06_benchmark_models.ipynb`
     - Benchmarks multiple architectures and compares results.
 
-7. `07_data_analysis.ipynb`
+8. `07_data_analysis.ipynb`
     - Does deeper error analysis and data insights.
 
-8. `08_filter_experimentation.ipynb`
+9. `08_filter_experimentation.ipynb`
     - Tests filter pipelines and image transforms.
 
 Each of these notebooks uses `config.yml` to find data, checkpoints, and output paths. You can run
@@ -299,12 +302,14 @@ them in Jupyter or Colab.
 If you want to run the full pipeline from preprocessing to training to submission in one pass, use
 one of the master execution plan notebooks:
 
-- `10_master_execution_plan_512_rgb.ipynb` (all models, no filters)
-- `10_master_execution_plan_512_all.ipynb` (preselected model, with filters)
-- `10_master_execution_plan_*.ipynb` (other sizes such as 64, 128, 320, 1024)
+- `10_master_execution_plan_512_rgb.ipynb` (models on RGB / no-filter set)
+- `10_master_execution_plan_512_all.ipynb` (includes filter experiment variants)
 
-In these filenames, the number such as `512` is the image size that the pipeline uses when
-resizing tiles.
+Or use the convenience runner:
+
+- `_run_512.ipynb` (runs `512_all` master plan + `12_model_tracker_submission_manager.ipynb`)
+
+In these filenames, `512` is the tile/image size used when resizing.
 
 These master notebooks:
 
