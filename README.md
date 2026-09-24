@@ -4,7 +4,7 @@ CAP6415 Computer Vision project for the **Solafune Tree Canopy Detection** compe
 
 **Repository:** https://github.com/bluefate/cap6415-tree-canopy-detection
 
-Competition URL (archived; page may 404): [Solafune – Tree Canopy Detection](https://solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70)
+Competition: [Solafune – Tree Canopy Detection](https://community.solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?menu=about&tab=overview)
 
 > Competition timeline: launched 2025-08-06, submission deadline 2025-12-16 GMT. The competition period is over, so this repository is public.
 
@@ -191,9 +191,9 @@ Historical rules from the competition discussion board:
 
 **Helpful Discussion Links:**
 
-- [Data Dictionary](https://solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?menu=discussion&tab=&id=&topicId=fb298f0f-7ca5-426a-9fd8-c41efa0de87e)
-- [Converting to COCO format annotation](https://solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?tab=&menu=discussion&page=2&topicId=d7a7a13d-e8e7-489d-b8d9-7dca36ae30b7)
-- [Submission preparation code](https://solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?menu=discussion&tab=&id=&page=2&topicId=05a2491b-2094-4f9d-b4b6-e7d38d3f13e0)
+- [Data Dictionary](https://community.solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?menu=discussion&tab=&id=&topicId=fb298f0f-7ca5-426a-9fd8-c41efa0de87e)
+- [Converting to COCO format annotation](https://community.solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?tab=&menu=discussion&page=2&topicId=d7a7a13d-e8e7-489d-b8d9-7dca36ae30b7)
+- [Submission preparation code](https://community.solafune.com/competitions/26ff758c-7422-4cd1-bfe0-daecfc40db70?menu=discussion&tab=&id=&page=2&topicId=05a2491b-2094-4f9d-b4b6-e7d38d3f13e0)
 
 ## License
 

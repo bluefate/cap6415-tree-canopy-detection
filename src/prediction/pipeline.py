@@ -16,7 +16,11 @@ class Predictor:
     """
 
     def __init__(
-        self, model_path: Path, model_name: str = "unet", image_size: int = 256
+        self,
+        model_path: Path,
+        model_name: str = "unet",
+        image_size: int = 256,
+        **model_kwargs,
     ):
         """
         Initialize prediction pipeline with trained model.
@@ -25,6 +29,7 @@ class Predictor:
             model_path (Path): Path to trained model weights.
             model_name (str): Model architecture name. Defaults to "unet".
             image_size (int): Target image size for inference. Defaults to 256.
+            **model_kwargs: Extra build_model args (e.g. encoder_name for SMP).
         """
         self.model_path = Path(model_path)
         self.model_name = model_name
@@ -32,12 +37,9 @@ class Predictor:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.logger = Logger()
 
-        self.model = build_model(model_name, in_channels=3, out_channels=3).to(
-            self.device
-        )
-        # model_args = MODEL_BENCHMARKS.get(model_name, {})
-        # model_args.update({"in_channels": 3, "out_channels": 3})
-        # self.model = build_model(model_name, **model_args).to(self.device)
+        self.model = build_model(
+            model_name, in_channels=3, out_channels=3, **model_kwargs
+        ).to(self.device)
 
         self._load_weights()
 

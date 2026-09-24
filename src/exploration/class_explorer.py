@@ -634,7 +634,7 @@ def plot_experiment_results(tracker, save_path=None):
         return
 
     # One row, six columns
-    fig, axes = plt.subplots(1, 6, figsize=(24, 4))
+    fig, axes = plt.subplots(1, 6, figsize=(18, 3))
     fig.suptitle("Experiment Comparison", fontsize=14, fontweight="bold")
 
     models = tracker["models"]
@@ -751,7 +751,7 @@ def plot_training_history(trainer, title_prefix=""):
 
     epochs = range(1, n_epochs + 1)
 
-    fig, axes = plt.subplots(1, 4, figsize=(22, 4))
+    fig, axes = plt.subplots(1, 4, figsize=(16, 3))
     fig.suptitle(f"{title_prefix} epoch metrics", fontsize=14, fontweight="bold")
 
     # 1. Loss curves

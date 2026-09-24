@@ -4,6 +4,9 @@ import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 
+# inches per panel (show_side_by_side) / side length for single-image plots
+DEFAULT_FIGSIZE = 3
+
 
 def show_side_by_side(
     *images: np.ndarray,
@@ -16,7 +19,7 @@ def show_side_by_side(
     kernel_title=None,
     kernel_cmap="seismic",
     mask_colors=None,
-    figsize=4,
+    figsize=DEFAULT_FIGSIZE,
 ) -> None:
     """
     Display multiple images/masks/figures in a grid layout.
@@ -38,7 +41,7 @@ def show_side_by_side(
         kernel_title (str, optional): Title for kernel visualization.
         kernel_cmap (str): Colormap for kernel. Defaults to "seismic".
         mask_colors (dict, optional): Dictionary mapping class indices to RGB colors.
-        figsize (int): Figure size multiplier. Defaults to 4.
+        figsize (int): Figure size multiplier (inches per panel). Defaults to DEFAULT_FIGSIZE.
     """
 
     count = len(images)
@@ -185,7 +188,11 @@ def show_side_by_side(
 
 
 def show_image(
-    image: np.ndarray, title: str = "", return_img: bool = False, cmap="gray"
+    image: np.ndarray,
+    title: str = "",
+    return_img: bool = False,
+    cmap="gray",
+    figsize=DEFAULT_FIGSIZE,
 ):
     """
     Display a single image using matplotlib.
@@ -198,6 +205,7 @@ def show_image(
         return_img (bool): If True, return converted uint8 image instead of displaying.
                           Defaults to False.
         cmap (str): Matplotlib colormap. Defaults to "gray".
+        figsize (float): Figure side length in inches. Defaults to DEFAULT_FIGSIZE.
 
     Returns:
         np.ndarray or None: Converted uint8 image if return_img=True, else None.
@@ -216,7 +224,7 @@ def show_image(
     if return_img:
         return img
     else:
-        plt.figure(figsize=(5, 5))
+        plt.figure(figsize=(figsize, figsize))
         if img.ndim == 2:
             plt.imshow(img, cmap=cmap)
         else:
@@ -228,7 +236,13 @@ def show_image(
 
 
 # using from PIL import Image to be able to show pure white and black
-def show_mask(mask: np.ndarray, title: str = "", return_img: bool = False, cmap="gray"):
+def show_mask(
+    mask: np.ndarray,
+    title: str = "",
+    return_img: bool = False,
+    cmap="gray",
+    figsize=DEFAULT_FIGSIZE,
+):
     """
     Display a mask with proper handling of class indices and value ranges.
 
@@ -241,6 +255,7 @@ def show_mask(mask: np.ndarray, title: str = "", return_img: bool = False, cmap=
         return_img (bool): If True, return converted uint8 mask instead of displaying.
                           Defaults to False.
         cmap (str): Matplotlib colormap. Defaults to "gray".
+        figsize (float): Figure side length in inches. Defaults to DEFAULT_FIGSIZE.
 
     Returns:
         np.ndarray or None: Converted uint8 mask if return_img=True, else None.
@@ -272,7 +287,7 @@ def show_mask(mask: np.ndarray, title: str = "", return_img: bool = False, cmap=
 
     img = Image.fromarray(mask_img, mode="L")
 
-    plt.figure(figsize=(5, 5))
+    plt.figure(figsize=(figsize, figsize))
     plt.imshow(img, cmap=cmap, vmin=0, vmax=255, interpolation="nearest")
     if title:
         plt.title(title)
@@ -286,6 +301,7 @@ def show_overlay(
     alpha: float = 0.4,
     title: str = "",
     return_img: bool = False,
+    figsize=DEFAULT_FIGSIZE,
 ):
     """
     Display image with red mask overlay for tree detection visualization.
@@ -301,6 +317,7 @@ def show_overlay(
         title (str): Title for the overlay. Defaults to "".
         return_img (bool): If True, return overlay as uint8 image instead of displaying.
                           Defaults to False.
+        figsize (float): Figure side length in inches. Defaults to DEFAULT_FIGSIZE.
 
     Returns:
         np.ndarray or None: Blended overlay image if return_img=True, else None.
@@ -328,7 +345,7 @@ def show_overlay(
     if return_img:
         return overlay
     else:
-        plt.figure(figsize=(5, 5))
+        plt.figure(figsize=(figsize, figsize))
         plt.imshow(overlay)
         if title:
             plt.title(title)

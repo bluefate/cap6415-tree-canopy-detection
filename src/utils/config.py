@@ -112,14 +112,20 @@ class Config(BaseModel):
         if root is None:
             raise ValueError("Missing required field 'root'. Pass it via load(root=...).")
 
+        root = Path(root).resolve()
         if yaml_path is None:
-            load_dotenv()
-            project_root: Path = Path(os.getenv("PROJECT_ROOT", Path.cwd())).resolve()
-            yaml_path = project_root / "config.yaml"
-
-        yaml_path = Path(yaml_path).resolve()
-        if not yaml_path.exists():
-            raise FileNotFoundError(f"Missing config file {yaml_path}")
+            # walk up — Jupyter often starts in notebooks/
+            yaml_path = next(
+                (p / "config.yaml" for p in [root, *root.parents] if (p / "config.yaml").exists()),
+                None,
+            )
+            if yaml_path is None:
+                raise FileNotFoundError(f"Missing config.yaml above {root}")
+            root = yaml_path.parent
+        else:
+            yaml_path = Path(yaml_path).resolve()
+            if not yaml_path.exists():
+                raise FileNotFoundError(f"Missing config file {yaml_path}")
 
         with open(yaml_path, "r") as f:
             raw = yaml.safe_load(f)
@@ -135,8 +141,20 @@ class Config(BaseModel):
         train_cfg = TrainConfig(**raw_train)
 
         instance = cls(paths=paths_cfg, train=train_cfg, extra=extra)
+        instance.ensure_output_dirs()
         instance.auto_adjust()
         return instance
+
+    def ensure_output_dirs(self) -> None:
+        """Create output directories from config if they do not exist yet."""
+        for path in (
+            self.paths.models,
+            self.paths.plots,
+            self.paths.train_masks,
+            self.paths.eval_masks,
+        ):
+            if path is not None:
+                Path(path).mkdir(parents=True, exist_ok=True)
 
     def show( self ):
         """

@@ -4,6 +4,9 @@
 
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
+
+# Dataset (images/annotations) — src/data/ is the Python package only
+/data/
 src/data/data1
 src/data/data2
 

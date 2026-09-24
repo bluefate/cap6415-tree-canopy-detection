@@ -56,6 +56,7 @@ def run_training(
     version_root: Path,
     model_name: str = "unet",
     in_channels: int = 3,
+    **model_kwargs,
 ):
     """
     Setup and execute model training.
@@ -69,6 +70,7 @@ def run_training(
         version_root (Path): Directory for saving checkpoints and logs.
         model_name (str): Name of model architecture. Defaults to "unet".
         in_channels (int): Number of input channels. Defaults to 3.
+        **model_kwargs: Extra args for build_model (e.g. encoder_name for SMP).
     
     Returns:
         Trainer: Trained trainer instance with results.
@@ -81,7 +83,12 @@ def run_training(
 
     n_classes = len(CLASS_TO_ID) + 1  # +1 for background
 
-    model = build_model(model_name, in_channels=in_channels, out_channels=n_classes)
+    model = build_model(
+        model_name,
+        in_channels=in_channels,
+        out_channels=n_classes,
+        **model_kwargs,
+    )
     optimizer = prepare_optimizer(model, lr)
     criterion = prepare_criterion()
 
