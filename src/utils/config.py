@@ -141,8 +141,20 @@ class Config(BaseModel):
         train_cfg = TrainConfig(**raw_train)
 
         instance = cls(paths=paths_cfg, train=train_cfg, extra=extra)
+        instance.ensure_output_dirs()
         instance.auto_adjust()
         return instance
+
+    def ensure_output_dirs(self) -> None:
+        """Create output directories from config if they do not exist yet."""
+        for path in (
+            self.paths.models,
+            self.paths.plots,
+            self.paths.train_masks,
+            self.paths.eval_masks,
+        ):
+            if path is not None:
+                Path(path).mkdir(parents=True, exist_ok=True)
 
     def show( self ):
         """

@@ -25,22 +25,28 @@ def check_config(config):
     try:
         p("✓ Config loaded", config.paths.root, color1 = c.GREEN)
 
-        # Check critical paths
-        checks = [
+        # Input paths must already exist
+        required = [
             ('annotations', config.paths.annotations),
             ('train_images', config.paths.train_images),
             ('eval_images', config.paths.eval_images),
-            ('models', config.paths.models),
             ('notebooks', config.paths.notebooks),
         ]
+        # Output dirs are created by Config.load (ensure_output_dirs)
+        outputs = [
+            ('models', config.paths.models),
+            ('plots', config.paths.plots),
+        ]
 
-        for name, path in checks:
+        ok = True
+        for name, path in required + outputs:
             if path and Path(path).exists():
                 p(f"✓ {name}", "exists", color1 = c.GREEN)
             else:
                 p(f"✗ {name}", f"missing: {path}", color1 = c.RED)
+                ok = False
 
-        return True
+        return ok
 
     except Exception as e:
         p("✗ Config failed", str(e), color1 = c.RED)
@@ -49,36 +55,47 @@ def check_config(config):
 
 def check_gpu():
     """
-    Check GPU availability, device count, and memory capacity.
-    
-    Tests CUDA availability and performs a test memory allocation to verify GPU is working.
-    
+    Check accelerator availability (CUDA, then Apple MPS, then CPU).
+
+    CUDA/MPS: probe with a small allocation. CPU-only is a soft pass so local
+    Mac testing does not fail preflight.
+
     Returns:
-        bool: True if GPU is available and working, False if CPU only.
+        bool: True if a usable device was found (including CPU fallback).
     """
     t("Checking GPU")
 
     if torch.cuda.is_available():
-        p("✓ CUDA available", torch.cuda.get_device_name(0), color1 = c.GREEN)
+        p("✓ CUDA available", torch.cuda.get_device_name(0), color1=c.GREEN)
         p("GPU count", torch.cuda.device_count())
-
-        # Check memory
         total = torch.cuda.get_device_properties(0).total_memory / 1e9
         p("GPU memory", f"{total:.1f} GB")
-
-        # Test allocation
         try:
-            test = torch.zeros((1000, 1000)).cuda()
+            test = torch.zeros((1000, 1000), device="cuda")
             del test
             torch.cuda.empty_cache()
-            p("✓ GPU allocation", "working", color1 = c.GREEN)
+            p("✓ GPU allocation", "working", color1=c.GREEN)
         except Exception as e:
-            p("✗ GPU allocation", str(e), color1 = c.RED)
-
+            p("✗ GPU allocation", str(e), color1=c.RED)
+            return False
         return True
-    else:
-        p("✗ CUDA not available", "will use CPU (slow)", color1 = c.ORANGE)
-        return False
+
+    mps = getattr(torch.backends, "mps", None)
+    if mps is not None and mps.is_built():
+        if mps.is_available():
+            try:
+                test = torch.zeros((1000, 1000), device="mps")
+                del test
+                p("✓ MPS available", "Apple GPU", color1=c.GREEN)
+                return True
+            except Exception as e:
+                p("✗ MPS allocation", str(e), color1=c.RED)
+        else:
+            p("✗ MPS not available", "built but not usable", color1=c.RED)
+
+    p("✗ GPU failed", "CUDA/MPS not available", color1=c.RED)
+    p("→ OK to continue", "defaulting to CPU (slower; use Colab for full training)", color1=c.GREEN)
+    return False
 
 
 def check_data(config):

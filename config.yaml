@@ -1,65 +1,48 @@
-# config.yaml
+# Dataset lives under top-level data/ (src/data/ is the Python package only).
+# Active train block = local testing. Uncomment the Colab preset when needed.
 
 paths:
-  dataset_selector: "data1"
-  template: "src/data/data1/sample_answer.json"
+  data: "data"
+  annotations: "data/train_annotations.json"
+  template: "data/sample_answer.json"
 
-  #train_images: "src/data/data1/train_images"
-  #train_masks: "src/data/data1/train_masks"
-  #train_images_zip: "src/data/data1/train_images.zip"
-  #eval_images: "src/data/data1/evaluation_images"
-  #eval_masks: "src/data/data1/evaluation_masks"
-  #eval_images_zip: "src/data/data1/evaluation_images.zip"
-  #models: "checkpoints"
-  #notebooks: "notebooks"
-  #annotations: "src/data/data1/train_annotations.json"
-  #data: "data"
+  train_images: "data/train_images"
+  train_masks: "data/train_masks"
+  train_images_zip: "data/train_images.zip"
 
-  train_images: "src/data/data1/train_images"
-  train_masks: "src/data/data1/train_masks"
-  train_images_zip: "src/data/data1/train_images.zip"
-  eval_images: "src/data/data1/evaluation_images"
-  eval_masks: "src/data/data1/evaluation_masks"
-  eval_images_zip: "src/data/data1/evaluation_images.zip"
+  eval_images: "data/evaluation_images"
+  eval_masks: "data/evaluation_masks"
+  eval_images_zip: "data/evaluation_images.zip"
+
   models: "checkpoints"
   notebooks: "notebooks"
-  annotations: "src/data/data1/train_annotations.json"
-  data: "src/data/data1"
-
-
-
   plots: "plots"
 
 train:
-  #for code TESTING
-  #  image_size: 128
-  #  num_workers: 2 # 0# ✓ Single-threaded (stable)
-  #  seed: 42
-  #  batch_size: 2  # ⚡ Quick test under 2GB GPU
-  #  epochs: 50  # ⚡ Quick test
-  #  learning_rate: 4e-4
-  #  early_stop_patience: 10 # Stops training entirely if validation loss doesn't improve for N epochs [10-15 (gives more chances)]
-  #  scheduler_patience: 3 # Reduces learning rate if validation loss doesn't improve for N epochs [3-5 (reduce LR earlier to recover)]
-  #  scheduler_factor: 0.5
-
-  #for code COLAB
-  image_size: 512 #no resize #1024 # 256
-  num_workers: 8 #8 # ✓ 2 CPU threads pre-load data, 4 for A100 GPU
+  # --- testing (active) ---
+  image_size: 128
+  batch_size: 2
+  num_workers: 2
+  epochs: 50
+  learning_rate: 4e-4
   seed: 42
-  batch_size: 8 # 16 # 2 Critical for 2GB GPU, 4 for T4 GPU , 8 for L4 GPU, 16 for A100 GPU
-  epochs: 100
-  learning_rate: 5e-4
-  early_stop_patience: 10 #8 # Stops training entirely if validation loss doesn't improve for N epochs [10-15 (gives more chances)]
-  scheduler_patience: 3 # Reduces learning rate if validation loss doesn't improve for N epochs [3-5 (reduce LR earlier to recover)]
+  early_stop_patience: 10
+  scheduler_patience: 3
   scheduler_factor: 0.5
 
+  # --- (swap with testing when training for real) ---
+  # image_size: 512
+  # batch_size: 8
+  # num_workers: 8
+  # epochs: 100
+  # learning_rate: 5e-4
+  # seed: 42
+  # early_stop_patience: 10
+  # scheduler_patience: 3
+  # scheduler_factor: 0.5
 
-# early_stop_patience vs scheduler_patience
-# If both are 5, the LR drops at epoch 5, then training stops at epoch 10.
-# Better would be LR drops at epoch 5, stops at epoch 12-13, giving the lower LR a few epochs to work.
+# Prefer scheduler_patience < early_stop_patience so LR can drop before training stops.
 
 extra:
   log_predictions: true
   use_amp: true
-
-

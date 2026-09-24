@@ -11,7 +11,7 @@ The best way to reproduce experiments is to:
 5. Run either the individual experiment notebooks or one of the master execution plans.
 
 Most notebooks read their settings from `config.yml` / `config.yaml`.
-Only the `10_master_execution_plan_*.ipynb` notebooks have additional manual overrides for the image
+Only the `13_master_execution_plan_*.ipynb` / `14_master_execution_plan_*.ipynb` notebooks have additional manual overrides for the image
 size hardcoded, or other values that overwrite the configured size.
 
 ```python
@@ -56,29 +56,29 @@ Example:
 
 ```yaml
 paths:
-  # original Solafune files
-  train_images_zip: "src/data/data1/train_images.zip"
-  annotations: "src/data/data1/train_annotations.json"
-  eval_images_zip: "src/data/data1/evaluation_images.zip"
-  sample_answer: "src/data/data1/sample_answer.json"
+  # original Solafune files (top-level data/ — not src/data, which is code only)
+  train_images_zip: "data/train_images.zip"
+  annotations: "data/train_annotations.json"
+  eval_images_zip: "data/evaluation_images.zip"
+  template: "data/sample_answer.json"
 
   # extracted and generated data
-  train_images: "src/data/data1/train_images"
-  train_masks: "src/data/data1/train_masks"
-  eval_images: "src/data/data1/evaluation_images"
-  eval_masks: "src/data/data1/evaluation_masks"
+  train_images: "data/train_images"
+  train_masks: "data/train_masks"
+  eval_images: "data/evaluation_images"
+  eval_masks: "data/evaluation_masks"
 
   # project structure
   models: "checkpoints"
   notebooks: "notebooks"
-  data: "src/data/data1"
+  data: "data"
 ```
 
 With this setup, once you set `PROJECT_ROOT`, an internal helper can join `PROJECT_ROOT` and these
 relative paths.
 
 Note: all notebooks read these values from `config.yml` unless manually overwritten, as in the
-`10_master_execution_plan_*.ipynb` notebooks.
+`13` / `14` master execution plan notebooks.
 
 ---
 
@@ -135,30 +135,35 @@ Download all four required files:
 - `evaluation_images.zip`
 - `sample_answer.json`
 
-Place them so they match the `config.yml` paths. For example:
+Place them under top-level `data/` so they match `config.yaml`. For example:
 
 ```text
-<PROJECT_ROOT>/src/data/data1/train_images.zip
-<PROJECT_ROOT>/src/data/data1/train_annotations.json
-<PROJECT_ROOT>/src/data/data1/evaluation_images.zip
-<PROJECT_ROOT>/src/data/data1/sample_answer.json
+<PROJECT_ROOT>/data/train_images.zip
+<PROJECT_ROOT>/data/train_annotations.json
+<PROJECT_ROOT>/data/evaluation_images.zip
+<PROJECT_ROOT>/data/sample_answer.json
 ```
 
-The notebooks then extract images and masks into:
+Or place the already-unzipped folders there:
 
 ```text
-<PROJECT_ROOT>/src/data/data1/train_images
-<PROJECT_ROOT>/src/data/data1/train_masks
-<PROJECT_ROOT>/src/data/data1/evaluation_images
-<PROJECT_ROOT>/src/data/data1/evaluation_masks
+<PROJECT_ROOT>/data/train_images/
+<PROJECT_ROOT>/data/evaluation_images/
 ```
 
-The model checkpoints, notebooks, and data folders use:
+The preprocess notebooks then generate masks into:
+
+```text
+<PROJECT_ROOT>/data/train_masks
+<PROJECT_ROOT>/data/evaluation_masks
+```
+
+The model checkpoints, notebooks, and dataset folders use:
 
 ```text
 <PROJECT_ROOT>/checkpoints
 <PROJECT_ROOT>/notebooks
-<PROJECT_ROOT>/src/data/data1
+<PROJECT_ROOT>/data
 ```
 
 ---
@@ -190,7 +195,7 @@ Set your `.env` file as described earlier, then start Jupyter:
 jupyter notebook
 ```
 
-Open the `notebooks` folder and run `00 preflight check.ipynb` to confirm the environment.
+Open the `notebooks` folder and run `01_preflight_check.ipynb` to confirm the environment.
 
 ---
 
@@ -201,7 +206,7 @@ Open the `notebooks` folder and run `00 preflight check.ipynb` to confirm the en
 1. Mount Google Drive
 2. Point `PROJECT_ROOT` to a folder inside Drive
 3. Clone the GitHub repository into that folder
-4. Run `00 preflight check.ipynb` to validate the environment
+4. Run `01_preflight_check.ipynb` to validate the environment
 
 Place your files in the MyDrive directory as shown below:
 
@@ -240,16 +245,16 @@ Select GPU in Colab:
 After you have the dataset and configuration in place, run the preprocessing notebooks in this
 order:
 
-1. `00 preflight check.ipynb`
+1. `01_preflight_check.ipynb`
     - Verifies Python installation, libraries, and GPU.
 
-2. `00_image_extract.ipynb`
+2. `02_image_extract.ipynb`
     - Reads the paths from `config.yml`.
     - Extracts `train_images.zip` and `evaluation_images.zip` into the `train_images` and
       `evaluation_images` folders.
     - Validates that images and annotations align.
 
-3. `00_preprocess_images.ipynb`
+3. `03_preprocess_images.ipynb`
     - Converts TIFF images to a consistent RGB PNG format.
     - Generates masks from polygon annotations for training and evaluation.
     - Populates `train_masks` and `evaluation_masks`.
@@ -265,31 +270,31 @@ notebook reads paths from `config.yml` and assumes the preprocessing above has c
 
 Recommended order:
 
-1. `explore/01_starter_sample.ipynb`
+1. `explore/04_starter_sample.ipynb`
     - Educational starter: dataset + sample model sanity checks.
 
-2. `explore/02_class.ipynb`
+2. `explore/05_class.ipynb`
     - Mask/class/bbox exploration utilities.
 
-3. `explore/02_exploration.ipynb`
+3. `explore/06_exploration.ipynb`
     - Explores data statistics, filters, and visualizations.
 
-4. `03_training.ipynb`
+4. `07_training.ipynb`
     - Configures training loops and runs one or more experiments.
 
-5. `04_evaluation.ipynb`
+5. `08_evaluation.ipynb`
     - Evaluates trained models and computes metrics.
 
-6. `05_prediction.ipynb`
+6. `09_prediction.ipynb`
     - Runs inference on evaluation images and generates submission predictions.
 
-7. `06_benchmark_models.ipynb`
+7. `10_benchmark_models.ipynb`
     - Benchmarks multiple architectures and compares results.
 
-8. `07_data_analysis.ipynb`
+8. `11_data_analysis.ipynb`
     - Does deeper error analysis and data insights.
 
-9. `08_filter_experimentation.ipynb`
+9. `12_filter_experimentation.ipynb`
     - Tests filter pipelines and image transforms.
 
 Each of these notebooks uses `config.yml` to find data, checkpoints, and output paths. You can run
@@ -302,12 +307,12 @@ them in Jupyter or Colab.
 If you want to run the full pipeline from preprocessing to training to submission in one pass, use
 one of the master execution plan notebooks:
 
-- `10_master_execution_plan_512_rgb.ipynb` (models on RGB / no-filter set)
-- `10_master_execution_plan_512_all.ipynb` (includes filter experiment variants)
+- `13_master_execution_plan_512_rgb.ipynb` (models on RGB / no-filter set)
+- `14_master_execution_plan_512_all.ipynb` (includes filter experiment variants)
 
 Or use the convenience runner:
 
-- `_run_512.ipynb` (runs `512_all` master plan + `12_model_tracker_submission_manager.ipynb`)
+- `_run_512.ipynb` (runs `512_all` master plan + `15_model_tracker_submission_manager.ipynb`)
 
 In these filenames, `512` is the tile/image size used when resizing.
 
@@ -325,7 +330,7 @@ Note:
 - Unlike the other notebooks, the master execution notebooks can contain explicit path overrides.
 - Check the top of each master notebook for any `root = Path(...)` lines and confirm they match your
   `PROJECT_ROOT` location.
-- Every `10_master_execution_plan_*` notebook contains a section labeled “Setup experiments to run”
+- Every `13_*` / `14_*` master execution plan notebook contains a section labeled “Setup experiments to run”
   that controls which experiment combinations are executed.
 - For example, to select all models without filters you can do the following:
     ```python

@@ -1,57 +1,57 @@
 # Project Notebooks and Methods Documentation
 
-Notebooks live under `notebooks/` as `.ipynb` files.
+Notebooks live under `notebooks/` as `.ipynb` files. Numbers are unique across the repo (including `explore/`).
 
 ## Pipeline (keep these for day-to-day work)
 
-### `00 preflight check.ipynb`
+### `01_preflight_check.ipynb`
 
 - Environment and dependency verification
 
-### `00_image_extract.ipynb`
+### `02_image_extract.ipynb`
 
 - Unpack training/evaluation archives
 - Clean folders (e.g. `__MACOSX`)
 - Build masks from polygon annotations
 
-### `00_preprocess_images.ipynb`
+### `03_preprocess_images.ipynb`
 
 - Convert TIFF → RGB PNG
 - Populate `train_masks` / `evaluation_masks`
 
-### `03_training.ipynb`
+### `07_training.ipynb`
 
 - Train/val splits, augmentations, Trainer, versioned checkpoints
 
-### `04_evaluation.ipynb`
+### `08_evaluation.ipynb`
 
 - Metrics (IoU, Dice, Accuracy), overlays, summaries
 
-### `05_prediction.ipynb`
+### `09_prediction.ipynb`
 
 - Load a checkpoint, run inference, optional submission JSON
 
-### `06_benchmark_models.ipynb`
+### `10_benchmark_models.ipynb`
 
 - Standalone architecture compare (quality + speed) on a shared validation set
 
-### `07_data_analysis.ipynb`
+### `11_data_analysis.ipynb`
 
 - Dataset stats, class distributions, image properties
 
-### `08_filter_experimentation.ipynb`
+### `12_filter_experimentation.ipynb`
 
 - Systematic filter trials for canopy boundary enhancement
 
-### `10_master_execution_plan_512_rgb.ipynb`
+### `13_master_execution_plan_512_rgb.ipynb`
 
 - End-to-end pipeline at tile size 512 (RGB / no-filter experiment set)
 
-### `10_master_execution_plan_512_all.ipynb`
+### `14_master_execution_plan_512_all.ipynb`
 
 - End-to-end pipeline at tile size 512 including filter experiment variants
 
-### `12_model_tracker_submission_manager.ipynb`
+### `15_model_tracker_submission_manager.ipynb`
 
 - Scan checkpoints, rank models, build/refresh submission JSON files
 
@@ -61,17 +61,17 @@ Notebooks live under `notebooks/` as `.ipynb` files.
 
 ## Educational / exploration (`notebooks/explore/`)
 
-### `explore/01_starter_sample.ipynb`
+### `explore/04_starter_sample.ipynb`
 
 - Early prototyping walkthrough (dataset + sample model sanity checks)
   ![img.png](assets/img.png)
 
-### `explore/02_class.ipynb`
+### `explore/05_class.ipynb`
 
 - Mask/class/bbox exploration utilities
   ![img_1.png](assets/img_1.png)
 
-### `explore/02_exploration.ipynb`
+### `explore/06_exploration.ipynb`
 
 - Frequency space, kernels, filters, enhancement visualizations
   ![img_2.png](assets/img_2.png)
