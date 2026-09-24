@@ -1,110 +1,13 @@
-import json
 import numbers
 import random
 import warnings
 from enum import Enum
 from pathlib import Path
-from typing import Any, List, Tuple
+from typing import Any
 
 import numpy as np
 import plotly.io as pio
 import torch
-
-
-# def to_chw(arr):
-#     if isinstance(arr, np.ndarray):
-#         return arr.transpose(2,0,1)
-#     if isinstance(arr, torch.Tensor):
-#         return arr.permute(2,0,1)
-#     raise ValueError("Unsupported type")
-
-# def to_hwc(arr):
-#     if isinstance(arr, np.ndarray):
-#         return arr.transpose(1,2,0)
-#     if isinstance(arr, torch.Tensor):
-#         return arr.permute(1,2,0)
-#     raise ValueError("Unsupported type")
-
-def format_time(seconds: float) -> str:
-    """
-    Convert seconds into a human-readable time format.
-    
-    Args:
-        seconds (float): Total number of seconds to convert.
-    
-    Returns:
-        str: Formatted time string (e.g., "2 hr 30 min" or "45 sec").
-    """
-    # Break down into hours, minutes, seconds
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-
-    parts = []
-    if hours > 0:
-        parts.append(f"{hours} hr")
-    if minutes > 0:
-        parts.append(f"{minutes} min")
-    if secs > 0 and hours == 0:  # only show seconds if < 1 hr
-        parts.append(f"{secs} sec")
-
-    return " ".join(parts)
-
-
-def make_json_safe( obj: Any ) -> Any:
-    """
-    Convert an object into a JSON safe structure.
-    Converts Path to string. Converts unsupported types to string as needed.
-    """
-    if isinstance(obj, Path):
-        return str(obj)
-    if isinstance(obj, (list, tuple)):
-        return [make_json_safe(x) for x in obj]
-    if isinstance(obj, dict):
-        return { k: make_json_safe(v) for k, v in obj.items() }
-
-    try:
-        json.dumps(obj)
-        return obj
-    except Exception:
-        return str(obj)
-
-
-def normalize_type( obj: Any ) -> Any:
-    """
-    Normalize incoming config values to natural Python types.
-    Handles numeric strings and numpy scalar types.
-    """
-    if obj is None:
-        return None
-
-    if isinstance(obj, (int, float, bool)):
-        return obj
-
-    if isinstance(obj, (np.integer, np.floating, np.bool_)):
-        return obj.item()
-
-    if isinstance(obj, str):
-        s = obj.strip()
-        if s.lstrip("-").isdigit():
-            try:
-                return int(s)
-            except Exception:
-                pass
-        try:
-            return float(s)
-        except Exception:
-            return obj
-
-    if isinstance(obj, list):
-        return [normalize_type(x) for x in obj]
-    if isinstance(obj, dict):
-        return { k: normalize_type(v) for k, v in obj.items() }
-
-    if isinstance(obj, bytes):
-        return obj.decode("utf8", errors = "ignore")
-
-    return obj
 
 
 def init_notebook( seed: int = 42 ) -> None:
@@ -136,27 +39,6 @@ def init_notebook( seed: int = 42 ) -> None:
     # except Exception:
     #     pass
     p("", "Done")
-
-
-def data_loader( data: List[Tuple[torch.Tensor, torch.Tensor]], batch_size: int ):
-    """
-    Simple batch generator for in-memory image-mask datasets.
-    
-    Yields batches of stacked image and mask tensors from a list of (image, mask) tuples.
-    Useful for small datasets that fit entirely in GPU memory.
-    
-    Args:
-        data (List[Tuple[torch.Tensor, torch.Tensor]]): List of (image, mask) tensor pairs.
-        batch_size (int): Number of samples per batch.
-    
-    Yields:
-        Tuple[torch.Tensor, torch.Tensor]: Batches of stacked images and masks.
-    """
-    for i in range(0, len(data), batch_size):
-        batch = data[i: i + batch_size]
-        imgs = torch.stack([img for img, _ in batch])
-        masks = torch.stack([mask for _, mask in batch])
-        yield imgs, masks
 
 
 class c(str, Enum):
@@ -598,56 +480,6 @@ def simple_estimate_runtime(config):
     p("Batches per epoch", batches_per_epoch)
     p("Estimated time per epoch", f"~{format_time(seconds_per_epoch // 60)}", color1 = c.BLACK, color2 = c.RED)
     p("Estimated total time", f"~{format_time(total_seconds)}", color1 = c.BLACK, color2 = c.RED)
-
-
-
-
-def estimate_runtime_by_epcoh( experiments, epochs_per_exp = 10 ):
-    """
-    Estimate total training runtime for multiple experiments.
-    
-    Provides rough estimates using predefined time per epoch for each model type.
-    Accounts for filtered mode overhead.
-    
-    Args:
-        experiments (list): List of tuples (model_name, mode, filters).
-        epochs_per_exp (int): Number of epochs per experiment. Defaults to 10.
-    
-    Returns:
-        float: Estimated total training time in hours.
-    """
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    # Time per epoch estimates (in seconds)
-    time_per_epoch = {
-        "simple_cnn": 30,
-        "unet":       60,
-        "yolov8s":    90,
-    }
-
-    total_seconds = 0
-    for model_name, mode, _ in experiments:
-        base_time = time_per_epoch.get(model_name, 60)
-        # Filtered mode adds ~20% overhead
-        if mode == "filtered":
-            base_time *= 1.2
-        total_seconds += base_time * epochs_per_exp
-
-    total_minutes = total_seconds / 60
-    total_hours = total_minutes / 60
-
-    p("Runtime Estimate", "", color1 = c.ORANGE)
-    p("  Device", device.type.upper())
-    p("  Experiments", len(experiments))
-    p("  Epochs per exp", epochs_per_exp)
-    p("  Estimated time", f"{total_hours:.1f} hours ({total_minutes:.0f} min)")
-
-    if device.type == "cpu":
-        p("  ⚠ WARNING", "CPU training is 10-20x slower!", color1 = c.RED)
-
-    return total_hours
-
-
 
 
 

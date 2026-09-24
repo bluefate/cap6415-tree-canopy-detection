@@ -43,23 +43,6 @@ def mask_for_class(entry: AnnotationEntry, cls: str):
     return mask
 
 
-def available_classes(entries):
-    """
-    Extract unique class names from annotation entries.
-    
-    Args:
-        entries (list): List of AnnotationEntry objects.
-    
-    Returns:
-        list: Sorted list of unique class names.
-    """
-    classes = set()
-    for e in entries:
-        for item in e.items:
-            classes.add(item.cls)
-    return sorted(classes)
-
-
 def mask_all(entry: AnnotationEntry):
     """
     Generate binary mask for all objects (union of all classes).

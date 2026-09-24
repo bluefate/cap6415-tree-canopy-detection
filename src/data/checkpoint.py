@@ -831,36 +831,6 @@ def plot_model_performance_overview(df: pd.DataFrame) -> None:
     plt.show()
 
 
-def plot_model_timeline(df: pd.DataFrame) -> None:
-    """
-    Create a timeline visualization of model training.
-    """
-    date_df = df.dropna(subset=["Created Date"])
-
-    if len(date_df) == 0:
-        p("No date information available for timeline", color1=c.ORANGE)
-        return
-
-    fig, ax = plt.subplots(1, 1, figsize=(12, 6))
-
-    # Group by date and count models
-    date_df["Date Only"] = date_df["Created Date"].dt.date
-    daily_counts = date_df.groupby("Date Only").size()
-
-    ax.plot(
-        daily_counts.index, daily_counts.values, marker="o", linewidth=2, markersize=6
-    )
-    ax.set_xlabel("Date")
-    ax.set_ylabel("Models Created")
-    ax.set_title("Model Creation Timeline")
-    ax.grid(True, alpha=0.3)
-
-    # Format x-axis dates
-    plt.xticks(rotation=45)
-    plt.tight_layout()
-    plt.show()
-
-
 def fix_models_list_before_analysis(models_list, config):
     """
     Call this function to fix model names in your models_list before creating visualizations.
@@ -976,34 +946,6 @@ def main_model_tracking_pipeline(config):
         "csv_path": csv_path,
         "generated_submissions": generated_count,
     }
-
-
-def interactive_model_explorer(models_list: List[Dict[str, Any]]):
-    """
-    Interactive explorer for examining individual models.
-    """
-    t("Interactive Model Explorer")
-
-    # Filter models with submissions
-    models_with_subs = [m for m in models_list if m.get("has_submission")]
-
-    if not models_with_subs:
-        p("No models with submissions found!", color1=c.RED)
-        return
-
-    p(f"Available models with submissions: {len(models_with_subs)}")
-
-    # List first 10 models for selection
-    for i, model in enumerate(models_with_subs[:10]):
-        model_name = model.get("model_name", "unknown")
-        mode = model.get("mode", "unknown")
-        val_loss = model.get("val_loss")
-        val_loss_str = f"{val_loss:.6f}" if val_loss else "N/A"
-
-        p(f"{i + 1:2d}. {model_name} ({mode}) - Val Loss: {val_loss_str}")
-
-    if len(models_with_subs) > 10:
-        p(f"... and {len(models_with_subs) - 10} more models")
 
 
 def show_model_details(model_data: Dict[str, Any]):

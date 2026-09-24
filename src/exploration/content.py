@@ -85,30 +85,6 @@ def crop_mask_with_context(entry, item, context_bbox):
     return mask_crop
 
 
-def resize_to_standard(img, mask, target_size=256):
-    """
-    Resize crop and mask to standard size for training.
-    
-    Uses linear interpolation for image and nearest-neighbor for mask to preserve 
-    class labels.
-    
-    Args:
-        img (np.ndarray): Cropped image.
-        mask (np.ndarray): Cropped binary mask.
-        target_size (int): Target size for both dimensions. Defaults to 256.
-    
-    Returns:
-        tuple: (resized_image, resized_mask) with shape (target_size, target_size).
-    """
-    img_resized = cv2.resize(
-        img, (target_size, target_size), interpolation=cv2.INTER_LINEAR
-    )
-    mask_resized = cv2.resize(
-        mask, (target_size, target_size), interpolation=cv2.INTER_NEAREST
-    )
-    return img_resized, mask_resized
-
-
 def crop_bbox(image_dir, entry, item):
     """
     Crop image to bounding box without context padding.
