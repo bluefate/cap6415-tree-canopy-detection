@@ -114,7 +114,7 @@ class Config(BaseModel):
 
         root = Path(root).resolve()
         if yaml_path is None:
-            # walk up — Jupyter often starts in notebooks/ or notebooks/explore/
+            # walk up — Jupyter often starts in notebooks/
             yaml_path = next(
                 (p / "config.yaml" for p in [root, *root.parents] if (p / "config.yaml").exists()),
                 None,
